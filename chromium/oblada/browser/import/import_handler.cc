@@ -132,6 +132,9 @@ void ImportHandler::OnSourcesFound(base::Value callback_id,
                     .Set("family", FamilyName(source.family))
                     .Set("icon", AppIconDataUrl(source.app_id))
                     .Set("isDefault", source.is_default)
+                    // Its passwords' key is in the Keychain: reading them, macOS
+                    // asks for the user's password.
+                    .Set("asksKeychain", !source.safe_storage.empty())
                     .Set("items", ItemNames(source.items)));
   }
   ResolveJavascriptCallback(callback_id, list);

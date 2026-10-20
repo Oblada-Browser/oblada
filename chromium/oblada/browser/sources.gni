@@ -66,6 +66,9 @@ oblada_ui_sources = [
   "//oblada/browser/ui/split_handle.cc",
   "//oblada/browser/ui/split_handle.h",
   "//oblada/browser/ui/traffic_lights.h",
+  "//oblada/browser/updater/updater.cc",
+  "//oblada/browser/updater/updater.h",
+  "//oblada/browser/updater/updater_platform.h",
   "//oblada/browser/welcome/welcome_page.cc",
   "//oblada/browser/welcome/welcome_page.h",
   "//oblada/browser/welcome/welcome_ui.cc",
@@ -106,13 +109,16 @@ if (is_mac) {
     "//oblada/browser/import/app_icon_mac.mm",
     "//oblada/browser/import/password_decryptor_mac.mm",
     "//oblada/browser/ui/traffic_lights_mac.mm",
+    "//oblada/browser/updater/updater_mac.mm",
   ]
+  oblada_ui_deps += [ "//oblada/browser/updater:sparkle" ]
 }
 
 if (is_win) {
   oblada_ui_sources += [
     "//oblada/browser/import/app_icon_other.cc",
     "//oblada/browser/import/password_decryptor_win.cc",
+    "//oblada/browser/updater/updater_other.cc",
   ]
 }
 
@@ -120,5 +126,6 @@ if (is_linux) {
   oblada_ui_sources += [
     "//oblada/browser/import/app_icon_other.cc",
     "//oblada/browser/import/password_decryptor_linux.cc",
+    "//oblada/browser/updater/updater_other.cc",
   ]
 }

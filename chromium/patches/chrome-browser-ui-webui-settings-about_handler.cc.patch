@@ -1,20 +1,22 @@
 diff --git a/chrome/browser/ui/webui/settings/about_handler.cc b/chrome/browser/ui/webui/settings/about_handler.cc
-index 2352aa8bee..d20ddfabf9 100644
+index 2352aa8bee..51bc901d7e 100644
 --- a/chrome/browser/ui/webui/settings/about_handler.cc
 +++ b/chrome/browser/ui/webui/settings/about_handler.cc
-@@ -871,6 +871,15 @@ void AboutHandler::OnExtendedUpdatesSettingChanged() {
- #endif  // BUILDFLAG(IS_CHROMEOS)
+@@ -48,6 +48,7 @@
+ #include "content/public/browser/web_ui.h"
+ #include "content/public/browser/web_ui_data_source.h"
+ #include "ui/base/l10n/l10n_util.h"
++#include "oblada/browser/updater/updater.h"  // Oblada
+ #include "v8/include/v8-version-string.h"
  
- void AboutHandler::RequestUpdate() {
-+  // Oblada: it has no updater (new versions are GitHub releases): no update status
-+  // rather than a check that fails.
-+  const bool oblada_has_updater = false;
-+  if (!oblada_has_updater) {
-+    SetUpdateStatus(VersionUpdater::DISABLED, /*progress=*/0, /*rollback=*/false,
-+                    /*powerwash=*/false, std::string(), /*size=*/0,
-+                    std::u16string());
-+    return;
-+  }
-   version_updater_->CheckForUpdate(
-       base::BindRepeating(&AboutHandler::SetUpdateStatus,
-                           weak_factory_.GetWeakPtr()),
+ #if BUILDFLAG(IS_CHROMEOS)
+@@ -426,7 +427,8 @@ void AboutHandler::RegisterMessages() {
+ 
+ void AboutHandler::OnJavascriptAllowed() {
+   apply_changes_from_upgrade_observer_ = true;
+-  version_updater_ = VersionUpdater::Create(web_ui()->GetWebContents());
++  // Oblada: its own updater's status, or none for a build that doesn't update itself.
++  version_updater_ = oblada::updater::CreateVersionUpdater();
+   policy_registrar_ = std::make_unique<policy::PolicyChangeRegistrar>(
+       g_browser_process->policy_service(),
+       policy::PolicyNamespace(policy::POLICY_DOMAIN_CHROME, std::string()));

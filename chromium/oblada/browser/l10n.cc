@@ -103,6 +103,11 @@ constexpr auto kStrings = std::to_array<Entry>({
      "Prima chiudi $1: finché è aperto, i suoi dati restano bloccati."},
     {"welcome.import_failed", "Nothing could be imported.",
      "Non è stato possibile importare nulla."},
+    {"welcome.import_keychain",
+     "macOS will ask for your Mac's password: $1 keeps its passwords locked in "
+     "the Keychain.",
+     "macOS ti chiederà la password del Mac: $1 tiene le sue password chiuse nel "
+     "Portachiavi."},
     {"welcome.import_unreadable", "passwords not read: $1",
      "password non lette: $1"},
     {"welcome.import_none", "No other browser found on this computer.",

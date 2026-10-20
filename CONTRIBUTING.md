@@ -72,6 +72,7 @@ the focus away from what you're doing.
 ```sh
 make test                          # the smoke test: about 40 checks, a few minutes
 make test NETWORK=0                # the same without addons.mozilla.org
+make test-updates                  # Oblada updating itself, end to end, with a test key
 make screenshot PNG=/tmp/shot.png  # the window, browser UI included
 ```
 

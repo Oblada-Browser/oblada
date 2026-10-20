@@ -6,6 +6,7 @@ set -euo pipefail
 source "$(dirname "$0")/env.sh"
 
 "$HERE/scripts/patches.sh" apply
+"$HERE/scripts/sparkle.sh"
 mkdir -p "$OUT"
 cmp -s "$HERE/args.gn" "$OUT/args.gn" || cp "$HERE/args.gn" "$OUT/args.gn"
 [ -f "$OUT/build.ninja" ] || (cd "$SRC" && gn gen "out/$(basename "$OUT")")

@@ -7,6 +7,7 @@
 #include "oblada/browser/debug/window_snapshots.h"
 #include "oblada/browser/firefox_addons/firefox_addons.h"
 #include "oblada/browser/peek/peek.h"
+#include "oblada/browser/updater/updater.h"
 #include "oblada/browser/workspaces/workspaces.h"
 
 namespace oblada {
@@ -22,6 +23,7 @@ class ObladaBrowserMainExtraParts : public ChromeBrowserMainExtraParts {
     if (PrefService* local_state = g_browser_process->local_state()) {
       local_state->SetBoolean(prefs::kFirstRunFinished, true);
     }
+    updater::PrepareStartup();
   }
 
   void PostBrowserStart() override {
@@ -29,6 +31,7 @@ class ObladaBrowserMainExtraParts : public ChromeBrowserMainExtraParts {
     workspaces::Init();
     peek::Init();
     debug::MaybeStartWindowSnapshots();
+    updater::Start();
   }
 };
 

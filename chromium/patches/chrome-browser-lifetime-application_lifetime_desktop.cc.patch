@@ -1,0 +1,24 @@
+diff --git a/chrome/browser/lifetime/application_lifetime_desktop.cc b/chrome/browser/lifetime/application_lifetime_desktop.cc
+index 75976a2222..cfe28d1126 100644
+--- a/chrome/browser/lifetime/application_lifetime_desktop.cc
++++ b/chrome/browser/lifetime/application_lifetime_desktop.cc
+@@ -52,6 +52,7 @@
+ #include "components/prefs/pref_service.h"
+ #include "content/public/browser/browser_task_traits.h"
+ #include "content/public/browser/browser_thread.h"
++#include "oblada/browser/updater/updater.h"  // Oblada
+ #include "ui/base/base_window.h"
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+@@ -286,6 +287,11 @@ void AttemptRestartInternal(IgnoreUnloadHandlers ignore_unload_handlers,
+   content::GetUIThreadTaskRunner({})->PostTask(
+       FROM_HERE, base::BindOnce(&ExitIgnoreUnloadHandlers));
+ #else   // !BUILDFLAG(IS_CHROMEOS).
++  // Oblada: with an update ready, the updater installs it once Oblada has quit and
++  // opens it again, restoring the session (oblada/browser/updater).
++  if (oblada::updater::InstallAndRelaunch()) {
++    return;
++  }
+   // Set the flag to restore state after the restart.
+   pref_service->SetBoolean(prefs::kRestartLastSessionOnShutdown, true);
+   if (ignore_unload_handlers) {

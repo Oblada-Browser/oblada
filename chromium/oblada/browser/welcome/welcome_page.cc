@@ -30,6 +30,7 @@ const char kWelcomeHtml[] = R"oblada(<!doctype html>
   <h2>$i18n{import_title}</h2>
   <p class="text" id="import-text">$i18n{import_text}</p>
   <div class="choices" id="choices"></div>
+  <p class="note" id="import-note" hidden></p>
   <button class="primary" id="import-button" hidden></button>
   <p class="status" id="import-status"></p>
   <button class="link" id="import-file">$i18n{import_file}</button>
@@ -40,7 +41,8 @@ const char kWelcomeHtml[] = R"oblada(<!doctype html>
        data-passwords="$i18n{import_passwords}" data-autofill="$i18n{import_autofill}"
        data-cards="$i18n{import_cards}" data-safari-how="$i18n{import_safari_how}"
        data-safari-choose="$i18n{import_safari_choose}" data-locked="$i18n{import_locked}"
-       data-failed="$i18n{import_failed}" data-unreadable="$i18n{import_unreadable}"></div>
+       data-failed="$i18n{import_failed}" data-unreadable="$i18n{import_unreadable}"
+       data-keychain="$i18n{import_keychain}"></div>
 </section>
 
 <section class="step">
@@ -392,6 +394,7 @@ a.hint:hover { background: var(--veil-hover); text-decoration: none; }
 .choice.static { cursor: default; }
 .choice.static::before { content: none; }
 .status { min-height: 1.5em; margin: 12px 0 0; color: var(--subtle); font-size: 12.5px; }
+.note { max-width: 440px; margin: 12px 0 0; color: var(--subtle); font-size: 12.5px; }
 .status.warn { color: light-dark(#b45309, #fbbf24); }
 .status.good { color: var(--text); }
 .link {
@@ -1274,6 +1277,7 @@ const choicesView = document.getElementById('choices');
 const importText = document.getElementById('import-text');
 const importButton = document.getElementById('import-button');
 const importStatus = document.getElementById('import-status');
+const importNote = document.getElementById('import-note');
 const fileStatus = document.getElementById('file-status');
 const numbers = new Intl.NumberFormat(document.documentElement.lang);
 // In the order they are listed.
@@ -1371,6 +1375,7 @@ function render() {
   importStatus.textContent = '';
   importStatus.className = 'status';
   importButton.hidden = !selected;
+  importNote.hidden = true;
   if (!selected) {
     fit();
     return;
@@ -1399,6 +1404,12 @@ function render() {
         render();
       }));
     }
+  }
+  // Before macOS asks for the user's password, so that it's expected.
+  if (selected.asksKeychain && selected.items.includes('passwords') &&
+      !selected.off.has('passwords') && !['running', 'done'].includes(news.state)) {
+    importNote.textContent = fill(t.keychain, selected.browser);
+    importNote.hidden = false;
   }
   if (news.state === 'done') {
     importStatus.textContent = `✓ ${summary(news)}`;

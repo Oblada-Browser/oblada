@@ -37,4 +37,5 @@ cd "$OBLADA_CHROMIUM"
 gclient sync --nohooks --no-history --delete_unversioned_trees
 gclient runhooks
 "$HERE/scripts/patches.sh" apply
+"$HERE/scripts/sparkle.sh"
 echo "Chromium $CHROMIUM_VERSION is ready in $SRC"

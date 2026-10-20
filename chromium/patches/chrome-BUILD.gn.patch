@@ -1,0 +1,14 @@
+diff --git a/chrome/BUILD.gn b/chrome/BUILD.gn
+index 8a60d7061b..2d66247cde 100644
+--- a/chrome/BUILD.gn
++++ b/chrome/BUILD.gn
+@@ -564,6 +564,9 @@ if (is_win) {
+       deps += [ ":chromium_updater_privileged_helper" ]
+     }
+ 
++    # Oblada: Sparkle, which Oblada updates itself with, in Contents/Frameworks.
++    deps += [ "//oblada/browser/updater:sparkle_framework" ]
++
+     if (enable_stripping) {
+       # At link time, preserve the global symbols specified in the .exports
+       # file. All other global symbols will be marked as private. The default

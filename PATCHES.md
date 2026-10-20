@@ -21,7 +21,7 @@ Two kinds of changes are not patches:
 - **Logo images:** they are copied over Chromium's from `chromium/overrides/`, which
   `branding/export.sh` makes.
 
-There are 126 patches for Chromium 155 (`chromium/CHROMIUM_VERSION`). This file describes
+There are 129 patches for Chromium 155 (`chromium/CHROMIUM_VERSION`). This file describes
 each one, and how they depend on each other and on Oblada's code. Update it when a patch
 is added, removed or changes purpose.
 
@@ -111,6 +111,10 @@ source adds. Each pair is listed in the entries.
   - `browser_frame_view_mac.mm`;
   - `browser_view_layout_delegate_impl.cc`;
   - `browser_native_widget_mac.mm`.
+- **Updates:** `chrome/BUILD.gn` puts Sparkle in the app, which Oblada's updater
+  (`oblada/browser/updater`) loads; `about_handler.cc` shows what the updater does, and
+  `application_lifetime_desktop.cc` turns the About page's Relaunch into installing the
+  update that's ready.
 - **The transparent New Tab page:**
   - `search.cc` points the New Tab page to it;
   - `contents_web_view.cc` lets the window show through;
@@ -122,8 +126,9 @@ source adds. Each pair is listed in the entries.
 | Area | Patches |
 | --- | --- |
 | Build | `chrome/browser/ui/BUILD.gn`, `chrome/browser/extensions/BUILD.gn`, `chrome/common/extensions/BUILD.gn` |
+| Updates | `chrome/BUILD.gn`, `application_lifetime_desktop.cc`, `about_handler.cc` |
 | Startup, prefs, stability | `chrome_browser_main.cc`, `browser_prefs.cc`, `session_startup_pref.cc`, `base/check.cc`, `web_ui_main_frame_observer.cc`, `startup/infobar_utils.cc` |
-| Branding | `BRANDING`, `chrome_paths_mac.mm`, three `icons.html.ts` |
+| Branding | `BRANDING`, `chrome_paths_mac.mm`, `keychain_password_mac.mm`, three `icons.html.ts` |
 | Window & frame | `ui_base_features.cc`, `browser_native_widget_mac.mm`, `browser_frame_view_mac.mm`, `browser_view_layout_delegate_impl.cc`, `fullscreen_util_mac.cc`, `window_feature_controller.cc` |
 | Sidebar & compact mode | `browser_view_tabbed_layout_impl.cc`, `toolbar_view.cc`, `vertical_tab_strip_region_view.{h,cc}`, `vertical_tab_strip_state.h`, `vertical_tab_strip_state_controller.{h,cc}`, `tab_strip_prefs.cc`, `browser_command_controller.cc`, `vertical_tab_strip_bottom_container.cc`, `download_toolbar_ui_controller.cc` |
 | Tabs | `tab_style.cc`, `tab_hover_card_controller.cc`, `tab_strip_collection_controller.{h,cc}` |
@@ -169,15 +174,17 @@ providers.
 #### `chrome/browser/chrome_browser_main.cc`
 `chrome-browser-chrome_browser_main.cc.patch`. Adds Oblada's `ChromeBrowserMainExtraParts`
 (`oblada::CreateBrowserMainExtraParts()`). Its `PreProfileInit()` marks Chromium's first run
-window (signing in to Google) as done, so that it never opens; its `PostBrowserStart()`
-starts the Firefox add-ons, workspaces and peek.
+window (signing in to Google) as done, so that it never opens, and has the session restored
+after a relaunch to update; its `PostBrowserStart()` starts the Firefox add-ons, workspaces,
+peek and the updater.
 - Oblada code: `oblada/browser/oblada_browser_main_extra_parts.h`.
 
 #### `chrome/browser/prefs/browser_prefs.cc`
 `chrome-browser-prefs-browser_prefs.cc.patch`. `RegisterProfilePrefs()` calls
 `oblada::RegisterProfilePrefs()`, which registers the prefs of the containers, Firefox
-add-ons, New Tab page and workspaces. New Oblada prefs go in `oblada/browser/prefs.cc`, not
-here.
+add-ons, New Tab page and workspaces; `RegisterLocalState()` calls
+`oblada::RegisterLocalStatePrefs()`, for the updater's. New Oblada prefs go in
+`oblada/browser/prefs.cc`, not here.
 - Oblada code: `oblada/browser/prefs.h`.
 
 #### `chrome/browser/prefs/session_startup_pref.cc`
@@ -203,6 +210,22 @@ internal page no longer crashes the browser, as it would in a non-official build
   its own steps. Warnings (an obsolete system, dangerous flags) still show.
 - Oblada code: `oblada/browser/welcome/welcome_ui.h`.
 
+### Updates
+
+#### `chrome/BUILD.gn`
+`chrome-BUILD.gn.patch`. The app bundle gets Sparkle.framework in `Contents/Frameworks`
+(`//oblada/browser/updater:sparkle_framework`), which Oblada's updater loads at startup.
+`chromium/scripts/sparkle.sh` puts Sparkle in the checkout, as `third_party/sparkle`.
+
+#### `chrome/browser/lifetime/application_lifetime_desktop.cc`
+`chrome-browser-lifetime-application_lifetime_desktop.cc.patch`. A relaunch (the About
+page's Relaunch button, or any other) with an update ready has the updater install it:
+Sparkle replaces the app once Oblada has quit, then opens it again
+(`oblada::updater::InstallAndRelaunch()`). Chromium's own relaunch would open the old app
+while Sparkle replaces it. The session is restored on the next start as after Chromium's
+relaunches (`oblada::updater::PrepareStartup()`).
+- Oblada code: `oblada/browser/updater/updater.h`.
+
 ### Branding
 
 #### `chrome/app/theme/chromium/BRANDING`
@@ -213,6 +236,14 @@ change to it conflicts.
 #### `chrome/common/chrome_paths_mac.mm`
 `chrome-common-chrome_paths_mac.mm.patch`. The data folder is
 `~/Library/Application Support/Oblada` instead of `Chromium`. Changing it moves users' data.
+
+#### `components/os_crypt/common/keychain_password_mac.mm`
+`components-os_crypt-common-keychain_password_mac.mm.patch`. The key Oblada encrypts saved
+passwords and cookies with is kept in the Keychain as "Oblada Safe Storage" (account
+"Oblada"), not under Chromium's names: other Chromium-based browsers use those, and macOS
+asked for the user's password to let Oblada read their key. Until 0.1.1 Oblada used
+Chromium's; there's no migration (the maintainer's key was copied by hand), so a profile
+from then loses what it had saved encrypted.
 
 #### `chrome/browser/resources/settings/icons.html.ts`, `chrome/browser/resources/webui_browser/icons.html.ts`, `ui/webui/resources/cr_elements/icons.html.ts`
 `chrome-browser-resources-settings-icons.html.ts.patch`,
@@ -766,9 +797,13 @@ Their hosts must not clash with Chrome's.
 - Oblada code: `oblada/browser/about/about_page.h`.
 
 #### `chrome/browser/ui/webui/settings/about_handler.cc`
-`chrome-browser-ui-webui-settings-about_handler.cc.patch`. The About page shows no update
-status: Oblada has no updater (new versions are GitHub releases), and Chromium's check
-would fail with "error code 0".
+`chrome-browser-ui-webui-settings-about_handler.cc.patch`. The About page's update status
+is Oblada's updater's (`oblada::updater::CreateVersionUpdater()`) rather than Chromium's,
+whose check fails with "error code 0": opening the page checks the feed, shows the
+download, then "Relaunch" once the update is ready. A build that doesn't update itself
+shows no status.
+- Oblada code: `oblada/browser/updater/updater.h`.
+- Works with: `application_lifetime_desktop.cc`, which installs the update on Relaunch.
 
 #### `chrome/browser/resources/settings/page_visibility.ts`
 `chrome-browser-resources-settings-page_visibility.ts.patch`. Settings has no "You and

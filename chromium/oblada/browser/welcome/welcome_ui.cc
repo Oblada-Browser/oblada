@@ -48,7 +48,7 @@ constexpr std::string_view kStrings[] = {
     "import_done",   "import_bookmarks", "import_history",
     "import_passwords", "import_autofill", "import_cards",
     "import_safari_how", "import_safari_choose", "import_locked",
-    "import_failed", "import_unreadable", "import_none",
+    "import_failed", "import_unreadable", "import_keychain", "import_none",
     "import_file",   "containers_title", "containers_setup_text",
     "containers_name", "containers_sites", "containers_add_site",
     "containers_remove", "containers_done", "containers_new",

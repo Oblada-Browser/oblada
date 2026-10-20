@@ -92,11 +92,13 @@ function testCopy(app) {
 
 // `firstRun`: as the first launch after installing, rather than skipping what that
 // opens (headless Oblada always passes --no-first-run, which this overrides).
-export async function launch({ app = defaultApp, profile, args = [], firstRun = false }) {
+// `copy`: false runs `app` itself rather than its test copy (updates.mjs, whose apps
+// are copies already).
+export async function launch({ app = defaultApp, profile, args = [], firstRun = false, copy = true }) {
   const portFile = path.join(profile, 'DevToolsActivePort');
   fs.mkdirSync(profile, { recursive: true });
   fs.rmSync(portFile, { force: true });
-  const proc = spawn(path.join(testCopy(app), 'Contents/MacOS/Oblada'), [
+  const proc = spawn(path.join(copy ? testCopy(app) : app, 'Contents/MacOS/Oblada'), [
     '--headless',
     `--user-data-dir=${profile}`,
     '--remote-debugging-port=0',
@@ -160,6 +162,9 @@ export async function launch({ app = defaultApp, profile, args = [], firstRun = 
   });
   const o = {
     send,
+    pid: proc.pid,
+    // Resolves when the process has exited, however it quit.
+    exited,
     // Calls `listener` with every DevTools event ({method, params, sessionId}).
     onEvent: (listener) => listeners.add(listener),
     stderr: () => stderr,

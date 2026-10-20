@@ -1,0 +1,24 @@
+# Sparkle, which Oblada updates itself with on macOS (updater_mac.mm). It's put in the
+# checkout as //third_party/sparkle by chromium/scripts/sparkle.sh. Oblada's updater code
+# itself is compiled with the rest of its browser code (see //oblada/browser/sources.gni).
+
+assert(is_mac)
+
+# Into Oblada.app/Contents/Frameworks (see the patch to chrome/BUILD.gn).
+bundle_data("sparkle_framework") {
+  sources = [ "//third_party/sparkle/Sparkle.framework" ]
+  outputs = [ "{{bundle_contents_dir}}/Frameworks/{{source_file_part}}" ]
+}
+
+# Sparkle's headers, as system headers: they aren't held to Chromium's warnings. The
+# framework is loaded at runtime rather than linked.
+config("sparkle_headers") {
+  cflags = [
+    "-iframework",
+    rebase_path("//third_party/sparkle", root_build_dir),
+  ]
+}
+
+group("sparkle") {
+  public_configs = [ ":sparkle_headers" ]
+}
