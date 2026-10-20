@@ -1,0 +1,27 @@
+diff --git a/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.cc b/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.cc
+index 1802a7dcca..a7ac927554 100644
+--- a/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.cc
++++ b/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.cc
+@@ -4,6 +4,10 @@
+ 
+ #include "chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.h"
+ 
++#include "oblada/browser/containers/containers.h"  // Oblada
++#include "oblada/browser/containers/containers_menu_model.h"  // Oblada
++#include "oblada/browser/l10n.h"  // Oblada
++
+ #include <optional>
+ #include <string>
+ 
+@@ -36,6 +40,11 @@ NewTabButtonMenuModel::NewTabButtonMenuModel(BrowserWindowInterface* browser)
+   // Build the menu.
+   AddItemWithStringId(IDC_NEW_TAB, IDS_NEW_TAB);
+   SetElementIdentifierAt(GetIndexOfCommandId(IDC_NEW_TAB).value(), kNewTab);
++  // Oblada: New container tab ▸
++  containers_submenu_ =
++      oblada::containers::ContainersMenuModel::ForNewTab(browser_);
++  AddSubMenu(oblada::containers::kNewContainerTabMenuId,
++             oblada::L10n("containers.new_tab"), containers_submenu_.get());
+   AddNewTabInGroupItem();
+ 
+   AddSeparator(ui::NORMAL_SEPARATOR);

@@ -1,0 +1,21 @@
+diff --git a/chrome/browser/ui/webui/chrome_web_ui_configs.cc b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+index 62b07dca08..c3f656e336 100644
+--- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
++++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/webui/chrome_web_ui_configs.h"
+ 
++#include "oblada/browser/containers/containers_ui.h"  // Oblada
++
+ #include "build/android_buildflags.h"
+ #include "build/branding_buildflags.h"
+ #include "build/build_config.h"
+@@ -246,6 +248,7 @@
+         // BUILDFLAG(IS_CHROMEOS)
+ 
+ void RegisterChromeWebUIConfigs() {
++  oblada::RegisterWebUIConfigs(content::WebUIConfigMap::GetInstance());  // Oblada
+   // Don't add calls to `AddWebUIConfig()` for Ash-specific WebUIs here. Add
+   // them to `AshWebUIConfigManager::RegisterWebUIConfigs()` in
+   // ash_web_ui_config_manager.cc.

@@ -1,0 +1,14 @@
+// Oblada's manifest keys; see //chrome/common/extensions/api/_manifest_features.json
+// for the format.
+{
+  // Set on every Firefox add-on Oblada converts.
+  "firefox_addon": {
+    "channel": "stable",
+    "extension_types": ["extension"]
+  },
+  // Set on Firefox add-ons with the "contextualIdentities" permission.
+  "contextual_identities": {
+    "channel": "stable",
+    "extension_types": ["extension"]
+  }
+}

@@ -1,0 +1,16 @@
+diff --git a/components/webui/chrome_urls/resources/app.ts b/components/webui/chrome_urls/resources/app.ts
+index a8e80b4902..839f75ec05 100644
+--- a/components/webui/chrome_urls/resources/app.ts
++++ b/components/webui/chrome_urls/resources/app.ts
+@@ -175,6 +175,11 @@ export class ChromeUrlsAppElement extends CrLitElement {
+     return info.enabled && this.internalUisEnabled_;
+   }
+ 
++  // Oblada: Chromium's pages are listed under their oblada:// names.
++  protected obladaUrl_(url: string): string {
++    return url.replace(/^chrome:/, 'oblada:');
++  }
++
+   protected isChromeUrlsUrl_(info: WebuiUrlInfo): boolean {
+     return info.url === 'chrome://chrome-urls';
+   }

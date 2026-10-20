@@ -1,0 +1,26 @@
+diff --git a/chrome/browser/ui/views/omnibox/omnibox_view_views.cc b/chrome/browser/ui/views/omnibox/omnibox_view_views.cc
+index 58337c04cc..a944fba174 100644
+--- a/chrome/browser/ui/views/omnibox/omnibox_view_views.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_view_views.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
++#include "oblada/browser/ui/floating_location_bar.h"  // Oblada
+ 
+ #include <algorithm>
+ #include <memory>
+@@ -2127,6 +2128,13 @@ bool OmniboxViewViews::HandleKeyEvent(views::Textfield* textfield,
+       return true;
+     }
+     case ui::VKEY_ESCAPE:
++      // Oblada: the floating address bar closes at once, as Arc's command bar.
++      if (location_bar_view_ &&
++          oblada::sidebar::IsLocationBarFloating(location_bar_view_)) {
++        RevertAll();
++        controller()->client()->FocusWebContents();
++        return true;
++      }
+       return controller()->edit_model()->OnEscapeKeyPressed();
+ 
+     case ui::VKEY_CONTROL:

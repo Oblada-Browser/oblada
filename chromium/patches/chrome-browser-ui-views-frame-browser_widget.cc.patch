@@ -1,0 +1,20 @@
+diff --git a/chrome/browser/ui/views/frame/browser_widget.cc b/chrome/browser/ui/views/frame/browser_widget.cc
+index a335e2d5cc..8b47dd091a 100644
+--- a/chrome/browser/ui/views/frame/browser_widget.cc
++++ b/chrome/browser/ui/views/frame/browser_widget.cc
+@@ -502,6 +502,15 @@ ui::ColorProviderKey BrowserWidget::GetColorProviderKey() const {
+   if (user_color_override().has_value()) {
+     key.user_color = user_color_override().value();
+     key.user_color_source = ui::ColorProviderKey::UserColorSource::kAccent;
++    // Oblada: windows take their colors from their workspace's (see
++    // oblada/browser/workspaces/workspace_switcher.cc), a gray one's without a
++    // hue.
++    const SkColor color = *user_color_override();
++    if (SkColorGetR(color) == SkColorGetG(color) &&
++        SkColorGetG(color) == SkColorGetB(color)) {
++      key.user_color_source =
++          ui::ColorProviderKey::UserColorSource::kGrayscale;
++    }
+   }
+ 
+   // Apply BrowserWidget overrides:

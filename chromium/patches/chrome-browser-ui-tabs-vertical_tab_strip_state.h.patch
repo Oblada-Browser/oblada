@@ -1,0 +1,17 @@
+diff --git a/chrome/browser/ui/tabs/vertical_tab_strip_state.h b/chrome/browser/ui/tabs/vertical_tab_strip_state.h
+index b46ad7ecdf..8b930b484f 100644
+--- a/chrome/browser/ui/tabs/vertical_tab_strip_state.h
++++ b/chrome/browser/ui/tabs/vertical_tab_strip_state.h
+@@ -7,7 +7,11 @@
+ 
+ namespace tabs {
+ 
+-inline constexpr int kVerticalTabStripDefaultUncollapsedWidth = 240;
++// Oblada: wide enough for the toolbar, which lives in the sidebar (Zen-style).
++inline constexpr int kVerticalTabStripDefaultUncollapsedWidth = 280;
++// Oblada: as in Zen, the sidebar is never narrower than this: the window controls,
++// back, forward and the menu always fit next to each other.
++inline constexpr int kVerticalTabStripMinUncollapsedWidth = 170;
+ 
+ // Per-window state for the vertical tab strip.
+ struct VerticalTabStripState {

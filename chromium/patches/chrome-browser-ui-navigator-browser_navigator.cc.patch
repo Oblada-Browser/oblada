@@ -1,0 +1,27 @@
+diff --git a/chrome/browser/ui/navigator/browser_navigator.cc b/chrome/browser/ui/navigator/browser_navigator.cc
+index 5029e26405..d25f9884e2 100644
+--- a/chrome/browser/ui/navigator/browser_navigator.cc
++++ b/chrome/browser/ui/navigator/browser_navigator.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/navigator/browser_navigator.h"
+ 
++#include "oblada/browser/containers/containers.h"  // Oblada
++
+ #include <algorithm>
+ #include <memory>
+ #include <optional>
+@@ -506,6 +508,13 @@ std::unique_ptr<content::WebContents> CreateTargetContents(
+       params.opener ? params.opener->GetSiteInstance()
+                     : tab_util::GetSiteInstanceForNewTab(
+                           params.browser->GetProfile(), url);
++  // Oblada: a link opened in a new tab from a container tab stays in the container.
++  if (!params.opener) {
++    if (auto container_site_instance =
++            oblada::containers::SiteInstanceForNewTab(params, url)) {
++      initial_site_instance_for_new_contents = std::move(container_site_instance);
++    }
++  }
+ 
+   WebContents::CreateParams create_params(
+       params.browser->GetProfile(), initial_site_instance_for_new_contents);

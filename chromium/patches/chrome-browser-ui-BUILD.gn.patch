@@ -1,0 +1,28 @@
+diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
+index 82f397571f..ccd8b3643a 100644
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -10,6 +10,7 @@ import("//build/config/ozone.gni")
+ import("//build/config/ui.gni")
+ import("//chrome/browser/buildflags.gni")
+ import("//chrome/common/features.gni")
++import("//oblada/browser/sources.gni")  # Oblada
+ import("//components/captive_portal/core/features.gni")
+ import("//components/compose/features.gni")
+ import("//components/enterprise/buildflags/buildflags.gni")
+@@ -787,6 +788,7 @@ static_library("ui") {
+     "tab_helpers.cc",
+     "tab_helpers.h",
+   ]
++  sources += oblada_ui_sources  # Oblada: Oblada's own code is part of this target.
+ 
+   defines = []
+   libs = []
+@@ -1087,6 +1089,7 @@ static_library("ui") {
+     "//ui/strings",
+     "//ui/webui",
+   ]
++  deps += oblada_ui_deps  # Oblada
+ 
+   allow_circular_includes_from = [
+     # page_load_metrics's :impl includes headers from //chrome/browser/ui that

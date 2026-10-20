@@ -1,0 +1,15 @@
+diff --git a/chrome/browser/ui/views/frame/multi_contents_view_drop_target_controller.h b/chrome/browser/ui/views/frame/multi_contents_view_drop_target_controller.h
+index 8d0b3bf3d5..27d2c6e326 100644
+--- a/chrome/browser/ui/views/frame/multi_contents_view_drop_target_controller.h
++++ b/chrome/browser/ui/views/frame/multi_contents_view_drop_target_controller.h
+@@ -127,6 +127,10 @@ class MultiContentsViewDropTargetController final
+ 
+   // Updates the timers for a drag at the given point.
+   // Assumes the dragged data is droppable (e.g. tab or link).
++  // Oblada: shows the page that was showing before a tab was pressed to drag it,
++  // which the tab will then go next to.
++  void ShowInitiallyActiveTab(TabDragTarget::DragController& controller);
++
+   void HandleDragUpdate(const gfx::Point& point_in_view,
+                         MultiContentsDropTargetView::DragType drag_type);
+ 

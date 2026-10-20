@@ -1,0 +1,111 @@
+diff --git a/chrome/browser/ui/views/frame/multi_contents_view_drop_target_controller.cc b/chrome/browser/ui/views/frame/multi_contents_view_drop_target_controller.cc
+index da782256b2..d522025721 100644
+--- a/chrome/browser/ui/views/frame/multi_contents_view_drop_target_controller.cc
++++ b/chrome/browser/ui/views/frame/multi_contents_view_drop_target_controller.cc
+@@ -17,7 +17,10 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/ui_features.h"
+ #include "chrome/browser/ui/views/frame/multi_contents_drop_target_view.h"
++#include "chrome/browser/ui/views/tabs/dragging/drag_session_data.h"
++#include "chrome/browser/ui/views/tabs/dragging/tab_drag_context.h"
+ #include "chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h"
++#include "components/tabs/public/tab_interface.h"
+ #include "chrome/common/pref_names.h"
+ #include "components/prefs/pref_service.h"
+ #include "content/public/common/drop_data.h"
+@@ -137,11 +140,36 @@ TabDragContext* MultiContentsViewDropTargetController::OnTabDragUpdated(
+     HideDropTarget();
+     return nullptr;
+   }
++  ShowInitiallyActiveTab(controller);
+   HandleDragUpdate(point_in_parent,
+                    MultiContentsDropTargetView::DragType::kTab);
+   return nullptr;
+ }
+ 
++void MultiContentsViewDropTargetController::ShowInitiallyActiveTab(
++    TabDragTarget::DragController& controller) {
++  tabs::TabInterface* const initially_active =
++      controller.GetInitiallyActiveTab();
++  auto* const context =
++      const_cast<TabDragContext*>(controller.GetAttachedContext());
++  if (!initially_active || !context ||
++      context->GetWidget() != drop_target_parent_view_->GetWidget()) {
++    return;
++  }
++  TabStripModel* const model = context->GetTabStripModel();
++  const int index = model->GetIndexOfTab(initially_active);
++  const tabs::TabInterface* const active = model->GetActiveTab();
++  // Only in place of the tab being dragged, and not to show a split (which
++  // can't take another tab).
++  if (index == TabStripModel::kNoTab || !active || active == initially_active ||
++      active->GetContents() !=
++          controller.GetSessionData().source_dragged_contents() ||
++      initially_active->IsSplit()) {
++    return;
++  }
++  model->ActivateTabAt(index);
++}
++
+ void MultiContentsViewDropTargetController::OnTabDragEntered() {}
+ 
+ void MultiContentsViewDropTargetController::OnTabDragExited(
+@@ -346,6 +374,35 @@ void MultiContentsViewDropTargetController::HandleDragUpdate(
+       drop_target_view_->IsVisibleAndNotClosing() ? drop_target_view_->side()
+                                                   : std::nullopt;
+   MultiContentsDropTargetView::DropSide drop_side;
++  if (drag_type == MultiContentsDropTargetView::DragType::kTab) {
++    // Oblada: Zen-like, a tab goes to the half of the page it's over (or below
++    // it, near its bottom edge), shown at once.
++    const int bottom_band = std::clamp(
++        drop_target_parent_view_->height() / 5,
++        MultiContentsDropTargetView::kDropTargetMinSize,
++        MultiContentsDropTargetView::kDropTargetMaxSize);
++    if (base::FeatureList::IsEnabled(tabs::kSplitViewHorizontal) &&
++        point_in_view.y() >= drop_target_parent_view_->height() - bottom_band) {
++      drop_side = MultiContentsDropTargetView::DropSide::BOTTOM;
++    } else {
++      drop_side = (point_in_view.x() < drop_target_parent_view_->width() / 2) !=
++                          is_rtl
++                      ? MultiContentsDropTargetView::DropSide::START
++                      : MultiContentsDropTargetView::DropSide::END;
++    }
++    // Showing (or still closing): follow the pointer right away.
++    if (drop_target_view_->GetVisible()) {
++      if (currently_showing_side != drop_side) {
++        ResetDropTargetTimers();
++        drop_target_view_->Show(
++            drop_side, MultiContentsDropTargetView::DropTargetState::kFull,
++            drag_type);
++      }
++      return;
++    }
++    StartOrUpdateDropTargetTimer(point_in_view, 0, drop_side, drag_type);
++    return;
++  }
+   if (drag_type == MultiContentsDropTargetView::DragType::kTab &&
+       currently_showing_side == MultiContentsDropTargetView::DropSide::BOTTOM &&
+       point_in_view.y() >=
+@@ -414,7 +471,8 @@ void MultiContentsViewDropTargetController::StartOrUpdateDropTargetTimer(
+     show_drop_target_timer_->drop_side = drop_side;
+     show_drop_target_timer_->drag_type = drag_type;
+ 
+-    if (base::FeatureList::IsEnabled(features::kSplitViewDragAndDropVelocity)) {
++    if (base::FeatureList::IsEnabled(features::kSplitViewDragAndDropVelocity) &&
++        drag_type != MultiContentsDropTargetView::DragType::kTab) {  // Oblada
+       // Restart the timer if the latest point in the view exceeded the
+       // movement threshold.
+       const int min_distance =
+@@ -437,7 +495,11 @@ void MultiContentsViewDropTargetController::StartOrUpdateDropTargetTimer(
+   drag_point_at_timer_start_ = point_in_view;
+ 
+   base::TimeDelta show_delay;
+-  if (base::FeatureList::IsEnabled(features::kSplitViewDragAndDropVelocity)) {
++  if (drag_type == MultiContentsDropTargetView::DragType::kTab) {
++    // Oblada: tabs show where they'd go almost at once, as in Zen.
++    show_delay = base::Milliseconds(100);
++  } else if (base::FeatureList::IsEnabled(
++                 features::kSplitViewDragAndDropVelocity)) {
+     const base::TimeDelta min_delay =
+         features::kSplitViewDragAndDropMinDelay.Get();
+     const base::TimeDelta max_delay =

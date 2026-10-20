@@ -1,0 +1,29 @@
+diff --git a/chrome/browser/ui/views/frame/top_container_view.cc b/chrome/browser/ui/views/frame/top_container_view.cc
+index bb6460de5b..e57bf5eff3 100644
+--- a/chrome/browser/ui/views/frame/top_container_view.cc
++++ b/chrome/browser/ui/views/frame/top_container_view.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/frame/top_container_view.h"
++#include "chrome/browser/ui/views/location_bar/location_bar_view.h"  // Oblada
++#include "oblada/browser/ui/floating_location_bar.h"  // Oblada
+ 
+ #include "chrome/browser/ui/browser_element_identifiers.h"
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+@@ -35,6 +37,15 @@ TopContainerView::~TopContainerView() = default;
+ bool TopContainerView::IsPositionInWindowCaption(
+     const gfx::Point& test_point) const {
+   ToolbarView* const toolbar = browser_view_->toolbar();
++  // Oblada: nor is the address bar floating over the page, out of the toolbar
++  // (see oblada/browser/ui/floating_location_bar.h).
++  if (const views::View* location_bar =
++          toolbar ? toolbar->location_bar_view() : nullptr;
++      location_bar && oblada::sidebar::IsLocationBarFloating(location_bar) &&
++      location_bar->HitTestPoint(
++          views::View::ConvertPointToTarget(this, location_bar, test_point))) {
++    return false;
++  }
+   for (auto& child : children()) {
+     gfx::Point logical_test_point(GetMirroredXInView(test_point.x()),
+                                   test_point.y());

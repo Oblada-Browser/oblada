@@ -1,0 +1,14 @@
+diff --git a/chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.cc b/chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.cc
+index e9b830d6bc..6175a0c8f5 100644
+--- a/chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.cc
++++ b/chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.cc
+@@ -308,6 +308,9 @@ void TabHoverCardController::UpdateHoverCard(
+   if (anchor_target && !anchor_target->IsValidHoverCardTarget()) {
+     anchor_target = nullptr;
+   }
++  // Oblada: no hover cards, as in Zen and Arc: the tabs in the sidebar show their
++  // titles already.
++  anchor_target = nullptr;
+ 
+   // Update this ASAP so that if we try to fade-in and we have the wrong target
+   // then when the fade timer elapses we won't incorrectly try to fade in on the

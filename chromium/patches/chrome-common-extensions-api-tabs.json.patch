@@ -1,0 +1,42 @@
+diff --git a/chrome/common/extensions/api/tabs.json b/chrome/common/extensions/api/tabs.json
+index dbd3c252a3..2ef51844b3 100644
+--- a/chrome/common/extensions/api/tabs.json
++++ b/chrome/common/extensions/api/tabs.json
+@@ -52,6 +52,8 @@
+           // TODO(kalman): Investigate how this is ending up as -1 (based on window type? a bug?) and whether it should be optional instead.
+           "index": {"type": "integer", "minimum": -1, "description": "The zero-based index of the tab within its window."},
+           "groupId": {"type": "integer", "minimum": -1, "description": "The ID of the group that the tab belongs to."},
++          // Oblada: as in Firefox, the tab's container (see oblada/browser/firefox_addons/cookie_store_ids.h).
++          "cookieStoreId": {"type": "string", "optional": true, "description": "The tab's container, as Firefox names it."},
+           "splitViewId": {
+             "type": "integer",
+             "minimum": -1,
+@@ -365,6 +367,12 @@
+             "type": "object",
+             "name": "createProperties",
+             "properties": {
++              // Oblada: as in Firefox, the container to open the tab in.
++              "cookieStoreId": {
++                "type": "string",
++                "optional": true,
++                "description": "The container to open the tab in, as Firefox names it."
++              },
+               "windowId": {
+                 "type": "integer",
+                 "minimum": -2,
+@@ -484,6 +492,15 @@
+             "type": "object",
+             "name": "queryInfo",
+             "properties": {
++              // Oblada: as in Firefox, tabs in these containers.
++              "cookieStoreId": {
++                "choices": [
++                  {"type": "string"},
++                  {"type": "array", "items": {"type": "string"}}
++                ],
++                "optional": true,
++                "description": "The containers of the tabs, as Firefox names them."
++              },
+               "active": {
+                 "type": "boolean",
+                 "optional": true,

@@ -1,0 +1,30 @@
+diff --git a/content/browser/renderer_host/render_widget_host_view_mac.mm b/content/browser/renderer_host/render_widget_host_view_mac.mm
+index 0e5f95d678..de34e53d05 100644
+--- a/content/browser/renderer_host/render_widget_host_view_mac.mm
++++ b/content/browser/renderer_host/render_widget_host_view_mac.mm
+@@ -56,7 +56,9 @@
+ #include "content/public/browser/browser_context.h"
+ #include "content/public/browser/browser_plugin_guest_manager.h"
+ #include "content/public/browser/render_widget_host.h"
++#include "content/public/browser/render_view_host.h"  // Oblada
+ #include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_delegate.h"  // Oblada
+ #include "content/public/common/page_visibility_state.h"
+ #include "media/base/media_switches.h"
+ #include "skia/ext/platform_canvas.h"
+@@ -2310,6 +2312,15 @@ void CombineTextNodesAndMakeCallback(SpeechCallback callback,
+       !host()->delegate()->GetInputEventRouter())
+     return;
+ 
++  // Oblada: unless the page's delegate does something else with it (e.g. peeks
++  // at the link there).
++  if (WebContents* web_contents = WebContents::FromRenderViewHost(
++          RenderViewHost::From(host()));
++      web_contents && web_contents->GetDelegate() &&
++      web_contents->GetDelegate()->HandleForceClick(web_contents)) {
++    return;
++  }
++
+   // With zoom-for-dsf, RenderWidgetHost coordinate system is physical points,
+   // which means we have to scale the point by device scale factor.
+   gfx::PointF root_point = root_point_in_dips;

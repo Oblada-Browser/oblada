@@ -1,0 +1,58 @@
+diff --git a/chrome/browser/ui/views/frame/multi_contents_drop_target_view.cc b/chrome/browser/ui/views/frame/multi_contents_drop_target_view.cc
+index 99703151fb..5ea3cdf254 100644
+--- a/chrome/browser/ui/views/frame/multi_contents_drop_target_view.cc
++++ b/chrome/browser/ui/views/frame/multi_contents_drop_target_view.cc
+@@ -33,10 +33,11 @@
+ 
+ namespace {
+ 
+-constexpr float kInnerCornerRadius = 6;
++// Oblada: shaped like the pages, which a tab dropped here becomes one of.
++constexpr float kInnerCornerRadius = 10;
+ constexpr int kOuterPadding = 8;
+ constexpr int kIconSize = 24;
+-constexpr int kAnimationDurationMs = 450;
++constexpr int kAnimationDurationMs = 250;
+ constexpr gfx::Insets kInnerContainerMargins = gfx::Insets::VH(24, 10);
+ 
+ }  // namespace
+@@ -154,6 +155,10 @@ int MultiContentsDropTargetView::GetMaxSize(int web_contents_size,
+       percentage = kNudgeToFullTargetSizePercentage;
+       break;
+     case DropTargetState::kFull:
++      // Oblada: a tab takes the half of the page it'd have once dropped.
++      if (drag_type == DragType::kTab) {
++        return web_contents_size / 2;
++      }
+       min_size = kDropTargetMinSize;
+       max_size = kDropTargetMaxSize;
+       percentage = drag_type == DragType::kTab
+@@ -219,10 +224,24 @@ void MultiContentsDropTargetView::Show(DropSide side,
+   state_ = state;
+   drag_type_ = drag_type;
+ 
+-  inner_container_layout_->SetMainAxisAlignment(
+-      (side != DropSide::BOTTOM && drag_type_ == DragType::kTab)
+-          ? views::LayoutAlignment::kStart
+-          : views::LayoutAlignment::kCenter);
++  // Oblada: a tab's target is the half of the page it'd take, lined up with the
++  // page next to it (only the gap between them on its inner side).
++  inner_container_layout_->SetMainAxisAlignment(views::LayoutAlignment::kCenter);
++  gfx::Insets margins(kOuterPadding);
++  if (drag_type_ == DragType::kTab) {
++    switch (side) {
++      case DropSide::START:
++        margins = gfx::Insets::TLBR(0, 0, 0, kOuterPadding);
++        break;
++      case DropSide::END:
++        margins = gfx::Insets::TLBR(0, kOuterPadding, 0, 0);
++        break;
++      case DropSide::BOTTOM:
++        margins = gfx::Insets::TLBR(kOuterPadding, 0, 0, 0);
++        break;
++    }
++  }
++  static_cast<views::FlexLayout*>(GetLayoutManager())->SetInteriorMargin(margins);
+ 
+   UpdateVisibility(true);
+ }

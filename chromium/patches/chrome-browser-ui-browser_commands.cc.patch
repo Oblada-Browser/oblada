@@ -1,0 +1,60 @@
+diff --git a/chrome/browser/ui/browser_commands.cc b/chrome/browser/ui/browser_commands.cc
+index 19b58e1126..5123ff73f2 100644
+--- a/chrome/browser/ui/browser_commands.cc
++++ b/chrome/browser/ui/browser_commands.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/browser_commands.h"
+ 
++#include "oblada/browser/workspaces/workspaces.h"  // Oblada
++
+ #include <algorithm>
+ #include <memory>
+ #include <numeric>
+@@ -1465,6 +1467,21 @@ void CloseTab(BrowserWindowInterface* browser) {
+       active_tab->IsSplit() &&
+       browser->GetTabStripModel()->selection_model().size() == 2;
+ 
++  // Oblada: the workspace shown keeps a New Tab page in place of its last tabs,
++  // and closing that closes the window (see CloseLastTabs()).
++  std::vector<const tabs::TabInterface*> oblada_closing;
++  if (only_active_split_tab_selected) {
++    oblada_closing.push_back(active_tab);
++  } else {
++    for (const tabs::TabInterface* tab :
++         browser->GetTabStripModel()->selection_model().selected_tabs()) {
++      oblada_closing.push_back(tab);
++    }
++  }
++  if (oblada::workspaces::CloseLastTabs(browser, oblada_closing)) {
++    return;
++  }
++
+   if (only_active_split_tab_selected) {
+     RecordTabCloseCount(1);
+     active_tab->GetContents()->Close();
+@@ -1859,6 +1876,11 @@ void FocusNextTabGroup(BrowserWindowInterface* browser) {
+   if (!tab_strip_model->SupportsTabGroups()) {
+     return;
+   }
++  // Oblada: the next workspace.
++  if (tab_strip_model->GetFocusedGroup()) {
++    oblada::workspaces::SwitchRelative(browser, /*forward=*/true);
++    return;
++  }
+ 
+   if (FocusAdjacentTabGroupInFocusMode(tab_strip_model, /*next=*/true)) {
+     return;
+@@ -1889,6 +1911,12 @@ void FocusPreviousTabGroup(BrowserWindowInterface* browser) {
+     return;
+   }
+ 
++  // Oblada: the previous workspace.
++  if (tab_strip_model->GetFocusedGroup()) {
++    oblada::workspaces::SwitchRelative(browser, /*forward=*/false);
++    return;
++  }
++
+   if (FocusAdjacentTabGroupInFocusMode(tab_strip_model, /*next=*/false)) {
+     return;
+   }

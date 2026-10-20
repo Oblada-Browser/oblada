@@ -1,0 +1,24 @@
+diff --git a/chrome/browser/ui/views/frame/contents_container_view.cc b/chrome/browser/ui/views/frame/contents_container_view.cc
+index 099b89a24c..76ec1031c7 100644
+--- a/chrome/browser/ui/views/frame/contents_container_view.cc
++++ b/chrome/browser/ui/views/frame/contents_container_view.cc
+@@ -54,7 +54,7 @@
+ #endif
+ 
+ namespace {
+-constexpr int kSplitViewContentPadding = 4;
++constexpr int kSplitViewContentPadding = 1;  // Oblada: just room for the outline.
+ constexpr int kNewTabFooterSeparatorHeight = 1;
+ constexpr int kNewTabFooterHeight = 56;
+ }  // namespace
+@@ -222,6 +222,10 @@ void ContentsContainerView::UpdateBorderAndOverlay(bool is_in_split,
+     // Mini toolbar should only be visible for the inactive contents
+     // container view or both depending on configuration.
+     mini_toolbar_->UpdateState(is_active, is_highlighted);
++    // Oblada: Zen-like panes, with no toolbar of their own (the tabs are in the
++    // sidebar) and an outline around the active one only.
++    mini_toolbar_->SetVisible(false);
++    container_outline_->SetVisible(is_active);
+     if (capture_contents_border_view_) {
+       capture_contents_border_view_->SetIsInSplit(true);
+     }

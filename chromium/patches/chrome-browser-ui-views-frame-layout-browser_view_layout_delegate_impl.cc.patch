@@ -1,0 +1,28 @@
+diff --git a/chrome/browser/ui/views/frame/layout/browser_view_layout_delegate_impl.cc b/chrome/browser/ui/views/frame/layout/browser_view_layout_delegate_impl.cc
+index df0b0fca8c..2d2ff5210d 100644
+--- a/chrome/browser/ui/views/frame/layout/browser_view_layout_delegate_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_layout_delegate_impl.cc
+@@ -112,6 +112,23 @@ BrowserLayoutParams BrowserViewLayoutDelegateImpl::GetBrowserLayoutParams(
+         !params.visual_client_area.Contains(browser_bounds)) {
+       use_browser_bounds = false;
+     }
++#endif
++#if BUILDFLAG(IS_MAC)
++    // Oblada: in full screen the frame keeps room at the top for the menu bar
++    // as it slides in (see BrowserFrameViewMac::GetBrowserLayoutParams()), so
++    // the client area can start below the browser view's top. Lay out within
++    // it, in the browser view's coordinates, rather than over the whole view.
++    if (use_browser_bounds &&
++        !params.visual_client_area.Contains(browser_bounds)) {
++      gfx::Rect client_area = params.visual_client_area;
++      client_area.Intersect(browser_bounds);
++      if (client_area.IsEmpty()) {
++        return BrowserLayoutParams();
++      }
++      auto result = params.WithClientArea(client_area);
++      result.visual_client_area.Offset(-browser_bounds.OffsetFromOrigin());
++      return result;
++    }
+ #endif
+     return params.InLocalCoordinates(
+         use_browser_bounds ? browser_bounds : params.visual_client_area);

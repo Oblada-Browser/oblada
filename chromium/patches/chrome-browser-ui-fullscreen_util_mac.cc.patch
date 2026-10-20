@@ -1,0 +1,16 @@
+diff --git a/chrome/browser/ui/fullscreen_util_mac.cc b/chrome/browser/ui/fullscreen_util_mac.cc
+index d32da15007..cafd55f835 100644
+--- a/chrome/browser/ui/fullscreen_util_mac.cc
++++ b/chrome/browser/ui/fullscreen_util_mac.cc
+@@ -36,6 +36,11 @@ bool IsAlwaysShowToolbarEnabled(
+         web_app::AppBrowserController::From(browser_window_interface);
+     return controller->AlwaysShowToolbarInFullscreen();
+   }
++  // Oblada: tabbed windows keep their sidebar in full screen.
++  if (browser_window_interface->GetType() ==
++      BrowserWindowInterface::Type::TYPE_NORMAL) {
++    return true;
++  }
+   return browser_window_interface->GetProfile()->GetPrefs()->GetBoolean(
+       prefs::kShowFullscreenToolbar);
+ }

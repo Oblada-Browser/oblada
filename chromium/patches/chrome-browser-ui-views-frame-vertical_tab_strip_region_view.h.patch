@@ -1,0 +1,35 @@
+diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+index 76f8e997d6..e8f6bcbc4c 100644
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -31,6 +31,10 @@
+ #include "ui/views/controls/resize_area_delegate.h"
+ #include "ui/views/focus/focus_manager.h"
+ 
++namespace oblada::workspaces {
++class WorkspaceSwitcher;
++}  // namespace oblada::workspaces
++
+ class BrowserView;
+ class VerticalTabStripTopContainer;
+ class VerticalTabStripBottomContainer;
+@@ -62,7 +66,9 @@ class VerticalTabStripRegionView final
+ 
+   // TODO(crbug.com/465833741): Replace constant with derived value based on
+   // caption buttons.
+-  static constexpr int kUncollapsedMinWidth = 126;
++  // Oblada: see kVerticalTabStripMinUncollapsedWidth.
++  static constexpr int kUncollapsedMinWidth =
++      tabs::kVerticalTabStripMinUncollapsedWidth;
+   // TODO(crbug.com/465832180): Replace constant based width final max width for
+   // view.
+   static constexpr int kUncollapsedMaxWidth = 400;
+@@ -241,6 +247,8 @@ class VerticalTabStripRegionView final
+   raw_ptr<VerticalTabStripTopContainer> top_button_container_ = nullptr;
+   raw_ptr<views::Separator> top_button_separator_ = nullptr;
+   raw_ptr<VerticalTabStripBottomContainer> bottom_button_container_ = nullptr;
++  // Oblada: the workspaces, at the bottom.
++  raw_ptr<oblada::workspaces::WorkspaceSwitcher> oblada_workspaces_ = nullptr;
+   raw_ptr<views::View> gemini_button_ = nullptr;
+   raw_ptr<views::ResizeArea> resize_area_ = nullptr;
+   raw_ptr<ShadowFrameView> shadow_frame_ = nullptr;

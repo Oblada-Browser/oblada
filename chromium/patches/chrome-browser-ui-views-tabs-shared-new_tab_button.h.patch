@@ -1,0 +1,52 @@
+diff --git a/chrome/browser/ui/views/tabs/shared/new_tab_button.h b/chrome/browser/ui/views/tabs/shared/new_tab_button.h
+index b391fc6e0e..6252ea7e43 100644
+--- a/chrome/browser/ui/views/tabs/shared/new_tab_button.h
++++ b/chrome/browser/ui/views/tabs/shared/new_tab_button.h
+@@ -10,6 +10,7 @@
+ 
+ #include "base/functional/callback.h"
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
+ #include "chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.h"
+ #include "ui/base/metadata/metadata_header_macros.h"
+ #include "ui/events/event.h"
+@@ -18,6 +19,10 @@
+ class BrowserWindowInterface;
+ class NewTabButtonMenuModel;
+ 
++namespace ui {
++class SimpleMenuModel;
++}  // namespace ui
++
+ namespace views {
+ class ActionViewController;
+ class MenuRunner;
+@@ -48,9 +53,16 @@ class NewTabButton : public TabStripFlatEdgeButton,
+  protected:
+   // views::Button:
+   void NotifyClick(const ui::Event& event) override;
++  // Oblada: holding the button down shows the containers to open the tab in.
++  bool OnMousePressed(const ui::MouseEvent& event) override;
++  // Oblada: no background but the hover highlight, like a tab.
++  void OnPaintBackground(gfx::Canvas* canvas) override {}
++  void OnMouseReleased(const ui::MouseEvent& event) override;
++  void OnMouseCaptureLost() override;
+ 
+  private:
+   void OnContextMenuClosed();
++  void ShowContainersMenu();  // Oblada
+ 
+   std::unique_ptr<views::ActionViewController> action_view_controller_;
+   std::unique_ptr<NewTabButtonMenuModel> context_menu_model_;
+@@ -61,6 +73,11 @@ class NewTabButton : public TabStripFlatEdgeButton,
+   base::RepeatingClosure middle_click_callback_for_testing_;
+ 
+   raw_ptr<BrowserWindowInterface> browser_;
++
++  // Oblada: the containers menu shown on a long press.
++  std::unique_ptr<ui::SimpleMenuModel> containers_menu_model_;
++  std::unique_ptr<views::MenuRunner> containers_menu_runner_;
++  base::WeakPtrFactory<NewTabButton> long_press_factory_{this};
+ };
+ 
+ }  // namespace shared

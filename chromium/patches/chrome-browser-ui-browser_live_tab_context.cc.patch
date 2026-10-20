@@ -1,0 +1,26 @@
+diff --git a/chrome/browser/ui/browser_live_tab_context.cc b/chrome/browser/ui/browser_live_tab_context.cc
+index b220ba6c8f..d5f9dafdff 100644
+--- a/chrome/browser/ui/browser_live_tab_context.cc
++++ b/chrome/browser/ui/browser_live_tab_context.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/browser_live_tab_context.h"
+ 
++#include "oblada/browser/containers/containers.h"  // Oblada
++
+ #include <memory>
+ #include <numeric>
+ #include <optional>
+@@ -172,6 +174,12 @@ std::map<std::string, std::string> BrowserLiveTabContext::GetExtraDataForTab(
+ 
+   glic::PopulateGlicExtraData(tab_strip_model_->GetTabAtIndex(index),
+                               &extra_data);
++  // Oblada: reopening a closed container tab puts it back into its container.
++  if (std::string container = oblada::containers::GetContainerId(
++          tab_strip_model_->GetWebContentsAt(index));
++      !container.empty()) {
++    extra_data[oblada::containers::kSessionKey] = std::move(container);
++  }
+ 
+   return extra_data;
+ }

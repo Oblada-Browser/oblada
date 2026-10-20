@@ -1,0 +1,143 @@
+// Firefox's contextualIdentities API: Oblada's containers, for Firefox add-ons such as
+// Multi-Account Containers. A container is identified as in Firefox, by the
+// cookieStoreId "firefox-container-<number>" (see Container::number), which is also
+// the cookieStoreId of its tabs (tabs.Tab.cookieStoreId).
+[
+  {
+    "namespace": "contextualIdentities",
+    "description": "Containers, as Firefox's contextual identities.",
+    "types": [
+      {
+        "id": "ContextualIdentity",
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "icon": {"type": "string"},
+          "iconUrl": {"type": "string"},
+          "color": {"type": "string"},
+          "colorCode": {"type": "string"},
+          "cookieStoreId": {"type": "string"}
+        }
+      },
+      {
+        "id": "ChangeInfo",
+        "type": "object",
+        "properties": {
+          "contextualIdentity": {"$ref": "ContextualIdentity"}
+        }
+      }
+    ],
+    "functions": [
+      {
+        "name": "get",
+        "type": "function",
+        "parameters": [{"name": "cookieStoreId", "type": "string"}],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [{"name": "contextualIdentity", "$ref": "ContextualIdentity"}]
+        }
+      },
+      {
+        "name": "query",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "details",
+            "type": "object",
+            "properties": {"name": {"type": "string", "optional": true}}
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "contextualIdentities",
+              "type": "array",
+              "items": {"$ref": "ContextualIdentity"}
+            }
+          ]
+        }
+      },
+      {
+        "name": "create",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "details",
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "color": {"type": "string"},
+              "icon": {"type": "string"}
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [{"name": "contextualIdentity", "$ref": "ContextualIdentity"}]
+        }
+      },
+      {
+        "name": "update",
+        "type": "function",
+        "parameters": [
+          {"name": "cookieStoreId", "type": "string"},
+          {
+            "name": "details",
+            "type": "object",
+            "properties": {
+              "name": {"type": "string", "optional": true},
+              "color": {"type": "string", "optional": true},
+              "icon": {"type": "string", "optional": true}
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [{"name": "contextualIdentity", "$ref": "ContextualIdentity"}]
+        }
+      },
+      {
+        "name": "move",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "cookieStoreIds",
+            "choices": [
+              {"type": "string"},
+              {"type": "array", "items": {"type": "string"}}
+            ]
+          },
+          {"name": "position", "type": "integer"}
+        ],
+        "returns_async": {"name": "callback", "parameters": []}
+      },
+      {
+        "name": "remove",
+        "type": "function",
+        "parameters": [{"name": "cookieStoreId", "type": "string"}],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [{"name": "contextualIdentity", "$ref": "ContextualIdentity"}]
+        }
+      }
+    ],
+    "events": [
+      {
+        "name": "onCreated",
+        "type": "function",
+        "parameters": [{"name": "changeInfo", "$ref": "ChangeInfo"}]
+      },
+      {
+        "name": "onUpdated",
+        "type": "function",
+        "parameters": [{"name": "changeInfo", "$ref": "ChangeInfo"}]
+      },
+      {
+        "name": "onRemoved",
+        "type": "function",
+        "parameters": [{"name": "changeInfo", "$ref": "ChangeInfo"}]
+      }
+    ]
+  }
+]

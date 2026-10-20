@@ -1,0 +1,14 @@
+diff --git a/chrome/browser/ui/views/frame/multi_contents_resize_area.h b/chrome/browser/ui/views/frame/multi_contents_resize_area.h
+index 460c40a7c5..67a00d90b7 100644
+--- a/chrome/browser/ui/views/frame/multi_contents_resize_area.h
++++ b/chrome/browser/ui/views/frame/multi_contents_resize_area.h
+@@ -50,7 +50,8 @@ class MultiContentsResizeArea : public views::ResizeArea {
+   METADATA_HEADER(MultiContentsResizeArea, ResizeArea)
+ 
+  public:
+-  static constexpr int kHandleResizeAxisPadding = 6;
++  // Oblada: the gap between the panes about matches the page's margins.
++  static constexpr int kHandleResizeAxisPadding = 2;
+   static constexpr int kHandleResizeAxisSize = 4;
+ 
+   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kMultiContentsResizeAreaElementId);

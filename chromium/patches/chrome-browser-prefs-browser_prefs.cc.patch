@@ -1,0 +1,21 @@
+diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+index 2653e37bec..985adfa4e0 100644
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/prefs/browser_prefs.h"
+ 
++#include "oblada/browser/prefs.h"  // Oblada
++
+ #include <array>
+ #include <optional>
+ #include <string>
+@@ -1746,6 +1748,7 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
+ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
+                           const std::string& locale) {
+   TRACE_EVENT0("browser", "chrome::RegisterProfilePrefs");
++  oblada::RegisterProfilePrefs(registry, locale);  // Oblada
+   // User prefs. Please keep this list alphabetized.
+   AccessibilityLabelsService::RegisterProfilePrefs(registry);
+   registry->RegisterBooleanPref(prefs::kRendererAccessibilityEnabled, true);

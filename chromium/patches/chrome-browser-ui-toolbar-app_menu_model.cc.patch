@@ -1,0 +1,79 @@
+diff --git a/chrome/browser/ui/toolbar/app_menu_model.cc b/chrome/browser/ui/toolbar/app_menu_model.cc
+index f8f6a64f35..49f75703b3 100644
+--- a/chrome/browser/ui/toolbar/app_menu_model.cc
++++ b/chrome/browser/ui/toolbar/app_menu_model.cc
+@@ -4,6 +4,10 @@
+ 
+ #include "chrome/browser/ui/toolbar/app_menu_model.h"
+ 
++#include "oblada/browser/containers/containers.h"  // Oblada
++#include "oblada/browser/containers/containers_menu_model.h"  // Oblada
++#include "oblada/browser/l10n.h"  // Oblada
++
+ #include <algorithm>
+ #include <cmath>
+ #include <memory>
+@@ -1061,7 +1065,9 @@ void ToolsMenuModel::Build(BrowserWindowInterface* browser) {
+       this, IDC_NAME_WINDOW, IDS_NAME_WINDOW,
+       features::IsRoundedIconsEnabled() ? kWebAssetIcon : kNameWindowOldIcon);
+ 
+-  if (auto* controller = tabs::VerticalTabStripStateController::From(browser)) {
++  // Oblada: tabs are always vertical, so there is nothing to switch to.
++  if (auto* controller = tabs::VerticalTabStripStateController::From(browser);
++      controller && !controller->ShouldDisplayVerticalTabs()) {
+     if (controller->ShouldDisplayVerticalTabs()) {
+       AddItemWithStringIdAndVectorIcon(
+           this, IDC_TOGGLE_VERTICAL_TABS, IDS_SWITCH_TO_HORIZONTAL_TAB,
+@@ -1979,6 +1985,11 @@ bool AppMenuModel::IsCommandIdChecked(int command_id) const {
+   if (command_id == IDC_TOGGLE_REQUEST_TABLET_SITE) {
+     return chrome::IsRequestingTabletSite(browser_);
+   }
++  // Oblada: compact mode is the collapsed sidebar.
++  if (command_id == IDC_TOGGLE_VERTICAL_TABS_COLLAPSE) {
++    auto* controller = tabs::VerticalTabStripStateController::From(browser_);
++    return controller && controller->IsCollapsed();
++  }
+ 
+   return false;
+ }
+@@ -1992,6 +2003,8 @@ bool AppMenuModel::IsCommandIdEnabled(int command_id) const {
+   }
+ 
+   switch (command_id) {
++    case oblada::containers::kNewContainerTabMenuId:  // Oblada
++      return true;
+     case IDC_NEW_INCOGNITO_WINDOW:
+       return IncognitoModePrefs::IsIncognitoAllowed(browser_->GetProfile());
+     default:
+@@ -2074,6 +2087,16 @@ void AppMenuModel::Build() {
+       AddDefaultBrowserMenuItems()) {
+     AddSeparator(ui::NORMAL_SEPARATOR);
+   }
++  // Oblada: reload is here rather than next to back and forward, as in Zen; and so is
++  // compact mode (the collapsed sidebar, see oblada/browser/ui/sidebar_layout.h).
++  AddItemWithStringIdAndVectorIcon(this, IDC_RELOAD, IDS_CONTENT_CONTEXT_RELOAD,
++                                   vector_icons::kReloadChromeRefreshOldIcon);
++  if (tabs::VerticalTabStripStateController::From(browser_)) {
++    AddCheckItem(IDC_TOGGLE_VERTICAL_TABS_COLLAPSE,
++                 oblada::L10n("sidebar.compact"));
++  }
++  AddSeparator(ui::NORMAL_SEPARATOR);
++
+   int new_tab_string_id = IDS_NEW_TAB;
+   if (browser_->GetProfile()->IsEnterpriseIsolatedModeProfile() &&
+               !browser_->GetProfile()->IsGuestSession()) {
+@@ -2114,6 +2137,14 @@ void AppMenuModel::Build() {
+     }
+   }
+ 
++  // Oblada: New container tab ▸
++  if (!browser_->GetProfile()->IsGuestSession()) {
++    sub_menus_.push_back(
++        oblada::containers::ContainersMenuModel::ForNewTab(browser_));
++    AddSubMenu(oblada::containers::kNewContainerTabMenuId,
++               oblada::L10n("containers.new_tab"), sub_menus_.back().get());
++  }
++
+   AddSeparator(ui::NORMAL_SEPARATOR);
+ 
+ #if !BUILDFLAG(IS_CHROMEOS)

@@ -1,0 +1,16 @@
+diff --git a/content/public/browser/web_contents_delegate.h b/content/public/browser/web_contents_delegate.h
+index 5c742e16bc..7c11ab70e1 100644
+--- a/content/public/browser/web_contents_delegate.h
++++ b/content/public/browser/web_contents_delegate.h
+@@ -343,6 +343,11 @@ class CONTENT_EXPORT WebContentsDelegate {
+       WebContents* source,
+       const input::NativeWebKeyboardEvent& event);
+ 
++  // Oblada: a force click (a firm press on the trackpad) in `source`, on which
++  // the system would look up the word under the mouse. Returns true if the
++  // delegate handled it instead.
++  virtual bool HandleForceClick(WebContents* source);
++
+   // Allows delegates to handle unhandled keyboard messages coming back from
+   // the renderer. Returns true if the event was handled, false otherwise. A
+   // true value means no more processing should happen on the event. The default

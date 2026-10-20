@@ -1,0 +1,91 @@
+diff --git a/chrome/browser/ui/views/tabs/common/split_tab_view.cc b/chrome/browser/ui/views/tabs/common/split_tab_view.cc
+index a0df4945de..e413711818 100644
+--- a/chrome/browser/ui/views/tabs/common/split_tab_view.cc
++++ b/chrome/browser/ui/views/tabs/common/split_tab_view.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/views/tabs/common/split_tab_view.h"
+ 
++#include <algorithm>
+ #include <vector>
+ 
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+@@ -21,6 +22,8 @@
+ #include "components/tabs/public/tab_interface.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/color/color_provider.h"
++#include "ui/gfx/canvas.h"
+ #include "ui/gfx/geometry/rect.h"
+ #include "ui/views/border.h"
+ #include "ui/views/layout/delegating_layout_manager.h"
+@@ -94,6 +97,22 @@ void SplitTabView::OnMouseMoved(const ui::MouseEvent& event) {
+ }
+ 
+ void SplitTabView::OnPaint(gfx::Canvas* canvas) {
++  // Oblada: the tabs of a split sit together on a card (see
++  // CalculateVerticalLayout()).
++  if (!pinned_ && collection_node_ &&
++      collection_node_->orientation() == TabStripOrientation::kVertical &&
++      GetColorProvider()) {
++    cc::PaintFlags flags;
++    flags.setAntiAlias(true);
++    flags.setColor(SkColorSetA(
++        GetColorProvider()->GetColor(kColorTabForegroundInactiveFrameActive),
++        0x1A));
++    canvas->DrawRoundRect(
++        GetContentsBounds(),
++        GetLayoutConstant(LayoutConstant::kVerticalTabCornerRadius) +
++            kObladaCardPadding,
++        flags);
++  }
+   if (pinned_) {
+     const auto children = collection_node_
+                               ? collection_node_->GetDirectChildren()
+@@ -300,6 +319,46 @@ views::ProposedLayout SplitTabView::CalculateVerticalLayout(
+           ? GetLayoutConstant(LayoutConstant::kVerticalTabPinnedBorderThickness)
+           : 0;
+ 
++  // Oblada: as in Zen, the tabs of a split share a row on a card of their own (one
++  // above the other in the compact sidebar, which shows only their icons).
++  if (!pinned_) {
++    int child_height = 0;
++    int preferred_width = 2 * kObladaCardPadding + kSplitViewGap;
++    for (auto* child : children) {
++      child_height = std::max(child_height, child->GetPreferredSize().height());
++      preferred_width += child->GetPreferredSize().width();
++    }
++    const int row_width = size_bounds.width().is_bounded()
++                          ? size_bounds.width().value()
++                          : preferred_width;
++    const int inner_width = std::max(0, row_width - 2 * kObladaCardPadding);
++    if (!collapsed_ || !size_bounds.width().is_bounded()) {
++      const int first_width = (inner_width - kSplitViewGap) / 2;
++      int x = kObladaCardPadding;
++      for (size_t i = 0; i < children.size(); ++i) {
++        const int child_width =
++            i == 0 ? first_width : inner_width - kSplitViewGap - first_width;
++        layouts.child_layouts.emplace_back(
++            children[i], children[i]->GetVisible(),
++            gfx::Rect(x, kObladaCardPadding, child_width, child_height));
++        x += child_width + kSplitViewGap;
++      }
++      layouts.host_size =
++          gfx::Size(row_width, child_height + 2 * kObladaCardPadding);
++    } else {
++      int y = kObladaCardPadding;
++      for (auto* child : children) {
++        layouts.child_layouts.emplace_back(
++            child, child->GetVisible(),
++            gfx::Rect(kObladaCardPadding, y, inner_width, child_height));
++        y += child_height + kSplitViewGap;
++      }
++      layouts.host_size =
++          gfx::Size(row_width, y - kSplitViewGap + kObladaCardPadding);
++    }
++    return layouts;
++  }
++
+   // Layout children in order. Children will have their preferred height and
+   // fill available width. If unbounded or uncollapsed and both children fit on
+   // one row they will share it, otherwise they will be stacked vertically.

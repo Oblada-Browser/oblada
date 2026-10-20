@@ -1,0 +1,24 @@
+diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
+index 3b1e2e30ef..e2ed76811e 100644
+--- a/chrome/browser/ui/tab_helpers.cc
++++ b/chrome/browser/ui/tab_helpers.cc
+@@ -4,6 +4,9 @@
+ 
+ #include "chrome/browser/ui/tab_helpers.h"
+ 
++#include "oblada/browser/containers/containers.h"  // Oblada
++#include "oblada/browser/firefox_addons/firefox_addons.h"  // Oblada
++
+ #include <cstdint>
+ #include <memory>
+ #include <optional>
+@@ -323,6 +326,9 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
+   web_contents->SetUserData(&kTabContentsAttachedTabHelpersUserDataKey,
+                             std::make_unique<base::SupportsUserData::Data>());
+ 
++  oblada::firefox_addons::AttachTabHelpers(web_contents);  // Oblada
++  oblada::containers::AttachTabHelpers(web_contents);  // Oblada
++
+   // Create all the tab helpers.
+ 
+   // SessionTabHelper comes first because it sets up the tab ID, and other

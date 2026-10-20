@@ -1,0 +1,14 @@
+diff --git a/ui/base/ui_base_features.cc b/ui/base/ui_base_features.cc
+index 6b9944fb71..8d77e9891d 100644
+--- a/ui/base/ui_base_features.cc
++++ b/ui/base/ui_base_features.cc
+@@ -500,7 +500,8 @@ BASE_FEATURE_PARAM(int,
+ 
+ BASE_FEATURE(kDesktopGlowUp, base::FEATURE_DISABLED_BY_DEFAULT);
+ 
+-BASE_FEATURE(kGlassFrame, base::FEATURE_DISABLED_BY_DEFAULT);
++// Oblada: on, for a see-through sidebar as in Zen and Arc.
++BASE_FEATURE(kGlassFrame, base::FEATURE_ENABLED_BY_DEFAULT);
+ BASE_FEATURE_PARAM(bool, kGlassExpandOnHoverEnabled, &kGlassFrame, true);
+ 
+ BASE_FEATURE(kRoundedIcons, base::FEATURE_DISABLED_BY_DEFAULT);

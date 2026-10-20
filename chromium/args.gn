@@ -1,0 +1,22 @@
+# Oblada's build configuration (copied to out/Oblada/args.gn by scripts/build.sh).
+# Release without symbols: the fastest build that is still pleasant to use every day.
+is_debug = false
+is_component_build = false
+symbol_level = 0
+blink_symbol_level = 0
+v8_symbol_level = 0
+target_cpu = "arm64"
+
+# H.264/AAC playback, like Chrome.
+proprietary_codecs = true
+ffmpeg_branding = "Chrome"
+
+# Newer Xcode releases add warnings Chromium's pinned version hasn't fixed yet.
+treat_warnings_as_errors = false
+
+# Behave like Chrome stable: no automatic field-trial experiments from the testing config.
+disable_fieldtrial_testing_config = true
+
+# Like Chrome: Chromium's internal checks (DCHECKs) off. On, they slow the browser
+# down and close it whenever one fails.
+dcheck_always_on = false

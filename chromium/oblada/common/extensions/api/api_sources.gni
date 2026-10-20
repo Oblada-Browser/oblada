@@ -1,0 +1,3 @@
+oblada_extensions_api_schema_sources =
+    get_path_info([ "contextual_identities.json" ], "abspath")
+oblada_extensions_api_root_namespace = "extensions::api::%(namespace)s"

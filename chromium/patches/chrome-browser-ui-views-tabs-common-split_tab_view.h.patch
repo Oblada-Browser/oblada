@@ -1,0 +1,13 @@
+diff --git a/chrome/browser/ui/views/tabs/common/split_tab_view.h b/chrome/browser/ui/views/tabs/common/split_tab_view.h
+index 9bf90c27d3..bcb1748be7 100644
+--- a/chrome/browser/ui/views/tabs/common/split_tab_view.h
++++ b/chrome/browser/ui/views/tabs/common/split_tab_view.h
+@@ -31,6 +31,8 @@ class SplitTabView : public TabCollectionZOrderManager,
+   // This represents the gap between the two tabs in a Split View. This might be
+   // vertical or horizontal.
+   static constexpr int kSplitViewGap = 2;
++  // Oblada: around the tabs, on their card in the sidebar.
++  static constexpr int kObladaCardPadding = 3;
+ 
+   explicit SplitTabView(TabCollectionNode* collection_node);
+   SplitTabView(const SplitTabView&) = delete;

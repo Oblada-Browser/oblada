@@ -1,0 +1,20 @@
+# Oblada
+
+A Chromium browser with **Zen's design** (tabs in a sidebar, workspaces you swipe between, compact mode, split view), **Firefox's containers** (separate cookies, logins and storage per container, with "always open this site in…" rules) and **extensions from both the Chrome Web Store and Firefox Add-ons** (including Firefox's `contextualIdentities` API, for add-ons such as Multi-Account Containers).
+
+Oblada is a Chromium fork laid out like Brave: Chromium itself is never committed here, only Oblada's own code and its patches to Chromium's files. See [chromium/README.md](chromium/README.md) for how to check out, build and test it, and [PATCHES.md](PATCHES.md) for every patch to Chromium: what it does, and what it depends on.
+
+```sh
+chromium/scripts/sync.sh      # check out the pinned Chromium release and apply the patches
+chromium/scripts/build.sh     # build Oblada.app
+node chromium/scripts/smoke.mjs   # check the build (headless: no window, no focus taken)
+```
+
+| Path | What it is |
+| --- | --- |
+| `chromium/` | the browser: `oblada/` (Oblada's code), `patches/` (its edits to Chromium, described in [PATCHES.md](PATCHES.md)), `scripts/` |
+| `branding/` | the logo, the tail of an occhiata (*Oblada melanura*): `logo.py` draws it, `export.sh` makes the browser's icons from it |
+
+## License
+
+GPL-3.0 (see `LICENSE`). Chromium's own code keeps its licenses.

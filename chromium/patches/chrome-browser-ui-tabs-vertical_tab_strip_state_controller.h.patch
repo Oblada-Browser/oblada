@@ -1,0 +1,35 @@
+diff --git a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h
+index f6ed0cbec3..5ed29d84a6 100644
+--- a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h
++++ b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h
+@@ -116,6 +116,21 @@ class VerticalTabStripStateController : public SessionServiceBaseObserver,
+ 
+   using CollapseChangeCallback =
+       base::RepeatingCallback<void(VerticalTabStripCollapseState)>;
++  // Oblada: whether the tab strip looks expanded, as it does when not collapsed
++  // or when expanded on hover (the compact sidebar's look is for its narrow
++  // width only). Its region view tells, from its width.
++  bool IsObladaShownExpanded() const { return oblada_shown_expanded_; }
++  void SetObladaShownExpanded(bool expanded) {
++    if (expanded != oblada_shown_expanded_) {
++      oblada_shown_expanded_ = expanded;
++      oblada_shown_expanded_callback_list_.Notify(expanded);
++    }
++  }
++  base::CallbackListSubscription RegisterOnObladaShownExpandedChanged(
++      base::RepeatingCallback<void(bool)> callback) {
++    return oblada_shown_expanded_callback_list_.Add(std::move(callback));
++  }
++
+   base::CallbackListSubscription RegisterOnCollapseChanged(
+       CollapseChangeCallback callback);
+ 
+@@ -188,6 +203,8 @@ class VerticalTabStripStateController : public SessionServiceBaseObserver,
+ 
+   base::RepeatingCallbackList<void(VerticalTabStripCollapseState)>
+       on_collapse_changed_callback_list_;
++  bool oblada_shown_expanded_ = true;  // Oblada
++  base::RepeatingCallbackList<void(bool)> oblada_shown_expanded_callback_list_;
+   base::RepeatingCallbackList<void(bool)> on_resizing_changed_callback_list_;
+   base::RepeatingCallbackList<void(bool)>
+       on_expand_on_hover_enabled_changed_callback_list_;

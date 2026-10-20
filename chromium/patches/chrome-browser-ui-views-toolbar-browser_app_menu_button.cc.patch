@@ -1,0 +1,28 @@
+diff --git a/chrome/browser/ui/views/toolbar/browser_app_menu_button.cc b/chrome/browser/ui/views/toolbar/browser_app_menu_button.cc
+index 8701f3b1b5..4beeda296f 100644
+--- a/chrome/browser/ui/views/toolbar/browser_app_menu_button.cc
++++ b/chrome/browser/ui/views/toolbar/browser_app_menu_button.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/toolbar/browser_app_menu_button.h"
+ 
++#include "ui/views/vector_icons.h"  // Oblada
++
+ #include <set>
+ 
+ #include "base/feature_list.h"
+@@ -151,12 +153,8 @@ void BrowserAppMenuButton::UpdateThemeBasedState() {
+ }
+ 
+ void BrowserAppMenuButton::UpdateIcon() {
+-  const gfx::VectorIcon& icon =
+-      ui::TouchUiController::Get()->touch_ui()
+-          ? features::IsRoundedIconsEnabled() ? kMoreVertIcon
+-                                              : kBrowserToolsTouchOldIcon
+-      : features::IsRoundedIconsEnabled() ? kMoreVertIcon
+-                                          : kBrowserToolsChromeRefreshOldIcon;
++  // Oblada: Zen's horizontal dots.
++  const gfx::VectorIcon& icon = views::kMoreHorizIcon;
+   const int icon_size = GetIconSize();
+ 
+   for (auto state : kButtonStates) {

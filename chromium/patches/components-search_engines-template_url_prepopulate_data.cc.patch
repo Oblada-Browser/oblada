@@ -1,0 +1,16 @@
+diff --git a/components/search_engines/template_url_prepopulate_data.cc b/components/search_engines/template_url_prepopulate_data.cc
+index 85b0c96053..dce73e1f28 100644
+--- a/components/search_engines/template_url_prepopulate_data.cc
++++ b/components/search_engines/template_url_prepopulate_data.cc
+@@ -317,9 +317,8 @@ std::unique_ptr<TemplateURLData> GetPrepopulatedFallbackSearch(
+     PrefService& prefs,
+     const std::vector<raw_ptr<const PrepopulatedEngine>>&
+         regional_prepopulated_engines) {
+-  return FindPrepopulatedEngineInternal(prefs, regional_prepopulated_engines,
+-                                        google.id,
+-                                        /*use_first_as_fallback=*/true);
++  // Oblada: DuckDuckGo, wherever (unless the user picks another).
++  return PrepopulatedEngineToTemplateURLData(&duckduckgo);
+ }
+ 
+ }  // namespace TemplateURLPrepopulateData

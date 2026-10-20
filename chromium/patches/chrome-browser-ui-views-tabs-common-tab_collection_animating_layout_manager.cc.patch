@@ -1,0 +1,18 @@
+diff --git a/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.cc b/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.cc
+index c16f623b16..fa42a55991 100644
+--- a/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.cc
+@@ -443,6 +443,13 @@ void TabCollectionAnimatingLayoutManager::ResetViewsToTargetLayout(
+   InvalidateHost(/*mark_layouts_changed=*/true);
+ }
+ 
++void TabCollectionAnimatingLayoutManager::SnapToTarget() {
++  RecalculateTarget();
++  if (animation_.is_animating()) {
++    animation_.End();
++  }
++}
++
+ void TabCollectionAnimatingLayoutManager::AnimateAndDestroyChildView(
+     views::View* child_view) {
+   DCHECK(std::ranges::contains(host_view()->children(), child_view));

@@ -1,0 +1,33 @@
+diff --git a/chrome/browser/ui/views/tabs/common/tab_view.cc b/chrome/browser/ui/views/tabs/common/tab_view.cc
+index cc16ff231e..a9e1636b8b 100644
+--- a/chrome/browser/ui/views/tabs/common/tab_view.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_view.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/tabs/common/tab_view.h"
+ 
++#include "oblada/browser/containers/containers.h"  // Oblada
++
+ #include <optional>
+ #include <string>
+ 
+@@ -786,6 +788,9 @@ void TabView::OnPaint(gfx::Canvas* canvas) {
+   }
+ 
+   tab_styling()->PaintTab(canvas);
++  oblada::containers::PaintTabIndicator(  // Oblada: the container's color
++      canvas, GetLocalBounds(), orientation_ == TabStripOrientation::kVertical,
++      GetTabInterface());
+ 
+   views::View::OnPaint(canvas);
+ }
+@@ -1237,7 +1242,8 @@ void TabView::CloseButtonPressed(const ui::Event& event) {
+ 
+   const bool from_mouse = event.type() == ui::EventType::kMouseReleased &&
+                           !(event.flags() & ui::EF_FROM_TOUCH);
+-  collection_node_->GetController()->CloseTab(
++  // Oblada: and the tabs selected along with it.
++  collection_node_->GetController()->CloseTabOrSelection(
+       GetTabInterface(),
+       from_mouse ? CloseTabSource::kFromMouse : CloseTabSource::kFromTouch);
+ }

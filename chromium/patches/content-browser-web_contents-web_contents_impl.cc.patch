@@ -1,0 +1,15 @@
+diff --git a/content/browser/web_contents/web_contents_impl.cc b/content/browser/web_contents/web_contents_impl.cc
+index 6d6d0947fa..852ec9ecd1 100644
+--- a/content/browser/web_contents/web_contents_impl.cc
++++ b/content/browser/web_contents/web_contents_impl.cc
+@@ -5696,6 +5696,10 @@ FrameTree* WebContentsImpl::CreateNewWindow(
+       // as long as they preserve the guest's StoragePartition.
+       site_instance =
+           SiteInstance::CreateForGuest(GetBrowserContext(), partition_config);
++    } else if (source_site_instance->IsFixedStoragePartition()) {
++      // Oblada: likewise for a fixed StoragePartition, e.g. a container tab's.
++      site_instance = SiteInstance::CreateForFixedStoragePartition(
++          GetBrowserContext(), params.target_url, partition_config);
+     } else {
+       site_instance = SiteInstance::Create(GetBrowserContext());
+     }

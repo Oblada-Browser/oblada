@@ -1,0 +1,52 @@
+diff --git a/chrome/browser/ui/views/toolbar/app_menu.cc b/chrome/browser/ui/views/toolbar/app_menu.cc
+index 55f2bf1244..86b5a078aa 100644
+--- a/chrome/browser/ui/views/toolbar/app_menu.cc
++++ b/chrome/browser/ui/views/toolbar/app_menu.cc
+@@ -17,6 +17,7 @@
+ #include "base/functional/bind.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/i18n/number_formatting.h"
++#include "base/i18n/rtl.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/metrics/histogram_macros.h"
+ #include "base/metrics/user_metrics.h"
+@@ -656,6 +657,18 @@ class FullscreenButton : public ImageButton {
+ BEGIN_METADATA(FullscreenButton)
+ END_METADATA
+ 
++// Oblada: from a button on the left of the window (in the sidebar) the menu opens
++// to the right, over the page, rather than squeezed between it and the screen edge.
++views::MenuAnchorPosition AnchorPositionFor(const views::Widget* parent,
++                                            const gfx::Rect& anchor_bounds) {
++  const bool on_left =
++      parent && anchor_bounds.CenterPoint().x() <
++                    parent->GetWindowBoundsInScreen().CenterPoint().x();
++  // Anchor positions are mirrored in RTL.
++  return on_left != base::i18n::IsRTL() ? views::MenuAnchorPosition::kTopLeft
++                                        : views::MenuAnchorPosition::kTopRight;
++}
++
+ }  // namespace
+ 
+ // CutCopyPasteView ------------------------------------------------------------
+@@ -1137,7 +1150,9 @@ void AppMenu::RunMenu(views::MenuButtonController* host,
+ 
+   menu_runner_->RunMenuAt(host->button()->GetWidget(), host,
+                           host->button()->GetAnchorBoundsInScreen(),
+-                          views::MenuAnchorPosition::kTopRight, source_type,
++                          AnchorPositionFor(host->button()->GetWidget(),
++                                            host->button()->GetAnchorBoundsInScreen()),
++                          source_type,
+                           /*native_view_for_gestures=*/gfx::NativeView(),
+                           /*corners=*/std::nullopt,
+                           "Chrome.AppMenu.MenuHostInitToNextFramePresented");
+@@ -1151,7 +1166,8 @@ void AppMenu::RunMenu(views::Widget* parent,
+                             LIMIT_MENU_ACTION);
+ 
+   menu_runner_->RunMenuAt(parent, nullptr, anchor_screen_bounds,
+-                          views::MenuAnchorPosition::kTopRight, source_type,
++                          AnchorPositionFor(parent, anchor_screen_bounds),
++                          source_type,
+                           /*native_view_for_gestures=*/gfx::NativeView(),
+                           /*corners=*/std::nullopt,
+                           "Chrome.AppMenu.MenuHostInitToNextFramePresented");

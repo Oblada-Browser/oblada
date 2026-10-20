@@ -1,0 +1,10 @@
+// Oblada's extension APIs; see //chrome/common/extensions/api/_api_features.json for
+// the format.
+{
+  // Firefox's containers API, for Firefox add-ons that ask for it (their converted
+  // manifest then has "contextual_identities": true, see xpi_conversion.cc).
+  "contextualIdentities": {
+    "dependencies": ["manifest:contextual_identities"],
+    "contexts": ["privileged_extension"]
+  }
+}

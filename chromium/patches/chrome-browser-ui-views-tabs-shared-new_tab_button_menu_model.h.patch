@@ -1,0 +1,13 @@
+diff --git a/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.h b/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.h
+index 60489fb251..e21c6077ba 100644
+--- a/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.h
++++ b/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.h
+@@ -33,6 +33,8 @@ class NewTabButtonMenuModel : public ui::SimpleMenuModel,
+   void AddNewSplitTabItem();
+ 
+   raw_ptr<BrowserWindowInterface> browser_;
++  // Oblada: "New container tab".
++  std::unique_ptr<ui::SimpleMenuModel> containers_submenu_;
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_TABS_SHARED_NEW_TAB_BUTTON_MENU_MODEL_H_

@@ -1,0 +1,41 @@
+diff --git a/chrome/browser/renderer_context_menu/render_view_context_menu.cc b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
+index 1a4de31b32..c917084580 100644
+--- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
++++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
+@@ -4,6 +4,10 @@
+ 
+ #include "chrome/browser/renderer_context_menu/render_view_context_menu.h"
+ 
++#include "oblada/browser/containers/containers.h"  // Oblada
++#include "oblada/browser/containers/containers_menu_model.h"  // Oblada
++#include "oblada/browser/l10n.h"  // Oblada
++
+ #include <stddef.h>
+ 
+ #include <algorithm>
+@@ -1980,6 +1984,15 @@ void RenderViewContextMenu::AppendLinkItems() {
+           IDC_CONTENT_CONTEXT_OPENLINKNEWTAB,
+           in_app ? IDS_CONTENT_CONTEXT_OPENLINKNEWTAB_INAPP
+                  : IDS_CONTENT_CONTEXT_OPENLINKNEWTAB);
++      // Oblada: Open link in new container tab ▸
++      if (!in_app && GetBrowser() && IsNormalBrowser()) {
++        oblada_containers_submenu_ = oblada::containers::ContainersMenuModel::ForLink(
++            GetBrowser(), params_.link_url,
++            oblada::containers::GetContainerId(source_web_contents_));
++        menu_model_.AddSubMenu(oblada::containers::kOpenLinkInContainerMenuId,
++                               oblada::L10n("containers.open_link"),
++                               oblada_containers_submenu_.get());
++      }
+     }
+ 
+     if (show_open_in_new_window) {
+@@ -3335,6 +3348,9 @@ void RenderViewContextMenu::AppendLiveCaptionItem() {
+ // Menu delegate functions -----------------------------------------------------
+ 
+ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
++  if (id == oblada::containers::kOpenLinkInContainerMenuId) {  // Oblada
++    return true;
++  }
+ #if BUILDFLAG(IS_CHROMEOS)
+   // Disable context menu in locked fullscreen mode to prevent users from
+   // exiting this mode (the menu is not really disabled as the user can still

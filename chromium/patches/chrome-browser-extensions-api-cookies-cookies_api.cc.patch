@@ -1,0 +1,41 @@
+diff --git a/chrome/browser/extensions/api/cookies/cookies_api.cc b/chrome/browser/extensions/api/cookies/cookies_api.cc
+index 0def08cdbf..4a76928806 100644
+--- a/chrome/browser/extensions/api/cookies/cookies_api.cc
++++ b/chrome/browser/extensions/api/cookies/cookies_api.cc
+@@ -6,6 +6,8 @@
+ 
+ #include "chrome/browser/extensions/api/cookies/cookies_api.h"
+ 
++#include "oblada/browser/firefox_addons/cookie_store_ids.h"  // Oblada
++
+ #include <memory>
+ #include <utility>
+ #include <vector>
+@@ -105,6 +107,12 @@ network::mojom::CookieManager* ParseStoreCookieManager(
+     bool include_incognito,
+     std::string* store_id,
+     std::string* error) {
++  // Oblada: Firefox's cookie stores, containers' included.
++  if (network::mojom::CookieManager* manager =
++          oblada::firefox_addons::CookieManagerForStoreId(
++              function_context, include_incognito, *store_id)) {
++    return manager;
++  }
+   content::BrowserContext* store_context = nullptr;
+   if (!store_id->empty()) {
+     store_context = cookies_helpers::ChooseBrowserContextFromStoreId(
+@@ -870,6 +878,14 @@ ExtensionFunction::ResponseAction CookiesGetPartitionKeyFunction::Run() {
+ }
+ 
+ ExtensionFunction::ResponseAction CookiesGetAllCookieStoresFunction::Run() {
++  // Oblada: Firefox add-ons see Firefox's cookie stores, one per container in use.
++  if (oblada::firefox_addons::IsFirefoxAddon(extension())) {
++    return RespondNow(
++        ArgumentList(api::cookies::GetAllCookieStores::Results::Create(
++            oblada::firefox_addons::FirefoxCookieStores(
++                Profile::FromBrowserContext(browser_context()),
++                include_incognito_information()))));
++  }
+   Profile* original_profile = Profile::FromBrowserContext(browser_context());
+   DCHECK(original_profile);
+   base::ListValue original_tab_ids;

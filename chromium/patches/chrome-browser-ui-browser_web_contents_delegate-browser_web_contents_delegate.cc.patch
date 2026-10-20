@@ -1,0 +1,58 @@
+diff --git a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
+index d3fa7eea6d..6bde644b54 100644
+--- a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
++++ b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
++#include "oblada/browser/new_tab/new_tab_ui.h"  // Oblada
++#include "oblada/browser/peek/peek.h"  // Oblada
+ 
+ #include "base/check_deref.h"
+ #include "base/metrics/histogram_macros.h"
+@@ -447,6 +449,11 @@ bool BrowserWebContentsDelegate::CanDragEnter(
+     content::WebContents* source,
+     const content::DropData& data,
+     blink::DragOperationsMask operations_allowed) {
++  // Oblada: nothing dropped on a page under a peek (e.g. the link peeked at,
++  // dragged on as it opened), which would replace it.
++  if (oblada::peek::IsPeekedFrom(source)) {
++    return false;
++  }
+ #if BUILDFLAG(IS_CHROMEOS)
+   // Disallow drag-and-drop navigation for Settings windows which do not support
+   // external navigation.
+@@ -798,6 +805,8 @@ void BrowserWebContentsDelegate::SetContentsBounds(content::WebContents* source,
+ 
+ void BrowserWebContentsDelegate::UpdateTargetURL(content::WebContents* source,
+                                                  const GURL& url) {
++  // Oblada: the link a force click or Option-click peeks at.
++  oblada::peek::SetHoveredLink(source, url);
+   std::vector<StatusBubble*> status_bubbles =
+       browser_ui_controller_->GetStatusBubbles();
+   for (StatusBubble* status_bubble : status_bubbles) {
+@@ -876,6 +885,12 @@ void BrowserWebContentsDelegate::BeforeUnloadFired(
+                                         proceed_to_fire_unload);
+ }
+ 
++// Oblada: a force click on a link peeks at it.
++bool BrowserWebContentsDelegate::HandleForceClick(
++    content::WebContents* source) {
++  return oblada::peek::PeekAtHoveredLink(source);
++}
++
+ bool BrowserWebContentsDelegate::ShouldFocusLocationBarByDefault(
+     content::WebContents* source) {
+   // Navigations in background tabs shouldn't change the focus state of the
+@@ -904,7 +919,9 @@ bool BrowserWebContentsDelegate::ShouldFocusLocationBarByDefault(
+          url.host() == chrome::kChromeUINewTabHost) ||
+         (virtual_url.SchemeIs(content::kChromeUIScheme) &&
+          virtual_url.host() == chrome::kChromeUINewTabHost)) {
+-      return true;
++      // Oblada: Oblada's New Tab page gives it the focus itself once it has
++      // loaded (see oblada/browser/new_tab/new_tab_ui.h).
++      return !(oblada::new_tab::IsBlankNewTab(source) && source->IsLoading());
+     }
+ 
+     if (url.spec() == chrome::kChromeUISplitViewNewTabPageURL) {

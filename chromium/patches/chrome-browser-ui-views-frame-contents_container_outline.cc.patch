@@ -1,0 +1,13 @@
+diff --git a/chrome/browser/ui/views/frame/contents_container_outline.cc b/chrome/browser/ui/views/frame/contents_container_outline.cc
+index d4cf5067cc..ce73f3ab3c 100644
+--- a/chrome/browser/ui/views/frame/contents_container_outline.cc
++++ b/chrome/browser/ui/views/frame/contents_container_outline.cc
+@@ -141,7 +141,7 @@ void ContentsContainerOutline::OnPaint(gfx::Canvas* canvas) {
+   // Get the mini toolbar size if it's visible.
+   gfx::SizeF mini_toolbar_size;
+   const bool hide_mini_toolbar = is_active_ && is_highlighted_;
+-  if (!hide_mini_toolbar) {
++  if (!hide_mini_toolbar && mini_toolbar_->GetVisible()) {  // Oblada
+     CHECK(mini_toolbar_.get());
+     mini_toolbar_size = gfx::SizeF(mini_toolbar_->size());
+   }

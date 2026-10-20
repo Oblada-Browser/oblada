@@ -1,0 +1,31 @@
+diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.h b/chrome/browser/ui/views/location_bar/location_bar_view.h
+index dc2ea8c236..8b051ed85d 100644
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.h
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.h
+@@ -288,6 +288,16 @@ class LocationBarView
+   // |is_hovering| should be true when mouse is in omnibox; false when exited.
+   void OnOmniboxHovered(bool is_hovering);
+ 
++  // Oblada: in the sidebar, as in Zen, the address bar shows just the site until
++  // it's hovered or focused, when the page's icons come back (see Layout()).
++  bool IsObladaQuiet() const;
++  void UpdateObladaQuiet();
++  // Oblada: whether a bubble anchored to one of its buttons is open.
++  bool HasObladaBubble() const;
++  // Oblada: and while it has the focus, it floats over the page (see
++  // oblada::sidebar::SetLocationBarFloating()).
++  void UpdateObladaFloating();
++
+   // LocationBar:
+   void SetPermissionPromptShowing(bool showing) override;
+   void UpdateFocusBehavior(bool toolbar_visible) override;
+@@ -591,6 +601,9 @@ class LocationBarView
+   raw_ptr<page_actions::PageActionContainerView> page_action_container_ =
+       nullptr;
+ 
++  // Oblada: whether the last layout was quiet (see IsObladaQuiet()).
++  bool oblada_quiet_ = false;
++
+   // An [x] that appears in touch mode (when the OSK is visible) and allows the
+   // user to clear all text.
+   raw_ptr<views::ImageButton> clear_all_button_ = nullptr;

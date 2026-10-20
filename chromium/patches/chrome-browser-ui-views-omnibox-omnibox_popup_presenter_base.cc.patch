@@ -1,0 +1,54 @@
+diff --git a/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc b/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc
+index 4d709ce26b..da0e78f477 100644
+--- a/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc
+@@ -4,6 +4,9 @@
+ 
+ #include "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h"
+ 
++#include "oblada/browser/ui/floating_location_bar.h"  // Oblada
++#include "oblada/browser/ui/sidebar_layout.h"  // Oblada
++
+ #include <optional>
+ 
+ #include "base/auto_reset.h"
+@@ -190,6 +193,25 @@ void OmniboxPopupPresenterBase::OnVisualStateReady(
+ }
+ 
+ void OmniboxPopupPresenterBase::ShowWidget(base::TimeTicks show_request_time) {
++  // Oblada: not before the floating address bar has landed over the page (see
++  // oblada/browser/ui/floating_location_bar.h). Hiding meanwhile cancels it.
++  if (location_bar_ && oblada::sidebar::IsFloatingLocationBarLanding(
++                           location_bar_->BoundsInScreen())) {
++    visual_state_weak_factory_.InvalidateWeakPtrs();
++    is_deferred_ = true;
++    oblada::sidebar::WhenFloatingLocationBarLands(
++        location_bar_->BoundsInScreen(),
++        base::BindOnce(
++            [](base::WeakPtr<OmniboxPopupPresenterBase> presenter,
++               base::TimeTicks show_request_time) {
++              if (presenter) {
++                presenter->is_deferred_ = false;
++                presenter->ShowWidget(show_request_time);
++              }
++            },
++            visual_state_weak_factory_.GetWeakPtr(), show_request_time));
++    return;
++  }
+   if (ShouldPreserveRequestedFocus() &&
+       (widget_->IsActive() || focus_requested_)) {
+     widget_->Show();
+@@ -349,6 +371,13 @@ void OmniboxPopupPresenterBase::SynchronizePopupBounds() {
+           std::max(content_height_, widget_bounds.height()));
+     }
+ 
++    // Oblada: from the sidebar's narrow address bar, the suggestions open wider.
++    widget_bounds.set_width(std::max(
++        widget_bounds.width(),
++        oblada::sidebar::SuggestionsWidth(location_bar_->BoundsInScreen()) +
++            RoundedOmniboxResultsFrame::GetLocationBarAlignmentInsets()
++                .width()));
++
+     // Set width and height to at least their minimums, or if larger,
+     // their calculated versions.
+     widget_bounds.set_width(

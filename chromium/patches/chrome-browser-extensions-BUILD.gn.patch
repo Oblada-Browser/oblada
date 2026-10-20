@@ -1,0 +1,12 @@
+diff --git a/chrome/browser/extensions/BUILD.gn b/chrome/browser/extensions/BUILD.gn
+index 563383fc71..8fe3f593c6 100644
+--- a/chrome/browser/extensions/BUILD.gn
++++ b/chrome/browser/extensions/BUILD.gn
+@@ -489,6 +489,7 @@ source_set("extensions") {
+     "//chrome/browser/ui/toolbar",
+   ]
+   deps = [
++    "//oblada/browser/extensions/api:api_registration",  # Oblada
+     "//base",
+     "//chrome/app:command_ids",
+     "//chrome/app/theme:chrome_unscaled_resources",

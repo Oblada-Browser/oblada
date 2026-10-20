@@ -1,0 +1,35 @@
+diff --git a/chrome/browser/ui/views/frame/multi_contents_view.h b/chrome/browser/ui/views/frame/multi_contents_view.h
+index 6ecb49a239..c75db05cf9 100644
+--- a/chrome/browser/ui/views/frame/multi_contents_view.h
++++ b/chrome/browser/ui/views/frame/multi_contents_view.h
+@@ -38,6 +38,10 @@ namespace content {
+ class WebContents;
+ }  // namespace content
+ 
++namespace oblada::split {
++class SplitHandle;
++}  // namespace oblada::split
++
+ namespace gfx {
+ class RoundedCornersF;
+ }  // namespace gfx
+@@ -65,7 +69,8 @@ class MultiContentsView
+   };
+ 
+   static constexpr int kSplitViewContentInset = 8;
+-  static constexpr float kSplitViewContentCornerRadius = 6;
++  // Oblada: the panes' corners, as the page's (10) inside their 2px ring.
++  static constexpr float kSplitViewContentCornerRadius = 8;
+   static constexpr gfx::RoundedCornersF kSplitViewContentRoundedCorners{
+       kSplitViewContentCornerRadius};
+ 
+@@ -313,6 +318,9 @@ class MultiContentsView
+   // the user drags a link to the edge of the contents view.
+   raw_ptr<MultiContentsDropTargetView> drop_target_view_ = nullptr;
+ 
++  // Oblada: grips above the panes of a split, one per contents container view.
++  std::vector<raw_ptr<oblada::split::SplitHandle>> oblada_split_handles_;
++
+   // Holds subscriptions for when the attached contents to ContentsContainerView
+   // are focused.
+   std::vector<base::CallbackListSubscription> contents_focused_subscriptions_;

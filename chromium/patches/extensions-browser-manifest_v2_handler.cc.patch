@@ -1,0 +1,24 @@
+diff --git a/extensions/browser/manifest_v2_handler.cc b/extensions/browser/manifest_v2_handler.cc
+index 5841d3dfbc..ddbb526d77 100644
+--- a/extensions/browser/manifest_v2_handler.cc
++++ b/extensions/browser/manifest_v2_handler.cc
+@@ -114,7 +114,7 @@ bool ShouldDisableLegacyExtensions() {
+     return false;
+   }
+ 
+-  return true;
++  return false;  // Oblada: Manifest V2 extensions keep working.
+ }
+ 
+ }  // namespace
+@@ -151,7 +151,9 @@ BrowserContextKeyedServiceFactory* ManifestV2Handler::GetFactory() {
+ }
+ 
+ bool ManifestV2Handler::IsExtensionAffected(const Extension& extension) {
+-  return manifest_v2_util::IsExtensionAffected(extension);
++  // Oblada: no "no longer supported" warnings for extensions that still work.
++  return ShouldDisableLegacyExtensions() &&
++         manifest_v2_util::IsExtensionAffected(extension);
+ }
+ 
+ bool ManifestV2Handler::ShouldBlockExtensionInstallation(

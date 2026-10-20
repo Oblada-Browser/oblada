@@ -1,0 +1,18 @@
+# Registers the functions of Oblada's extension APIs (//oblada/common/extensions/api);
+# chrome/browser/extensions/chrome_extensions_browser_api_provider.cc calls it. The
+# functions themselves are compiled with the rest of Oblada's browser code (see
+# //oblada/browser/sources.gni).
+
+import("//tools/json_schema_compiler/json_schema_api.gni")
+import("//oblada/common/extensions/api/api_sources.gni")
+
+function_registration("api_registration") {
+  sources = oblada_extensions_api_schema_sources
+  impl_dir = "//oblada/browser/extensions/api"
+  bundle_name = "Oblada"
+  root_namespace = oblada_extensions_api_root_namespace
+  deps = [
+    "//extensions/browser",
+    "//oblada/common/extensions/api",
+  ]
+}

@@ -1,0 +1,124 @@
+diff --git a/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.cc b/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.cc
+index 63ca8403e9..24435886b1 100644
+--- a/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.cc
++++ b/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.cc
+@@ -59,6 +59,8 @@
+ #include "components/tabs/public/split_tab_data.h"
+ #include "components/tabs/public/tab_group.h"
+ #include "components/tabs/public/tab_interface.h"
++#include "chrome/browser/headless/headless_mode_util.h"  // Oblada
++#include "oblada/browser/ui/drag_ghost.h"  // Oblada
+ #include "components/viz/common/frame_sinks/copy_output_result.h"
+ #include "content/public/browser/render_widget_host_view.h"
+ #include "content/public/browser/web_contents.h"
+@@ -534,6 +536,12 @@ TabDragController::Liveness TabDragController::Init(
+         source_view->height());
+   }
+   ref->initial_selection_model_ = std::move(initial_selection_model);
++  // Oblada: see GetInitiallyActiveTab().
++  if (const std::optional<size_t> active = ref->initial_selection_model_.active();
++      active && tab_strip_model->ContainsIndex(static_cast<int>(*active))) {
++    ref->initially_active_tab_ =
++        tab_strip_model->GetTabAtIndex(static_cast<int>(*active))->GetWeakPtr();
++  }
+ 
+   ref->window_finder_ = std::make_unique<WindowFinder>();
+ 
+@@ -774,6 +782,7 @@ TabDragController::Liveness TabDragController::Drag(
+ 
+ void TabDragController::EndDrag(EndDragReason reason) {
+   TRACE_EVENT0("views", "TabDragController::EndDrag");
++  oblada_drag_ghost_.reset();  // Oblada
+   presentation_time_recorder_.reset();
+ 
+   if (!active()) {
+@@ -876,6 +885,15 @@ const TabDragContext* TabDragController::GetAttachedContext() const {
+   return attached_context();
+ }
+ 
++tabs::TabInterface* TabDragTarget::DragController::GetInitiallyActiveTab()
++    const {
++  return nullptr;
++}
++
++tabs::TabInterface* TabDragController::GetInitiallyActiveTab() const {
++  return initially_active_tab_.get();
++}
++
+ ///////////////////////////////////////////////////////////////////////////////
+ // TabDragController, private:
+ 
+@@ -1017,6 +1035,33 @@ TabDragController::Liveness TabDragController::ContinueDragging(
+     }
+   }
+ 
++  // Oblada: Zen-like, tabs dragged out of the sidebar over the page (e.g. to put
++  // one next to it, see MultiContentsViewDropTargetController) stay in the
++  // window rather than tearing off into one of their own, until they leave it.
++  bool over_page = false;
++  if (!target_context && current_state_ == DragState::kDraggingTabs &&
++      attached_context_->GetWidget() &&
++      attached_context_->GetWidget()
++          ->GetTopLevelWidget()
++          ->GetWindowBoundsInScreen()
++          .Contains(point_in_screen)) {
++    target_context = attached_context_;
++    over_page = true;
++  }
++  // There, what's dragged follows the pointer as a ghost of the tab.
++  if (over_page && drag_data_.source_dragged_contents()) {
++    if (!oblada_drag_ghost_) {
++      oblada_drag_ghost_ = std::make_unique<oblada::DragGhost>(
++          attached_context_->GetWidget()->GetTopLevelWidget());
++    }
++    oblada_drag_ghost_->Show(
++        drag_data_.source_dragged_contents(), point_in_screen,
++        gfx::PointF(drag_data_.mouse_offset_to_size_ratios.x(),
++                    drag_data_.mouse_offset_to_size_ratios.y()));
++  } else if (oblada_drag_ghost_) {
++    oblada_drag_ghost_->Hide();
++  }
++
+   if (target_context != attached_context_) {
+     is_dragging_new_browser_ = false;
+     did_restore_window_ = false;
+@@ -1347,6 +1392,16 @@ TabDragController::GetDragTargetForPoint(gfx::Point point_in_screen) {
+   if (state == Liveness::kDeleted) {
+     return std::tuple(Liveness::kDeleted, nullptr, nullptr);
+   }
++  // Oblada: tabs dragged within their window (see ContinueDragging()) are over
++  // it, even where the window finder doesn't tell (e.g. without a screen).
++  if (!local_window && current_state_ == DragState::kDraggingTabs &&
++      attached_context_ && attached_context_->GetWidget()) {
++    views::Widget* const window =
++        attached_context_->GetWidget()->GetTopLevelWidget();
++    if (window->GetWindowBoundsInScreen().Contains(point_in_screen)) {
++      local_window = window->GetNativeWindow();
++    }
++  }
+ 
+   if (local_window && CanAttachTo(local_window)) {
+     BrowserView* browser_view =
+@@ -2846,6 +2901,11 @@ BrowserWindowInterface* TabDragController::CreateBrowserForDrag(
+ }
+ 
+ gfx::Point TabDragController::GetCursorScreenPoint() {
++  // Oblada: headless, the system's pointer isn't this window's (e.g. in tests,
++  // the user's own mouse): where the drag is is where its events were.
++  if (headless::IsHeadlessMode()) {
++    return last_point_in_screen_;
++  }
+ #if BUILDFLAG(IS_CHROMEOS)
+   views::Widget* widget = GetAttachedBrowserWidget();
+   DCHECK(widget);
+@@ -2882,6 +2942,10 @@ TabDragController::Liveness TabDragController::GetLocalProcessWindow(
+     bool exclude_dragged_view,
+     gfx::NativeWindow* window) {
+   std::set<gfx::NativeWindow> exclude;
++  // Oblada: the ghost of the tab under the pointer isn't a window to drop it on.
++  if (oblada_drag_ghost_) {
++    exclude.insert(oblada_drag_ghost_->GetNativeWindow());
++  }
+   if (exclude_dragged_view) {
+     gfx::NativeWindow dragged_window =
+         attached_context_->GetWidget()->GetNativeWindow();

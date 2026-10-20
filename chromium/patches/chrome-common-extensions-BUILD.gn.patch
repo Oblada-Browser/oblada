@@ -1,0 +1,12 @@
+diff --git a/chrome/common/extensions/BUILD.gn b/chrome/common/extensions/BUILD.gn
+index 6563cba8f6..bfd588efe5 100644
+--- a/chrome/common/extensions/BUILD.gn
++++ b/chrome/common/extensions/BUILD.gn
+@@ -86,6 +86,7 @@ source_set("extensions") {
+     "//extensions/common:core_api_provider",
+     "//extensions/common:mojom",
+     "//extensions/strings",
++    "//oblada/common/extensions/api",  # Oblada
+     "//ui/gfx/geometry",
+     "//ui/message_center/public/cpp",
+     "//url",

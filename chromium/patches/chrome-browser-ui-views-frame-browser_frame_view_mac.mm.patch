@@ -1,0 +1,15 @@
+diff --git a/chrome/browser/ui/views/frame/browser_frame_view_mac.mm b/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
+index 8354a9179e..03cab34de3 100644
+--- a/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
++++ b/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
+@@ -237,6 +237,10 @@ FullscreenToolbarStyle GetUserPreferredToolbarStyle(bool always_show) {
+     params.leading_exclusion.horizontal_padding = 0;
+     params.trailing_exclusion.content.set_width(0);
+     params.trailing_exclusion.horizontal_padding = 0;
++    // Oblada: the sidebar and the page move down out of the way of the menu bar
++    // and window controls when they slide in at the top, as in Safari.
++    params.visual_client_area.Inset(
++        gfx::Insets::TLBR(TopUIFullscreenYOffset(), 0, 0, 0));
+   }
+   return params;
+ }

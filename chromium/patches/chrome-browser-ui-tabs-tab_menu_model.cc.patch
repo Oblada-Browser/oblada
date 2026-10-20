@@ -1,0 +1,184 @@
+diff --git a/chrome/browser/ui/tabs/tab_menu_model.cc b/chrome/browser/ui/tabs/tab_menu_model.cc
+index 97c6ded1ac..42a8bd18ef 100644
+--- a/chrome/browser/ui/tabs/tab_menu_model.cc
++++ b/chrome/browser/ui/tabs/tab_menu_model.cc
+@@ -4,6 +4,11 @@
+ 
+ #include "chrome/browser/ui/tabs/tab_menu_model.h"
+ 
++#include "oblada/browser/containers/containers.h"  // Oblada
++#include "oblada/browser/containers/containers_menu_model.h"  // Oblada
++#include "oblada/browser/l10n.h"  // Oblada
++#include "oblada/browser/workspaces/workspace_switcher.h"  // Oblada
++
+ #include <memory>
+ #include <optional>
+ 
+@@ -408,59 +413,80 @@ void TabMenuModel::Build(int index) {
+     SetElementIdentifierAt(GetItemCount() - 1, kArrangeSplitTabsMenuItem);
+   }
+ 
+-  if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing) &&
+-      tab_strip_->SupportsTabGroups()) {
+-    std::optional<tab_groups::TabGroupId> group_id =
+-        tab_strip_->GetTabGroupForTab(index);
+-    if (group_id.has_value()) {
+-      const bool is_focused = tab_strip_->GetFocusedGroup() == group_id;
+-      AddItemWithStringId(TabStripModel::CommandToggleFocusGroup,
+-                          is_focused ? IDS_TAB_CXMENU_UNFOCUS_TAB_GROUP
+-                                     : IDS_TAB_CXMENU_FOCUS_TAB_GROUP);
+-      SetElementIdentifierAt(GetItemCount() - 1, kFocusTabGroupMenuItem);
++  // Oblada: tab groups are workspaces (oblada/browser/workspaces/), which tabs
++  // move between.
++  std::vector<tabs::TabInterface*> oblada_unpinned_tabs;
++  for (int selection : indices) {
++    if (tabs::TabInterface* tab = tab_strip_->GetTabAtIndex(selection);
++        tab && !tab->IsPinned()) {
++      oblada_unpinned_tabs.push_back(tab);
+     }
+   }
+-
+-  if (ExistingTabGroupSubMenuModel::ShouldShowSubmenu(
+-          tab_strip_, index, tab_menu_model_delegate_)) {
+-    // Create submenu with existing groups
+-    add_to_existing_group_submenu_ =
+-        std::make_unique<ExistingTabGroupSubMenuModel>(
+-            delegate(), tab_menu_model_delegate_, tab_strip_, index);
+-    AddSubMenu(TabStripModel::CommandAddToExistingGroup,
+-               l10n_util::GetPluralStringFUTF16(IDS_TAB_CXMENU_ADD_TAB_TO_GROUP,
+-                                                num_tabs),
+-               add_to_existing_group_submenu_.get());
+-    if (features::IsMenuSimplificationEnabled()) {
+-      SetIconForCommandId(
+-          TabStripModel::CommandAddToExistingGroup,
+-          ui::ImageModel::FromVectorIcon(
+-              features::IsRoundedIconsEnabled()
+-                  ? kGridViewIcon
+-                  : kSavedTabGroupBarEverythingOldIcon,
+-              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize));
++  if (tab_strip_->SupportsTabGroups() && tab_strip_->GetFocusedGroup()) {
++    if (!oblada_unpinned_tabs.empty()) {
++      oblada_move_to_workspace_submenu_ =
++          oblada::workspaces::CreateMoveToWorkspaceMenu(
++              tab_strip_->delegate()->GetBrowserWindowInterface(),
++              oblada_unpinned_tabs);
++      AddSubMenu(oblada::workspaces::kMoveToWorkspaceMenuId,
++                 oblada::L10n("workspaces.move_to"),
++                 oblada_move_to_workspace_submenu_.get());
+     }
+   } else {
+-    AddItem(TabStripModel::CommandAddToNewGroup,
+-            l10n_util::GetPluralStringFUTF16(
+-                IDS_TAB_CXMENU_ADD_TAB_TO_NEW_GROUP, num_tabs));
+-    SetElementIdentifierAt(GetItemCount() - 1, kAddToNewGroupItemIdentifier);
+-    if (features::IsMenuSimplificationEnabled()) {
+-      SetIconForCommandId(
+-          TabStripModel::CommandAddToNewGroup,
+-          ui::ImageModel::FromVectorIcon(
+-              features::IsRoundedIconsEnabled()
+-                  ? kGridViewIcon
+-                  : kSavedTabGroupBarEverythingOldIcon,
+-              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize));
++    if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing) &&
++        tab_strip_->SupportsTabGroups()) {
++      std::optional<tab_groups::TabGroupId> group_id =
++          tab_strip_->GetTabGroupForTab(index);
++      if (group_id.has_value()) {
++        const bool is_focused = tab_strip_->GetFocusedGroup() == group_id;
++        AddItemWithStringId(TabStripModel::CommandToggleFocusGroup,
++                            is_focused ? IDS_TAB_CXMENU_UNFOCUS_TAB_GROUP
++                                       : IDS_TAB_CXMENU_FOCUS_TAB_GROUP);
++        SetElementIdentifierAt(GetItemCount() - 1, kFocusTabGroupMenuItem);
++      }
+     }
+-  }
+ 
+-  for (const auto& selection : indices) {
+-    if (tab_strip_->GetTabGroupForTab(selection).has_value()) {
+-      AddItemWithStringId(TabStripModel::CommandRemoveFromGroup,
+-                          IDS_TAB_CXMENU_REMOVE_TAB_FROM_GROUP);
+-      break;
++    if (ExistingTabGroupSubMenuModel::ShouldShowSubmenu(
++            tab_strip_, index, tab_menu_model_delegate_)) {
++      // Create submenu with existing groups
++      add_to_existing_group_submenu_ =
++          std::make_unique<ExistingTabGroupSubMenuModel>(
++              delegate(), tab_menu_model_delegate_, tab_strip_, index);
++      AddSubMenu(TabStripModel::CommandAddToExistingGroup,
++                 l10n_util::GetPluralStringFUTF16(IDS_TAB_CXMENU_ADD_TAB_TO_GROUP,
++                                                  num_tabs),
++                 add_to_existing_group_submenu_.get());
++      if (features::IsMenuSimplificationEnabled()) {
++        SetIconForCommandId(
++            TabStripModel::CommandAddToExistingGroup,
++            ui::ImageModel::FromVectorIcon(
++                features::IsRoundedIconsEnabled()
++                    ? kGridViewIcon
++                    : kSavedTabGroupBarEverythingOldIcon,
++                ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize));
++      }
++    } else {
++      AddItem(TabStripModel::CommandAddToNewGroup,
++              l10n_util::GetPluralStringFUTF16(
++                  IDS_TAB_CXMENU_ADD_TAB_TO_NEW_GROUP, num_tabs));
++      SetElementIdentifierAt(GetItemCount() - 1, kAddToNewGroupItemIdentifier);
++      if (features::IsMenuSimplificationEnabled()) {
++        SetIconForCommandId(
++            TabStripModel::CommandAddToNewGroup,
++            ui::ImageModel::FromVectorIcon(
++                features::IsRoundedIconsEnabled()
++                    ? kGridViewIcon
++                    : kSavedTabGroupBarEverythingOldIcon,
++                ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize));
++      }
++    }
++
++    for (const auto& selection : indices) {
++      if (tab_strip_->GetTabGroupForTab(selection).has_value()) {
++        AddItemWithStringId(TabStripModel::CommandRemoveFromGroup,
++                            IDS_TAB_CXMENU_REMOVE_TAB_FROM_GROUP);
++        break;
++      }
+     }
+   }
+ 
+@@ -501,6 +527,18 @@ void TabMenuModel::Build(int index) {
+                       IDS_TAB_CXMENU_DUPLICATE);
+   SetElementIdentifierAt(GetItemCount() - 1, kDuplicateMenuItem);
+ 
++  // Oblada: move a web page to another container.
++  if (content::WebContents* contents = tab_strip_->GetWebContentsAt(index);
++      num_tabs == 1 && contents &&
++      contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
++    oblada_reopen_in_container_submenu_ =
++        oblada::containers::ContainersMenuModel::ForReopen(
++            tab_strip_->delegate()->GetBrowserWindowInterface(), contents);
++    AddSubMenu(oblada::containers::kReopenInContainerMenuId,
++               oblada::L10n("containers.reopen"),
++               oblada_reopen_in_container_submenu_.get());
++  }
++
+   bool will_pin = tab_strip_->WillContextMenuPin(index);
+   AddItemWithStringId(
+       TabStripModel::CommandTogglePinned,
+@@ -585,7 +623,8 @@ void TabMenuModel::Build(int index) {
+     }
+   }
+ 
+-  if (controller) {
++  // Oblada: tabs are always vertical, so there is nothing to switch to.
++  if (controller && !controller->ShouldDisplayVerticalTabs()) {
+     AddSeparator(ui::NORMAL_SEPARATOR);
+     const int switch_to_horizontal_id =
+ #if BUILDFLAG(IS_MAC)
+@@ -684,6 +723,10 @@ bool TabMenuModel::IsItemCheckedAt(size_t index) const {
+ // Overridden to check if the enabled status of the item
+ // should be evaluated by the extension matcher instead of the simple model.
+ bool TabMenuModel::IsEnabledAt(size_t index) const {
++  if (GetCommandIdAt(index) == oblada::containers::kReopenInContainerMenuId ||
++      GetCommandIdAt(index) == oblada::workspaces::kMoveToWorkspaceMenuId) {
++    return true;  // Oblada
++  }
+ #if BUILDFLAG(ENABLE_EXTENSIONS)
+   if (auto* matcher = GetMatcherIfExtension(index)) {
+     return matcher->IsCommandIdEnabled(GetCommandIdAt(index));

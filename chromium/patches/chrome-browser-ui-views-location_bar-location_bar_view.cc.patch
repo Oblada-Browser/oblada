@@ -1,0 +1,332 @@
+diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.cc b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+index 9251f8590b..f45f2b382b 100644
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -4,6 +4,16 @@
+ 
+ #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
+ 
++#include "oblada/browser/containers/container_chip.h"  // Oblada
++#include "base/task/sequenced_task_runner.h"  // Oblada
++#include "ui/views/animation/ink_drop.h"  // Oblada
++#include "ui/views/animation/ink_drop_host.h"  // Oblada
++#include "ui/views/bubble/bubble_dialog_delegate_view.h"  // Oblada
++#include "oblada/browser/ui/floating_location_bar.h"  // Oblada
++#include "oblada/browser/ui/sidebar_layout.h"  // Oblada
++#include "ui/gfx/color_utils.h"  // Oblada
++#include "oblada/browser/ui/site_panel.h"  // Oblada
++
+ #include <algorithm>
+ #include <memory>
+ #include <ranges>
+@@ -60,6 +70,7 @@
+ #include "chrome/browser/ui/views/chrome_layout_provider.h"
+ #include "chrome/browser/ui/views/chrome_typography.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/views/frame/multi_contents_view.h"  // Oblada
+ #include "chrome/browser/ui/views/location_bar/content_setting_image_view.h"
+ #include "chrome/browser/ui/views/location_bar/location_bar_actions.h"
+ #include "chrome/browser/ui/views/location_bar/location_bar_layout.h"
+@@ -172,6 +183,28 @@
+ 
+ namespace {
+ 
++// Oblada: puts `view` out of sight in a quiet address bar (see
++// LocationBarView::IsObladaQuiet()), leaving nothing of it drawn: e.g. a hover
++// highlight, which is on a layer of its own and would stay where the view was.
++void HideObladaQuietView(views::View* view) {
++  if (!view->bounds().IsEmpty()) {
++    std::vector<views::View*> pending = {view};
++    while (!pending.empty()) {
++      views::View* current = pending.back();
++      pending.pop_back();
++      if (views::InkDropHost* ink_drop = views::InkDrop::Get(current);
++          ink_drop && ink_drop->HasInkDrop()) {
++        ink_drop->GetInkDrop()->SetHovered(false);
++        ink_drop->GetInkDrop()->SnapToHidden();
++      }
++      for (views::View* child : current->children()) {
++        pending.push_back(child);
++      }
++    }
++  }
++  view->SetBoundsRect(gfx::Rect());
++}
++
+ int IncrementalMinimumWidth(const views::View* view) {
+   return (view && view->GetVisible()) ? view->GetMinimumSize().width() : 0;
+ }
+@@ -233,6 +266,12 @@ LocationBarView::LocationBarView(BrowserWindowInterface* browser,
+             return false;
+           }
+ 
++          // Oblada: none in the sidebar, as in Arc: the address bar floats
++          // over the page while it has the focus.
++          if (v->parent() && oblada::sidebar::ToolbarInset(v->parent()) >= 0) {
++            return false;
++          }
++
+           // Show focus ring when the Omnibox is visibly focused and the popup
+           // is closed.
+           return v->GetOmniboxController()->edit_model()->is_caret_visible() &&
+@@ -511,6 +550,9 @@ void LocationBarView::Init() {
+ 
+   RegisterOmniboxActions(browser_);
+ 
++  oblada::containers::AddContainerChip(this, browser_);  // Oblada
++  oblada::site_panel::AddSitePanelButton(this, browser_);  // Oblada
++
+   is_initialized_ = true;
+ }
+ 
+@@ -666,6 +708,11 @@ void LocationBarView::OnDidChangeFocus(views::View* before, views::View* now) {
+   if (Contains(before) != Contains(now)) {
+     NotifyFocusChanged();
+   }
++  // Oblada: e.g. a bubble of its buttons closing gives the window its focus back
++  // (see IsObladaQuiet()); once it's gone.
++  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE, base::BindOnce(&LocationBarView::UpdateObladaQuiet,
++                                weak_factory_.GetWeakPtr()));
+ 
+   // TODO(crbug.com/376283383): Remove things below once Lens Overlay is
+   // migrated to the new page actions design.
+@@ -822,8 +869,15 @@ void LocationBarView::Layout(PassKey) {
+   // to position our child views in this case, because other things may be
+   // positioned relative to them (e.g. the "bookmark added" bubble if the user
+   // hits ctrl-d).
+-  const int vertical_padding = GetLayoutConstant(
+-      LayoutConstant::kLocationBarPageInfoIconVerticalPadding);
++  const int vertical_padding =
++      GetLayoutConstant(
++          LayoutConstant::kLocationBarPageInfoIconVerticalPadding) +
++      // Oblada: floating, it's taller, its contents centered.
++      (oblada::sidebar::IsLocationBarFloating(this)
++           ? std::max(0, height() - GetLayoutConstant(
++                                        LayoutConstant::kLocationBarHeight)) /
++                 2
++           : 0);
+   const int trailing_decorations_edge_padding = GetLayoutConstant(
+       LayoutConstant::kLocationBarTrailingDecorationEdgePadding);
+ 
+@@ -853,12 +907,19 @@ void LocationBarView::Layout(PassKey) {
+     }
+   }
+ 
++  oblada_quiet_ = IsObladaQuiet();
++  const security_state::SecurityLevel oblada_security =
++      GetLocationBarModel()->GetSecurityLevel();
+   if (ShouldShowKeywordBubble()) {
+     location_icon_view_->SetVisible(false);
+     leading_decorations.AddDecoration(
+         vertical_padding, location_height, false, kLeadingDecorationMaxFraction,
+         /*intra_item_padding=*/0, icon_left, selected_keyword_view_);
+     selected_keyword_view_->SetKeyword(keyword);
++  } else if (oblada_quiet_ && (oblada_security == security_state::SECURE ||
++                                oblada_security == security_state::NONE)) {
++    // Oblada: quiet, no icon for a site without warnings.
++    HideObladaQuietView(location_icon_view_);
+   } else if (location_icon_view_->GetShowText() &&
+              !ShouldChipOverrideLocationIcon()) {
+     location_icon_view_->SetVisible(true);
+@@ -883,7 +944,26 @@ void LocationBarView::Layout(PassKey) {
+     }
+   };
+ 
+-  if (features::IsPageActionsElevatedToolbarEnabled()) {
++  // Oblada: Zen's site panel button at the very end, then the tab's container.
++  // Quiet, neither it nor the page's actions.
++  if (views::View* site_panel = oblada::site_panel::SitePanelButtonOf(this)) {
++    if (oblada_quiet_) {
++      HideObladaQuietView(site_panel);
++    } else {
++      add_trailing_decoration(site_panel, /*intra_item_padding=*/0,
++                              /*edge_padding=*/trailing_decorations_edge_padding);
++    }
++  }
++  if (views::View* container_chip = oblada::containers::ContainerChipOf(this)) {
++    add_trailing_decoration(container_chip, /*intra_item_padding=*/0,
++                            /*edge_padding=*/trailing_decorations_edge_padding);
++  }
++
++  if (oblada_quiet_) {
++    if (page_action_container_) {
++      HideObladaQuietView(page_action_container_);
++    }
++  } else if (features::IsPageActionsElevatedToolbarEnabled()) {
+     if (page_action_container_ && page_action_container_->GetVisible()) {
+       const bool is_capsule_active = page_action_container_->IsCapsuleActive();
+       const int capsule_height =
+@@ -1054,6 +1134,7 @@ void LocationBarView::Update(WebContents* contents) {
+ 
+   RefreshContentSettingViews();
+   RefreshPageActionIconViews();
++  oblada::containers::UpdateContainerChip(this, GetWebContents());  // Oblada
+   location_icon_view_->Update(
+       /*suppress_animations=*/contents, GetOmniboxController()->IsPopupOpen());
+ 
+@@ -1388,6 +1469,14 @@ void LocationBarView::RefreshBackground() {
+   SkColor hovered =
+       color_provider->GetColor(kColorLocationBarBackgroundHovered);
+ 
++  // Oblada: in the sidebar, Zen's veil over it (and its glass) rather than a solid
++  // field, until it's focused and matches its suggestions.
++  if (parent() && oblada::sidebar::ToolbarInset(parent()) >= 0) {
++    const SkColor text = color_provider->GetColor(kColorOmniboxText);
++    const bool dark_theme = !color_utils::IsDark(text);
++    normal = dark_theme ? SkColorSetA(text, 0x16) : SkColorSetA(SK_ColorWHITE, 0x99);
++    hovered = dark_theme ? SkColorSetA(text, 0x22) : SkColorSetA(SK_ColorWHITE, 0xCC);
++  }
+   background_color_ = gfx::Tween::ColorValueBetween(opacity, normal, hovered);
+   if (is_caret_visible) {
+     // Match the background color to the popup if the Omnibox is visibly
+@@ -1419,6 +1508,25 @@ void LocationBarView::RefreshBackground() {
+ 
+   if (is_popup_mode_) {
+     SetBackground(views::CreateSolidBackground(background_color_));
++  } else if (parent() && oblada::sidebar::ToolbarInset(parent()) >= 0) {
++    // Oblada: in the sidebar, a rounded rectangle as Arc's rather than a pill;
++    // floating over the page, solid, as its suggestions.
++    const bool floating = oblada::sidebar::IsLocationBarFloating(this);
++    const int radius =
++        floating ? oblada::sidebar::kFloatingLocationBarCornerRadius
++                 : oblada::sidebar::kLocationBarCornerRadius;
++    if (floating) {
++      background_color_ =
++          color_provider->GetColor(kColorOmniboxResultsBackground);
++    }
++    SetBackground(views::CreateBackgroundFromPainter(
++        border_color == SK_ColorTRANSPARENT
++            ? views::Painter::CreateSolidRoundRectPainter(background_color_,
++                                                          radius)
++            : views::Painter::CreateRoundRectWith1PxBorderPainter(
++                  background_color_, border_color, radius,
++                  SkBlendMode::kSrcOver, /*antialias=*/true,
++                  /*should_border_scale=*/true)));
+   } else {
+     SetBackground(CreateRoundRectBackground(
+         background_color_, border_color, size(),
+@@ -1428,7 +1536,11 @@ void LocationBarView::RefreshBackground() {
+ 
+   // Keep the views::Textfield in sync. It needs an opaque background to
+   // correctly enable subpixel AA.
+-  omnibox_view_->SetBackgroundColor(background_color_);
++  // Oblada: a see-through one (the sidebar's veil) would show twice behind the
++  // text: none then.
++  omnibox_view_->SetBackgroundColor(
++      SkColorGetA(background_color_) == SK_AlphaOPAQUE ? background_color_
++                                                        : SK_ColorTRANSPARENT);
+ 
+   // The divider between indicators and request chips should have the same color
+   // as the omnibox.
+@@ -2040,7 +2152,9 @@ void LocationBarView::OnOmniboxFocused() {
+   // Only show hover animation in unfocused steady state.  Since focusing
+   // the omnibox is intentional, snapping is better than transitioning here.
+   hover_animation_.Reset();
++  UpdateObladaFloating();  // Oblada
+   RefreshBackground();
++  UpdateObladaQuiet();  // Oblada
+ 
+   // The AI mode page action should only be visible when the omnibox
+   // is focused, so if there is a change in focus, refresh the icon.
+@@ -2060,7 +2174,18 @@ void LocationBarView::OnOmniboxBlurred() {
+   if (views::FocusRing::Get(this)) {
+     views::FocusRing::Get(this)->Refresh();
+   }
++  // Oblada: the window losing the focus (e.g. to the bubble of one of the
++  // floating bar's buttons) only stores the bar's, to give it back later; which
++  // the focus manager knows once it's done.
++  if (GetWidget() && !GetWidget()->IsActive()) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(&LocationBarView::UpdateObladaFloating,
++                                  weak_factory_.GetWeakPtr()));
++  } else {
++    UpdateObladaFloating();
++  }
+   RefreshBackground();
++  UpdateObladaQuiet();  // Oblada
+ 
+   // The AI mode page action should only be visible when the omnibox
+   // is focused, so if there is a change in focus, refresh the icon.
+@@ -2083,6 +2208,81 @@ void LocationBarView::OnOmniboxHovered(bool is_hovering) {
+   } else {
+     hover_animation_.Hide();
+   }
++  UpdateObladaQuiet();
++}
++
++bool LocationBarView::IsObladaQuiet() const {
++  if (is_popup_mode_ || !parent() ||
++      oblada::sidebar::ToolbarInset(parent()) < 0) {
++    return false;
++  }
++  // Nor while it floats over the page, or a bubble of one of its buttons is
++  // open (which would lose its anchor).
++  if (oblada::sidebar::IsLocationBarFloating(this) || HasObladaBubble()) {
++    return false;
++  }
++  return !IsMouseHovered() && !omnibox_view_->HasFocus() &&
++         !GetOmniboxController()->edit_model()->user_input_in_progress();
++}
++
++bool LocationBarView::HasObladaBubble() const {
++  const views::Widget* widget = GetWidget();
++  if (!widget) {
++    return false;
++  }
++  for (const views::Widget* owned :
++       views::Widget::GetAllOwnedWidgets(widget->GetNativeView())) {
++    const views::BubbleDialogDelegate* bubble =
++        owned->IsVisible() && !owned->IsClosed() && owned->widget_delegate()
++            ? owned->widget_delegate()->AsBubbleDialogDelegate()
++            : nullptr;
++    if (bubble && bubble->GetAnchorView() &&
++        Contains(bubble->GetAnchorView())) {
++      return true;
++    }
++  }
++  return false;
++}
++
++void LocationBarView::UpdateObladaQuiet() {
++  if (IsObladaQuiet() != oblada_quiet_) {
++    InvalidateLayout();
++  }
++}
++
++void LocationBarView::UpdateObladaFloating() {
++  if (is_popup_mode_ || !parent()) {
++    return;
++  }
++  BrowserView* browser_view =
++      browser_ ? BrowserView::GetBrowserViewForBrowser(browser_) : nullptr;
++  // Focused, or about to be again: the window's focus is elsewhere (e.g. in a
++  // bubble of the bar's) and comes back to it.
++  views::FocusManager* focus_manager = GetFocusManager();
++  const bool focused =
++      omnibox_view_->HasFocus() ||
++      (GetWidget() && !GetWidget()->IsActive() && focus_manager &&
++       focus_manager->GetStoredFocusView() == omnibox_view_);
++  const bool floating = browser_view && browser_view->multi_contents_view() &&
++                        oblada::sidebar::ToolbarInset(parent()) >= 0 &&
++                        focused;
++  if (floating == oblada::sidebar::IsLocationBarFloating(this)) {
++    return;
++  }
++  oblada::sidebar::SetLocationBarFloating(
++      this, browser_view ? browser_view->multi_contents_view() : nullptr,
++      floating, GetLocationBarModel()->GetURLForDisplay());
++  // Larger text while floating.
++  const gfx::FontList font_list =
++      views::TypographyProvider::Get()
++          .GetFont(CONTEXT_OMNIBOX_PRIMARY, views::style::STYLE_PRIMARY)
++          .DeriveWithSizeDelta(
++              oblada::sidebar::IsLocationBarFloating(this)
++                  ? oblada::sidebar::kFloatingLocationBarFontDelta
++                  : 0);
++  omnibox_view_->SetFontList(font_list);
++  ime_inline_autocomplete_view_->SetFontList(font_list);
++  omnibox_additional_text_view_->SetFontList(font_list);
+ }
+ 
+ void LocationBarView::OnTouchUiChanged() {

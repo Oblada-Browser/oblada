@@ -1,0 +1,61 @@
+diff --git a/chrome/browser/ui/views/frame/contents_web_view.cc b/chrome/browser/ui/views/frame/contents_web_view.cc
+index 8f29bb4291..f3ce5f38de 100644
+--- a/chrome/browser/ui/views/frame/contents_web_view.cc
++++ b/chrome/browser/ui/views/frame/contents_web_view.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/frame/contents_web_view.h"
++#include "oblada/browser/new_tab/new_tab_ui.h"  // Oblada
+ 
+ #include "base/debug/dump_without_crashing.h"
+ #include "build/build_config.h"
+@@ -156,6 +157,10 @@ void ContentsWebView::SetWebContents(content::WebContents* web_contents) {
+   }
+ 
+   UpdateIsBlockedByModal();
++  // Oblada: see-through for some of Oblada's pages (see UpdateBackgroundColor()).
++  if (GetWidget()) {
++    UpdateBackgroundColor();
++  }
+ 
+   if (!status_bubble_) {
+     status_bubble_ = std::make_unique<StatusBubbleViews>(this);
+@@ -199,14 +204,19 @@ void ContentsWebView::UpdateBackgroundColor() {
+     }
+   }
+ 
++  // Oblada: none behind Oblada's pages drawn on the window's own background
++  // (e.g. the New Tab page), which the window shows through.
++  const bool visible =
++      background_visible_ && !oblada::new_tab::IsSeeThrough(web_contents());
++
+   auto* background_layer = layer()->AsSolidColor();
+   background_layer->SetColor(
+-      SkColor4f::FromColor(background_visible_ ? color : SK_ColorTRANSPARENT));
++      SkColor4f::FromColor(visible ? color : SK_ColorTRANSPARENT));
+ 
+   SafeInvoke(web_contents())
+       .Then(&content::WebContents::GetRenderWidgetHostView)
+       .Then(&content::RenderWidgetHostView::SetBackgroundColor,
+-            background_visible_ ? color : SK_ColorTRANSPARENT);
++            visible ? color : SK_ColorTRANSPARENT);
+ }
+ 
+ std::unique_ptr<ui::Layer> ContentsWebView::RecreateLayer() {
+@@ -264,6 +274,15 @@ void ContentsWebView::DestroyClonedLayer() {
+   cloned_layer_tree_.reset();
+ }
+ 
++void ContentsWebView::PrimaryPageChanged(content::Page& page) {
++  WebView::PrimaryPageChanged(page);
++  // Oblada: see-through for some of Oblada's pages, opaque again once they're
++  // left.
++  if (GetWidget()) {
++    UpdateBackgroundColor();
++  }
++}
++
+ void ContentsWebView::RenderViewReady() {
+   // Set the background color to be the theme's ntp background on startup.
+   if (GetWidget()) {

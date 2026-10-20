@@ -1,0 +1,26 @@
+diff --git a/chrome/browser/download/chrome_download_manager_delegate.cc b/chrome/browser/download/chrome_download_manager_delegate.cc
+index 4e9ae04520..426661ce7c 100644
+--- a/chrome/browser/download/chrome_download_manager_delegate.cc
++++ b/chrome/browser/download/chrome_download_manager_delegate.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/download/chrome_download_manager_delegate.h"
+ 
++#include "oblada/browser/firefox_addons/firefox_addons.h"  // Oblada
++
+ #include <algorithm>
+ #include <memory>
+ #include <optional>
+@@ -1153,6 +1155,12 @@ bool ChromeDownloadManagerDelegate::ShouldCompleteDownload(
+ bool ChromeDownloadManagerDelegate::ShouldOpenDownload(
+     DownloadItem* item,
+     content::DownloadOpenDelayedCallback callback) {
++  // Oblada: a Firefox add-on (.xpi) is installed rather than just saved.
++  if (oblada::firefox_addons::IsAddonDownload(profile_, *item)) {
++    oblada::firefox_addons::InstallDownload(profile_, item, std::move(callback));
++    item->UpdateObservers();
++    return false;
++  }
+ #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+   if (extensions::util::IsExtensionDownload(*item) &&
+       !extensions::WebstoreInstaller::GetAssociatedApproval(*item) &&

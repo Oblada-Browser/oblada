@@ -1,0 +1,26 @@
+diff --git a/chrome/browser/ui/window_feature_controller/window_feature_controller.cc b/chrome/browser/ui/window_feature_controller/window_feature_controller.cc
+index ec7bd3ea6c..d23c8dea09 100644
+--- a/chrome/browser/ui/window_feature_controller/window_feature_controller.cc
++++ b/chrome/browser/ui/window_feature_controller/window_feature_controller.cc
+@@ -60,17 +60,13 @@ bool WindowFeatureController::IsTrustedSource() const {
+ 
+ #if BUILDFLAG(IS_MAC)
+ bool WindowFeatureController::UsesImmersiveFullscreenMode() const {
+-  const bool is_pwa = app_controller_ != nullptr;
+-  const bool is_tabbed_window =
+-      CanSupportWindowFeature(WindowFeature::kFeatureTabStrip);
+-  return is_pwa || is_tabbed_window;
++  // Oblada: tabbed windows keep their sidebar, toolbar included, in full screen
++  // rather than moving the toolbar to a pane that slides in from the top.
++  return app_controller_ != nullptr;
+ }
+ 
+ bool WindowFeatureController::UsesImmersiveFullscreenTabbedMode() const {
+-  const bool is_pwa = app_controller_ != nullptr;
+-  const bool is_tabbed_window =
+-      CanSupportWindowFeature(WindowFeature::kFeatureTabStrip);
+-  return is_tabbed_window && !is_pwa;
++  return false;  // Oblada
+ }
+ #endif
+ 

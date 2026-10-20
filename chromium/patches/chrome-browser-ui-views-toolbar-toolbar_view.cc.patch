@@ -1,0 +1,162 @@
+diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.cc b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+index bfc981b7ee..d249dff27d 100644
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -4,6 +4,9 @@
+ 
+ #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
+ 
++#include "oblada/browser/ui/floating_location_bar.h"  // Oblada
++#include "oblada/browser/ui/sidebar_layout.h"  // Oblada
++
+ #include <algorithm>
+ #include <memory>
+ #include <utility>
+@@ -458,10 +461,8 @@ void ToolbarView::Init() {
+         browser_, base::BindRepeating(callback, browser_, IDC_HOME)));
+   }
+ 
+-  if (!features::IsWebUISplitTabsButtonEnabled()) {
+-    split_tabs_ =
+-        AddChildView(std::make_unique<SplitTabsToolbarButton>(browser_));
+-  }
++  // Oblada: no split view button next to back and forward (SplitTabsToolbarButton);
++  // split views are made by dragging a tab onto the page, or from the tab's menu.
+ 
+   if (contextual_tasks::IsContextualTasksUIEnabled() &&
+       contextual_tasks::kShowEntryPoint.Get() ==
+@@ -545,8 +546,9 @@ void ToolbarView::Init() {
+ 
+   // Only show the Battery Saver button when it is not controlled by the OS. On
+   // ChromeOS the battery icon in the shelf shows the same information.
++  // Oblada: nor next to back and forward, which are alone there, as in Zen.
+   if (!performance_manager::user_tuning::IsBatterySaverModeManagedByOS() &&
+-      !features::IsWebUIBatterySaverButtonEnabled()) {
++      !features::IsWebUIBatterySaverButtonEnabled() && false) {
+     battery_saver_button_ =
+         AddChildView(std::make_unique<BatterySaverButton>(browser_));
+   }
+@@ -1390,6 +1392,13 @@ gfx::Size ToolbarView::CalculatePreferredSize(
+                                layout_manager_->interior_margin().height();
+         size.SetToMin({size.width(), max_height});
+       }
++      // Oblada: in the sidebar, a row of buttons and a row for the address bar.
++      if (oblada::sidebar::ToolbarInset(this) >= 0) {
++        size.set_height(
++            GetBackForwardButtonSize().height() +
++            GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN).height() +
++            oblada::sidebar::LocationRowHeight(location_bar_view_));
++      }
+   }
+   size.set_height(size.height() * size_animation_.GetCurrentValue());
+   return size;
+@@ -1457,7 +1466,10 @@ void ToolbarView::Layout(PassKey) {
+     // update it if the visibility changes.
+     const bool was_overflow_button_visible =
+         toolbar_controller_->overflow_button()->GetVisible();
++    // Oblada: no overflow button in the sidebar, which is wide enough for back,
++    // forward and the menu; the rest is in the menu.
+     const bool show_overflow_button =
++        oblada::sidebar::ToolbarInset(this) < 0 &&
+         toolbar_controller_->ShouldShowOverflowButton(size());
+     if (was_overflow_button_visible != show_overflow_button) {
+       views::ManualLayoutUtil(layout_manager_)
+@@ -1472,6 +1484,17 @@ void ToolbarView::Layout(PassKey) {
+   // Call super implementation to ensure layout manager and child layouts
+   // happen.
+   LayoutSuperclass<AccessiblePaneView>(this);
++
++  // Oblada: in the sidebar the address bar has a row of its own (see LayoutCommon),
++  // unless it floats over the page.
++  if (location_bar_view_ && oblada::sidebar::ToolbarInset(this) >= 0) {
++    oblada::sidebar::LayOutLocationBar(this, location_bar_view_);
++    oblada::sidebar::ArrangeButtonRow(this, location_bar_view_);
++    // Out of sight; its popups show from the address bar's extensions button.
++    if (extensions_container_) {
++      extensions_container_->SetBoundsRect(gfx::Rect());
++    }
++  }
+ }
+ 
+ void ToolbarView::OnThemeChanged() {
+@@ -1742,6 +1765,66 @@ void ToolbarView::LayoutCommon() {
+       interior_margin.set_right(0);
+     }
+   }
++  // Oblada: in the sidebar the buttons share their row with the window controls, and
++  // the address bar is left out of it, for a row of its own below (see Layout).
++  const int oblada_sidebar_inset = oblada::sidebar::ToolbarInset(this);
++  if (location_bar_view_) {
++    location_bar_view_->SetProperty(views::kViewIgnoredByLayoutKey,
++                                    oblada_sidebar_inset >= 0);
++  }
++  // Like Zen's, the sidebar has no profile button (the profile is in the app menu):
++  // its room goes to back, forward and reload.
++  if (avatar_) {
++    const bool was_hidden_for_sidebar =
++        avatar_->GetProperty(views::kViewIgnoredByLayoutKey);
++    avatar_->SetProperty(views::kViewIgnoredByLayoutKey,
++                         oblada_sidebar_inset >= 0);
++    if (oblada_sidebar_inset >= 0) {
++      avatar_->SetVisible(false);
++    } else if (was_hidden_for_sidebar) {
++      avatar_->SetVisible(true);
++    }
++  }
++  // Like Zen's, next to the window controls only back and forward: reload is in the
++  // app menu, extensions in the address bar (oblada/browser/ui/site_panel.h).
++  oblada::sidebar::HideInSidebar(reload_, oblada_sidebar_inset >= 0);
++  // Zen's small buttons there, for the sidebar to be as narrow as Zen's: their
++  // icons with less room around them, and no margins between them.
++  for (ToolbarButton* button :
++       {back_.get(), forward_.get(),
++        static_cast<ToolbarButton*>(app_menu_button_.get())}) {
++    if (!button) {
++      continue;
++    }
++    if (oblada_sidebar_inset >= 0) {
++      button->SetLayoutInsets(gfx::Insets(oblada::sidebar::kButtonInset));
++      button->SetProperty(views::kMarginsKey, gfx::Insets());
++    } else {
++      button->SetLayoutInsets(std::nullopt);
++      button->ClearProperty(views::kMarginsKey);
++    }
++  }
++  if (extensions_container_) {
++    extensions_container_->SetProperty(views::kViewIgnoredByLayoutKey,
++                                       oblada_sidebar_inset >= 0);
++    // Out of sight in the sidebar (see Layout), extension buttons included,
++    // whose layers would show anyway.
++    if (!extensions_container_->layer()) {
++      extensions_container_->SetPaintToLayer();
++      extensions_container_->layer()->SetFillsBoundsOpaquely(false);
++    }
++    extensions_container_->layer()->SetMasksToBounds(true);
++  }
++  if (oblada_sidebar_inset >= 0) {
++    interior_margin.set_left(interior_margin.left() + oblada_sidebar_inset);
++    interior_margin.set_bottom(
++        interior_margin.bottom() +
++        oblada::sidebar::LocationRowHeight(location_bar_view_));
++  }
++  // Oblada: away from the window controls, at the end of the row.
++  layout_manager_->SetMainAxisAlignment(oblada_sidebar_inset >= 0
++                                            ? views::LayoutAlignment::kEnd
++                                            : views::LayoutAlignment::kStart);
+   layout_manager_->SetInteriorMargin(interior_margin);
+ 
+   // Extend buttons to the window edge if we're either in a maximized or
+@@ -1778,8 +1861,12 @@ void ToolbarView::LayoutCommon() {
+       ShouldAppMenuApplyFittsLaw(is_maximized_or_fullscreen));
+ 
+   if (toolbar_divider_ && extensions_container_) {
++    // Oblada: no divider in the sidebar's narrow row, where it would push the
++    // forward button into the overflow menu.
+     views::ManualLayoutUtil(layout_manager_)
+-        .SetViewHidden(toolbar_divider_, !extensions_container_->GetVisible());
++        .SetViewHidden(toolbar_divider_,
++                       !extensions_container_->GetVisible() ||
++                           oblada::sidebar::ToolbarInset(this) >= 0);
+   }
+   // Cast button visibility is controlled externally.
+ }

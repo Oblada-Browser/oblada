@@ -1,0 +1,78 @@
+diff --git a/components/url_formatter/url_fixer.cc b/components/url_formatter/url_fixer.cc
+index d5d9a14c8d..ba60d888aa 100644
+--- a/components/url_formatter/url_fixer.cc
++++ b/components/url_formatter/url_fixer.cc
+@@ -38,6 +38,11 @@ namespace {
+ 
+ // Hardcode these constants to avoid dependences on //chrome and //content.
+ const char kChromeUIScheme[] = "chrome";
++// Oblada: oblada:// is how Oblada names Chromium's chrome:// pages; typed oblada:// is fixed up
++// to chrome:// like about: is (the address bar shows chrome:// as oblada://, see
++// url_formatter.cc).
++const char kObladaScheme[] = "oblada";
++const char kObladaDefaultHost[] = "about";  // bare "oblada://" lists every page
+ const char kDevToolsScheme[] = "devtools";
+ const char kChromeUIDefaultHost[] = "version";
+ const char kViewSourceScheme[] = "view-source";
+@@ -445,7 +450,8 @@ std::string SegmentURLInternal(std::string* text, url::Parsed* parts) {
+       (*text)[semicolon] = ':';
+       if (GetValidScheme(*text, &parts->scheme, &scheme) &&
+           (url::IsStandard(scheme) || scheme == url::kAboutScheme ||
+-           scheme == kChromeUIScheme || scheme == url::kFileScheme)) {
++           scheme == kChromeUIScheme || scheme == kObladaScheme ||
++           scheme == url::kFileScheme)) {
+         found_scheme = true;
+       } else {
+         (*text)[semicolon] = ';';
+@@ -461,7 +467,8 @@ std::string SegmentURLInternal(std::string* text, url::Parsed* parts) {
+   // Proceed with about, chrome, and devtools schemes,
+   // but not file or nonstandard schemes.
+   if ((scheme != url::kAboutScheme) && (scheme != kChromeUIScheme) &&
+-      (scheme != kDevToolsScheme) && !url::IsStandard(scheme)) {
++      (scheme != kObladaScheme) && (scheme != kDevToolsScheme) &&
++      !url::IsStandard(scheme)) {
+     return scheme;
+   }
+ 
+@@ -613,12 +620,14 @@ GURL FixupURLInternal(const std::string& text,
+   }
+ 
+   // For some schemes whose layouts we understand, we rebuild the URL.
+-  bool chrome_url =
+-      (scheme == url::kAboutScheme) || (scheme == kChromeUIScheme);
++  bool chrome_url = (scheme == url::kAboutScheme) ||
++                    (scheme == kChromeUIScheme) || (scheme == kObladaScheme);
+   bool devtools_url = (scheme == kDevToolsScheme);
+   if (chrome_url || devtools_url || url::IsStandard(scheme)) {
+     // Replace the about: scheme with the chrome: scheme.
+-    std::string url(scheme == url::kAboutScheme ? kChromeUIScheme : scheme);
++    std::string url(scheme == url::kAboutScheme || scheme == kObladaScheme
++                        ? kChromeUIScheme
++                        : scheme);
+     url.append(url::kStandardSchemeSeparator);
+ 
+     // We need to check whether the |username| is valid because it is our
+@@ -635,7 +644,7 @@ GURL FixupURLInternal(const std::string& text,
+                  desired_tld, &url);
+     }
+     if (chrome_url && !parts.host.is_valid()) {
+-      url.append(kChromeUIDefaultHost);
++      url.append(scheme == kObladaScheme ? kObladaDefaultHost : kChromeUIDefaultHost);
+     }
+     FixupPort(trimmed, parts.port, &url);
+     FixupPath(trimmed, parts.path, &url);
+@@ -739,9 +748,11 @@ void OffsetComponent(int offset, url::Component* part) {
+ 
+ bool IsEquivalentScheme(const std::string& scheme1,
+                         const std::string& scheme2) {
+-  return scheme1 == scheme2 ||
+-         (scheme1 == url::kAboutScheme && scheme2 == kChromeUIScheme) ||
+-         (scheme1 == kChromeUIScheme && scheme2 == url::kAboutScheme);
++  auto is_chrome = [](const std::string& scheme) {
++    return scheme == url::kAboutScheme || scheme == kChromeUIScheme ||
++           scheme == kObladaScheme;
++  };
++  return scheme1 == scheme2 || (is_chrome(scheme1) && is_chrome(scheme2));
+ }
+ 
+ }  // namespace url_formatter

@@ -1,0 +1,106 @@
+# Oblada's own browser code. It is compiled as part of //chrome/browser/ui:ui (see the patch
+# to chrome/browser/ui/BUILD.gn) rather than as a target of its own: it uses Browser, tabs
+# and views like the rest of that target does, and a separate target depending on it
+# would be a dependency cycle.
+oblada_ui_sources = [
+  "//oblada/browser/containers/container_chip.cc",
+  "//oblada/browser/containers/container_chip.h",
+  "//oblada/browser/containers/containers.cc",
+  "//oblada/browser/containers/containers.h",
+  "//oblada/browser/containers/containers_menu_model.cc",
+  "//oblada/browser/containers/containers_menu_model.h",
+  "//oblada/browser/containers/containers_ui.cc",
+  "//oblada/browser/containers/containers_ui.h",
+  "//oblada/browser/debug/window_snapshots.cc",
+  "//oblada/browser/debug/window_snapshots.h",
+  "//oblada/browser/extensions/api/contextual_identities/contextual_identities_api.cc",
+  "//oblada/browser/extensions/api/contextual_identities/contextual_identities_api.h",
+  "//oblada/browser/firefox_addons/addon_updates.cc",
+  "//oblada/browser/firefox_addons/addon_updates.h",
+  "//oblada/browser/firefox_addons/compat_script.h",
+  "//oblada/browser/firefox_addons/cookie_store_ids.cc",
+  "//oblada/browser/firefox_addons/cookie_store_ids.h",
+  "//oblada/browser/firefox_addons/firefox_addons.cc",
+  "//oblada/browser/firefox_addons/firefox_addons.h",
+  "//oblada/browser/firefox_addons/xpi_conversion.cc",
+  "//oblada/browser/firefox_addons/xpi_conversion.h",
+  "//oblada/browser/import/app_icon.h",
+  "//oblada/browser/import/chromium_importer.cc",
+  "//oblada/browser/import/chromium_importer.h",
+  "//oblada/browser/import/firefox_containers.cc",
+  "//oblada/browser/import/firefox_containers.h",
+  "//oblada/browser/import/host_import.cc",
+  "//oblada/browser/import/host_import.h",
+  "//oblada/browser/import/import_handler.cc",
+  "//oblada/browser/import/import_handler.h",
+  "//oblada/browser/import/import_sources.cc",
+  "//oblada/browser/import/import_sources.h",
+  "//oblada/browser/import/password_decryptor.cc",
+  "//oblada/browser/import/password_decryptor.h",
+  "//oblada/browser/import/safari_import.cc",
+  "//oblada/browser/import/safari_import.h",
+  "//oblada/browser/l10n.cc",
+  "//oblada/browser/l10n.h",
+  "//oblada/browser/new_tab/new_tab_ui.cc",
+  "//oblada/browser/new_tab/new_tab_ui.h",
+  "//oblada/browser/oblada_browser_main_extra_parts.cc",
+  "//oblada/browser/oblada_browser_main_extra_parts.h",
+  "//oblada/browser/peek/peek.cc",
+  "//oblada/browser/peek/peek.h",
+  "//oblada/browser/prefs.cc",
+  "//oblada/browser/prefs.h",
+  "//oblada/browser/ui/drag_ghost.cc",
+  "//oblada/browser/ui/drag_ghost.h",
+  "//oblada/browser/ui/floating_location_bar.cc",
+  "//oblada/browser/ui/floating_location_bar.h",
+  "//oblada/browser/ui/icons.cc",
+  "//oblada/browser/ui/icons.h",
+  "//oblada/browser/ui/sidebar_layout.cc",
+  "//oblada/browser/ui/sidebar_layout.h",
+  "//oblada/browser/ui/site_panel.cc",
+  "//oblada/browser/ui/site_panel.h",
+  "//oblada/browser/ui/split_handle.cc",
+  "//oblada/browser/ui/split_handle.h",
+  "//oblada/browser/ui/traffic_lights.h",
+  "//oblada/browser/welcome/welcome_page.cc",
+  "//oblada/browser/welcome/welcome_page.h",
+  "//oblada/browser/welcome/welcome_ui.cc",
+  "//oblada/browser/welcome/welcome_ui.h",
+  "//oblada/browser/workspaces/workspace_slider.cc",
+  "//oblada/browser/workspaces/workspace_slider.h",
+  "//oblada/browser/workspaces/workspace_switcher.cc",
+  "//oblada/browser/workspaces/workspace_switcher.h",
+  "//oblada/browser/workspaces/workspaces.cc",
+  "//oblada/browser/workspaces/workspaces.h",
+]
+# Targets Oblada's sources above need.
+oblada_ui_deps = [
+  "//components/user_data_importer/content",
+  "//components/user_data_importer/utility:safari_data_importer",
+  "//oblada/browser/extensions/api:api_registration",
+  "//oblada/common/extensions/api",
+]
+
+if (is_mac) {
+  oblada_ui_sources += [
+    "//oblada/browser/debug/window_controls_mac.h",
+    "//oblada/browser/debug/window_controls_mac.mm",
+    "//oblada/browser/import/app_icon_mac.mm",
+    "//oblada/browser/import/password_decryptor_mac.mm",
+    "//oblada/browser/ui/traffic_lights_mac.mm",
+  ]
+}
+
+if (is_win) {
+  oblada_ui_sources += [
+    "//oblada/browser/import/app_icon_other.cc",
+    "//oblada/browser/import/password_decryptor_win.cc",
+  ]
+}
+
+if (is_linux) {
+  oblada_ui_sources += [
+    "//oblada/browser/import/app_icon_other.cc",
+    "//oblada/browser/import/password_decryptor_linux.cc",
+  ]
+}

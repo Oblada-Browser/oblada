@@ -1,0 +1,24 @@
+diff --git a/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc b/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc
+index db2447a0db..f5be0180e0 100644
+--- a/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc
++++ b/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/extensions/extensions_toolbar_desktop.h"
+ 
++#include "oblada/browser/ui/site_panel.h"  // Oblada
++
+ #include <algorithm>
+ #include <memory>
+ 
+@@ -1255,6 +1257,10 @@ views::FocusManager* ExtensionsToolbarDesktop::GetFocusManagerForAccelerator() {
+ 
+ views::BubbleAnchor ExtensionsToolbarDesktop::GetReferenceButtonForPopup(
+     const extensions::ExtensionId& action_id) {
++  // Oblada: with the toolbar in the sidebar, extensions are in the address bar.
++  if (views::View* anchor = oblada::site_panel::ExtensionsAnchor(parent())) {
++    return views::BubbleAnchor(anchor);
++  }
+   ToolbarActionView* view = GetViewForId(action_id);
+   return view ? view->GetReferenceButtonForPopup()
+               : GetExtensionsButtonAnchor();

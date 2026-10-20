@@ -1,0 +1,15 @@
+diff --git a/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.h b/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.h
+index 0407b26b8a..5a87a72342 100644
+--- a/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.h
++++ b/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.h
+@@ -125,6 +125,10 @@ class TabCollectionAnimatingLayoutManager
+ 
+   bool is_animating() const { return animation_.is_animating(); }
+ 
++  // Oblada: ends the animation under way, if any, the views right where it was
++  // taking them (e.g. under a workspace's preview, as it hands over to them).
++  void SnapToTarget();
++
+   views::LayoutManagerBase* target_layout_manager() {
+     return &*target_layout_manager_;
+   }

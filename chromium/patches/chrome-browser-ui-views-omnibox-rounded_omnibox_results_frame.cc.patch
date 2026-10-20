@@ -1,0 +1,74 @@
+diff --git a/chrome/browser/ui/views/omnibox/rounded_omnibox_results_frame.cc b/chrome/browser/ui/views/omnibox/rounded_omnibox_results_frame.cc
+index debac67f17..d547d26218 100644
+--- a/chrome/browser/ui/views/omnibox/rounded_omnibox_results_frame.cc
++++ b/chrome/browser/ui/views/omnibox/rounded_omnibox_results_frame.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/views/omnibox/rounded_omnibox_results_frame.h"
+ 
++#include <algorithm>  // Oblada
+ #include <memory>
+ #include <utility>
+ 
+@@ -216,6 +217,10 @@ class TopBackgroundView : public views::View {
+   }
+ #endif  // !USE_AURA
+ 
++ public:
++  // Oblada: see RoundedOmniboxResultsFrame::Layout().
++  const LocationBar* location_bar() const { return location_bar_; }
++
+  private:
+   raw_ptr<const LocationBar> location_bar_;
+ };
+@@ -223,6 +228,18 @@ class TopBackgroundView : public views::View {
+ BEGIN_METADATA(TopBackgroundView)
+ END_METADATA
+ 
++// Oblada: how much taller than usual the address bar is (floating over the page;
++// see oblada/browser/ui/floating_location_bar.h), for the hole to fit it.
++int ExtraLocationBarHeight(const views::View* top_background) {
++  const LocationBar* location_bar =
++      static_cast<const TopBackgroundView*>(top_background)->location_bar();
++  return location_bar
++             ? std::max(0, location_bar->Bounds().height() -
++                               GetLayoutConstant(
++                                   LayoutConstant::kLocationBarHeight))
++             : 0;
++}
++
+ BEGIN_VIEW_BUILDER(/* no export*/, TopBackgroundView, views::View)
+ END_VIEW_BUILDER
+ 
+@@ -388,8 +405,17 @@ void RoundedOmniboxResultsFrame::Layout(PassKey) {
+ 
+   if (top_background_->GetVisible()) {
+     gfx::Rect top_bounds(contents_host_->GetContentsBounds());
+-    top_bounds.set_height(GetNonResultSectionHeight(true));
++    top_bounds.set_height(GetNonResultSectionHeight(true) +
++                          ExtraLocationBarHeight(top_background_));  // Oblada
+     top_bounds.Inset(GetLocationBarAlignmentInsets());
++    // Oblada: the hole for the address bar is as wide as it, the suggestions
++    // can be wider (see oblada::sidebar::SuggestionsWidth()).
++    if (const LocationBar* location_bar =
++            static_cast<TopBackgroundView*>(top_background_.get())
++                ->location_bar()) {
++      top_bounds.set_width(std::min(top_bounds.width(),
++                                    location_bar->BoundsInScreen().width()));
++    }
+     top_background_->SetBoundsRect(top_bounds);
+   }
+ 
+@@ -473,7 +499,11 @@ void RoundedOmniboxResultsFrame::OnMouseEvent(ui::MouseEvent* event) {
+ // Insets used to position |contents_| within |contents_host_|.
+ gfx::Insets RoundedOmniboxResultsFrame::GetContentInsets() {
+   return gfx::Insets::TLBR(
+-      GetNonResultSectionHeight(top_background_->GetVisible()), 0, 0, 0);
++      GetNonResultSectionHeight(top_background_->GetVisible()) +
++          (top_background_->GetVisible()
++               ? ExtraLocationBarHeight(top_background_)  // Oblada
++               : 0),
++      0, 0, 0);
+ }
+ 
+ BEGIN_METADATA(RoundedOmniboxResultsFrame)

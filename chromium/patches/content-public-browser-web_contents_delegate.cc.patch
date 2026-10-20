@@ -1,0 +1,15 @@
+diff --git a/content/public/browser/web_contents_delegate.cc b/content/public/browser/web_contents_delegate.cc
+index 2de5b3392b..056aee2b8a 100644
+--- a/content/public/browser/web_contents_delegate.cc
++++ b/content/public/browser/web_contents_delegate.cc
+@@ -122,6 +122,10 @@ KeyboardEventProcessingResult WebContentsDelegate::PreHandleKeyboardEvent(
+   return KeyboardEventProcessingResult::NOT_HANDLED;
+ }
+ 
++bool WebContentsDelegate::HandleForceClick(WebContents* source) {
++  return false;  // Oblada
++}
++
+ bool WebContentsDelegate::HandleKeyboardEvent(
+     WebContents* source,
+     const input::NativeWebKeyboardEvent& event) {

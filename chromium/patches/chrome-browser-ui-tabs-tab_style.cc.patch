@@ -1,0 +1,48 @@
+diff --git a/chrome/browser/ui/tabs/tab_style.cc b/chrome/browser/ui/tabs/tab_style.cc
+index ae95d2dfc2..cbb0dfede5 100644
+--- a/chrome/browser/ui/tabs/tab_style.cc
++++ b/chrome/browser/ui/tabs/tab_style.cc
+@@ -219,29 +219,21 @@ SkColor TabStyle::GetTabBackgroundColor(
+     return gfx::kPlaceholderColor;
+   }
+ 
++  // Oblada: as in Zen, tabs are veils over the sidebar (and the glass behind it)
++  // rather than Chrome's solid colors: of the text's color, but for the active
++  // tab in the light theme, which is white.
++  const SkColor text =
++      color_provider->GetColor(kColorTabForegroundActiveFrameActive);
++  const bool dark_theme = !color_utils::IsDark(text);
+   switch (state) {
+-    case TabStyle::TabSelectionState::kActive: {
+-      constexpr std::array<ui::ColorId, 2> kActiveColorIds = {
+-          kColorTabBackgroundActiveFrameInactive,
+-          kColorTabBackgroundActiveFrameActive};
+-      return color_provider->GetColor(kActiveColorIds[frame_active]);
+-    }
+-    case TabStyle::TabSelectionState::kSelected: {
+-      constexpr std::array<std::array<ui::ColorId, 2>, 2> kSelectedColorIds = {
+-          {{kColorTabBackgroundSelectedFrameInactive,
+-            kColorTabBackgroundSelectedFrameActive},
+-           {kColorTabBackgroundSelectedHoverFrameInactive,
+-            kColorTabBackgroundSelectedHoverFrameActive}}};
+-      return color_provider->GetColor(kSelectedColorIds[hovered][frame_active]);
+-    }
+-    case TabStyle::TabSelectionState::kInactive: {
+-      constexpr std::array<std::array<ui::ColorId, 2>, 2> kInactiveColorIds = {
+-          {{kColorTabBackgroundInactiveFrameInactive,
+-            kColorTabBackgroundInactiveFrameActive},
+-           {kColorTabBackgroundInactiveHoverFrameInactive,
+-            kColorTabBackgroundInactiveHoverFrameActive}}};
+-      return color_provider->GetColor(kInactiveColorIds[hovered][frame_active]);
+-    }
++    case TabStyle::TabSelectionState::kActive:
++      return dark_theme
++                 ? SkColorSetA(text, 0x2E)
++                 : SkColorSetA(SK_ColorWHITE, frame_active ? 0xC8 : 0xA0);
++    case TabStyle::TabSelectionState::kSelected:
++      return SkColorSetA(text, hovered ? 0x2A : 0x22);
++    case TabStyle::TabSelectionState::kInactive:
++      return SkColorSetA(text, hovered ? (dark_theme ? 0x18 : 0x12) : 0x00);
+     default:
+       NOTREACHED();
+   }

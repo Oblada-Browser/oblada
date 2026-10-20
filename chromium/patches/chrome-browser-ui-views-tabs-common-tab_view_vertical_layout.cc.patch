@@ -1,0 +1,17 @@
+diff --git a/chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc b/chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc
+index 6641560e2f..4a530928ab 100644
+--- a/chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc
+@@ -183,6 +183,12 @@ bool TabViewVerticalLayout::IsChildVisible(const views::View* child_view,
+         TabView().UncollapsedMinWidth() - kUncollapsedMinWidthThreshold) {
+       return TabView().active_ && hovered_or_focused;
+     }
++    // Oblada: the halves of a split's row have room for their titles only, as in
++    // Zen, but the one under the pointer.
++    if (const tabs::TabInterface* tab = TabView().GetTabInterface();
++        tab && tab->IsSplit()) {
++      return hovered_or_focused;
++    }
+ 
+     return TabView().active_ || hovered_or_focused;
+   }

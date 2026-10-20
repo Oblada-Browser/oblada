@@ -1,0 +1,15 @@
+diff --git a/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h b/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h
+index bf8f2ac01e..3eee107f6d 100644
+--- a/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h
++++ b/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h
+@@ -73,6 +73,10 @@ class TabStripCollectionController : public TabContextMenuController::Delegate {
+   void SelectTab(const tabs::TabInterface* tab_interface,
+                  const TabStripUserGestureDetails& event);
+   void CloseTab(const tabs::TabInterface* tab_interface, CloseTabSource source);
++  // Oblada: for a tab's close button. With other tabs selected along with it,
++  // closes them all, as the tab's context menu's Close does.
++  void CloseTabOrSelection(const tabs::TabInterface* tab_interface,
++                           CloseTabSource source);
+   void ToggleSelected(const tabs::TabInterface* tab_interface);
+   void AddSelectionFromAnchorTo(const tabs::TabInterface* tab_interface);
+   void ExtendSelectionTo(const tabs::TabInterface* tab_interface);

@@ -1,0 +1,15 @@
+diff --git a/components/omnibox/browser/location_bar_model_delegate.cc b/components/omnibox/browser/location_bar_model_delegate.cc
+index ec0eddc10f..9ae9a96630 100644
+--- a/components/omnibox/browser/location_bar_model_delegate.cc
++++ b/components/omnibox/browser/location_bar_model_delegate.cc
+@@ -9,7 +9,9 @@ bool LocationBarModelDelegate::ShouldPreventElision() {
+ }
+ 
+ bool LocationBarModelDelegate::ShouldTrimDisplayUrlAfterHostName() const {
+-  return false;
++  // Oblada: as in Zen and Arc, the address bar shows the site, not the whole URL
++  // (which comes back when it's edited).
++  return true;
+ }
+ 
+ bool LocationBarModelDelegate::ShouldDisplayURL() const {

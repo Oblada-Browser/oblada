@@ -1,0 +1,17 @@
+diff --git a/chrome/browser/ui/views/frame/layout/browser_view_layout_impl.cc b/chrome/browser/ui/views/frame/layout/browser_view_layout_impl.cc
+index 32dc2739b9..d714a0b01a 100644
+--- a/chrome/browser/ui/views/frame/layout/browser_view_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_layout_impl.cc
+@@ -291,7 +291,12 @@ void BrowserViewLayoutImpl::Layout(views::View* host) {
+     if (views().bookmark_bar && views().bookmark_bar->GetVisible()) {
+       apply_bottom_paint_allowance(views().bookmark_bar);
+     }
++#if !BUILDFLAG(IS_MAC)
++    // Oblada: not on Mac, where it isn't needed (see above) and, as a mask on
++    // the top container's layer, would cut off the address bar floating out of
++    // it (see oblada/browser/ui/sidebar_layout.h).
+     apply_bottom_paint_allowance(views().top_container);
++#endif
+   }
+ 
+   // Change how the top container is painted based on layout.

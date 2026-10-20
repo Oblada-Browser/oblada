@@ -1,0 +1,45 @@
+diff --git a/chrome/common/extensions/chrome_extensions_api_provider.cc b/chrome/common/extensions/chrome_extensions_api_provider.cc
+index 319442bf7d..508e9e0848 100644
+--- a/chrome/common/extensions/chrome_extensions_api_provider.cc
++++ b/chrome/common/extensions/chrome_extensions_api_provider.cc
+@@ -12,6 +12,9 @@
+ #include "chrome/common/extensions/api/permission_features.h"
+ #include "chrome/common/extensions/chrome_manifest_handlers.h"
+ #include "chrome/common/extensions/permissions/chrome_api_permissions.h"
++#include "oblada/common/extensions/api/api_features.h"  // Oblada
++#include "oblada/common/extensions/api/generated_schemas.h"  // Oblada
++#include "oblada/common/extensions/api/manifest_features.h"  // Oblada
+ #include "chrome/grit/common_resources.h"
+ #include "extensions/common/features/json_feature_provider_source.h"
+ #include "extensions/common/permissions/permissions_info.h"
+@@ -23,11 +26,13 @@ ChromeExtensionsAPIProvider::~ChromeExtensionsAPIProvider() = default;
+ 
+ void ChromeExtensionsAPIProvider::AddAPIFeatures(FeatureProvider* provider) {
+   AddChromeAPIFeatures(provider);
++  AddObladaAPIFeatures(provider);  // Oblada: its APIs for Firefox add-ons.
+ }
+ 
+ void ChromeExtensionsAPIProvider::AddManifestFeatures(
+     FeatureProvider* provider) {
+   AddChromeManifestFeatures(provider);
++  AddObladaManifestFeatures(provider);  // Oblada
+ }
+ 
+ void ChromeExtensionsAPIProvider::AddPermissionFeatures(
+@@ -47,11 +52,15 @@ void ChromeExtensionsAPIProvider::AddAPIJSONSources(
+ 
+ bool ChromeExtensionsAPIProvider::IsAPISchemaGenerated(
+     const std::string& name) {
+-  return api::ChromeGeneratedSchemas::IsGenerated(name);
++  return api::ChromeGeneratedSchemas::IsGenerated(name) ||
++         api::ObladaGeneratedSchemas::IsGenerated(name);  // Oblada
+ }
+ 
+ std::string_view ChromeExtensionsAPIProvider::GetAPISchema(
+     const std::string& name) {
++  if (api::ObladaGeneratedSchemas::IsGenerated(name)) {
++    return api::ObladaGeneratedSchemas::Get(name);  // Oblada
++  }
+   return api::ChromeGeneratedSchemas::Get(name);
+ }
+ 

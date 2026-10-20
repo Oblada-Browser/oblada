@@ -1,0 +1,16 @@
+diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc
+index bc3b0459ed..dc0675801d 100644
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc
+@@ -36,6 +36,11 @@ VerticalTabStripBottomContainer::VerticalTabStripBottomContainer(
+       &VerticalTabStripBottomContainer::OnNewTabButtonContextMenuClosed,
+       base::Unretained(this)));
+ 
++  // Oblada: Zen-like, "+ New tab" when there's room, like a tab (its text lined up
++  // with the tabs' titles).
++  new_tab_button->SetShouldShowLabel(true);
++  new_tab_button->SetImageLabelSpacing(new_tab_button->GetImageLabelSpacing() + 2);
++
+   new_tab_button_pressed_subscription_ =
+       new_tab_button->RegisterWillInvokeActionCallback(
+           record_new_tab_button_pressed);

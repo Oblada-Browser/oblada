@@ -1,0 +1,23 @@
+diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_focus_swipe_controller.cc b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_focus_swipe_controller.cc
+index 087dd2230f..6707832f22 100644
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_focus_swipe_controller.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_focus_swipe_controller.cc
+@@ -12,6 +12,8 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/ui_features.h"
+ #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
++#include "chrome/browser/ui/views/frame/browser_view.h"
++#include "oblada/browser/workspaces/workspaces.h"  // Oblada
+ #include "ui/events/event.h"
+ 
+ VerticalTabStripFocusSwipeController::VerticalTabStripFocusSwipeController(
+@@ -151,5 +153,8 @@ void VerticalTabStripFocusSwipeController::RotateTabGroupFocus(bool forward) {
+     return;
+   }
+ 
+-  region_view_->tab_strip_model()->RotateFocusedGroup(forward);
++  // Oblada: to the next or previous workspace, in their order.
++  if (BrowserView* browser_view = region_view_->browser_view()) {
++    oblada::workspaces::SwitchRelative(browser_view->browser(), forward);
++  }
+ }

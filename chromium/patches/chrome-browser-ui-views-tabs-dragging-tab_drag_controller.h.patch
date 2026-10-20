@@ -1,0 +1,38 @@
+diff --git a/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h b/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h
+index 2c3baaa924..d0be221718 100644
+--- a/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h
++++ b/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h
+@@ -54,7 +54,12 @@ namespace views {
+ class View;
+ class ViewTracker;
+ }  // namespace views
++namespace oblada {
++class DragGhost;
++}  // namespace oblada
++
+ namespace tabs {
++class TabInterface;
+ class TabModel;
+ }
+ class BrowserWindowInterface;
+@@ -227,6 +232,7 @@ class TabDragController : public views::WidgetObserver,
+       int drag_idx) override;
+   const DragSessionData& GetSessionData() const override;
+   const TabDragContext* GetAttachedContext() const override;
++  tabs::TabInterface* GetInitiallyActiveTab() const override;  // Oblada
+ 
+  private:
+   friend class TabDragControllerTest;
+@@ -632,6 +638,12 @@ class TabDragController : public views::WidgetObserver,
+   // details.
+   ui::ListSelectionModel initial_selection_model_;
+ 
++  // Oblada: the tab active in `initial_selection_model_`.
++  base::WeakPtr<tabs::TabInterface> initially_active_tab_;
++
++  // Oblada: what follows the pointer while tabs are dragged over the page.
++  std::unique_ptr<oblada::DragGhost> oblada_drag_ghost_;
++
+   // The selection model of `attached_context_` before the tabs were attached.
+   ui::ListSelectionModel selection_model_before_attach_;
+ 

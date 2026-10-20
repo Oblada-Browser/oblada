@@ -1,0 +1,18 @@
+diff --git a/chrome/browser/ui/ui_features.cc b/chrome/browser/ui/ui_features.cc
+index 7a0e331ded..232dda0944 100644
+--- a/chrome/browser/ui/ui_features.cc
++++ b/chrome/browser/ui/ui_features.cc
+@@ -551,9 +551,11 @@ BASE_FEATURE_PARAM(bool,
+ BASE_FEATURE(kAiOverlayDisableNavigationContext,
+              base::FEATURE_DISABLED_BY_DEFAULT);
+ 
+-BASE_FEATURE(kTabGroupsFocusing, base::FEATURE_DISABLED_BY_DEFAULT);
++// Oblada: on, for workspaces (see oblada/browser/workspaces/workspaces.h), whose
++// tabs keep running while another workspace is shown, as in Zen.
++BASE_FEATURE(kTabGroupsFocusing, base::FEATURE_ENABLED_BY_DEFAULT);
+ 
+-BASE_FEATURE_PARAM(bool, kTabGroupsFocusFreezing, &kTabGroupsFocusing, true);
++BASE_FEATURE_PARAM(bool, kTabGroupsFocusFreezing, &kTabGroupsFocusing, false);
+ 
+ bool IsTabGroupsFocusFreezingEnabled() {
+   return base::FeatureList::IsEnabled(kTabGroupsFocusing) &&

@@ -1,0 +1,34 @@
+diff --git a/base/check.cc b/base/check.cc
+index a91851e30e..e4e72ee246 100644
+--- a/base/check.cc
++++ b/base/check.cc
+@@ -56,14 +56,9 @@ constexpr char kCheckFailureMessageSeparator[] =
+     ;
+ 
+ LogSeverity GetDumpSeverity() {
+-#if defined(OFFICIAL_BUILD)
+-  return DCHECK_IS_ON() ? LOGGING_DCHECK : LOGGING_ERROR;
+-#else
+-  // Crash outside official builds (outside user-facing builds) to detect
+-  // invariant violations early in release-build testing like fuzzing, etc.
+-  // These should eventually be migrated to fatal CHECKs.
+-  return LOGGING_FATAL;
+-#endif
++  // Oblada: Oblada is used every day although it isn't an "official build", so these
++  // report and carry on as in Chrome rather than crashing the browser.
++  return LOGGING_ERROR;
+ }
+ 
+ LogSeverity GetNotFatalUntilSeverity(base::NotFatalUntil fatal_milestone) {
+@@ -145,9 +140,9 @@ void HandleCheckErrorLogMessage(base::debug::CrashKeyString* message_key,
+   if (log_message->severity() == logging::LOGGING_FATAL) {
+     // Set NotFatalUntil key if applicable for when we die in ~LogMessage.
+     MaybeSetFatalMilestoneCrashKey(fatal_milestone);
+-  } else {
+-    DumpWithoutCrashing(message_key, log_message, location, fatal_milestone);
+   }
++  // Oblada: no dump for the others, which Chrome sends its developers: Oblada has
++  // nowhere to send them, and they'd pile up, one per run, among the crashes' own.
+ }
+ 
+ class NotReachedLogMessage : public LogMessage {

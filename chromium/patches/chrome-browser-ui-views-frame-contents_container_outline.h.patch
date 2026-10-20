@@ -1,0 +1,13 @@
+diff --git a/chrome/browser/ui/views/frame/contents_container_outline.h b/chrome/browser/ui/views/frame/contents_container_outline.h
+index 3dd6c5cf30..4c07d1fd14 100644
+--- a/chrome/browser/ui/views/frame/contents_container_outline.h
++++ b/chrome/browser/ui/views/frame/contents_container_outline.h
+@@ -20,7 +20,7 @@ class ContentsContainerOutline : public views::View,
+   METADATA_HEADER(ContentsContainerOutline, views::View)
+ 
+  public:
+-  static constexpr int kCornerRadius = 8;
++  static constexpr int kCornerRadius = 10;  // Oblada: as the page's corners.
+   static constexpr int kThickness = 1;
+   static constexpr int kHighlightThickness = 3;
+ 

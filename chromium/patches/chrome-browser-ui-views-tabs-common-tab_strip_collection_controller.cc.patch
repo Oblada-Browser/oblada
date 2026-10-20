@@ -1,0 +1,76 @@
+diff --git a/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.cc b/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.cc
+index 9d34a6658a..3c5b35a10d 100644
+--- a/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h"
+ 
++#include "oblada/browser/workspaces/workspaces.h"  // Oblada
++
+ #include <variant>
+ 
+ #include "base/memory/weak_ptr.h"
+@@ -298,6 +300,13 @@ void TabStripCollectionController::SelectTab(
+ void TabStripCollectionController::CloseTab(
+     const tabs::TabInterface* tab_interface,
+     CloseTabSource source) {
++  // Oblada: the workspace shown keeps a New Tab page in place of its last tab,
++  // and closing that closes the window (see CloseLastTabs()).
++  if (source != CloseTabSource::kFromNonUIEvent && browser_view_ &&
++      oblada::workspaces::CloseLastTabs(browser_view_->browser(),
++                                       {tab_interface})) {
++    return;
++  }
+   if (tab_closing_helper_ && source != CloseTabSource::kFromNonUIEvent) {
+     tab_closing_helper_->MaybeEnterTabClosingMode(std::nullopt, source);
+   }
+@@ -305,6 +314,39 @@ void TabStripCollectionController::CloseTab(
+   model_->delegate()->CloseTab(tab_interface, source);
+ }
+ 
++void TabStripCollectionController::CloseTabOrSelection(
++    const tabs::TabInterface* tab_interface,
++    CloseTabSource source) {
++  const std::optional<int> index = model_->GetIndexOfTab(tab_interface);
++  std::vector<const tabs::TabInterface*> selected;
++  if (index && model_->IsTabSelected(*index)) {
++    for (const tabs::TabInterface* tab :
++         model_->selection_model().selected_tabs()) {
++      selected.push_back(tab);
++    }
++  }
++  // Just the tab: when it's the only one selected, or the others are its split's
++  // (as when its split is the active tab).
++  const std::optional<split_tabs::SplitTabId> split = tab_interface->GetSplit();
++  if (std::ranges::all_of(selected, [&](const tabs::TabInterface* tab) {
++        return tab == tab_interface ||
++               (split.has_value() && tab->GetSplit() == split);
++      })) {
++    CloseTab(tab_interface, source);
++    return;
++  }
++  // The workspace shown keeps a New Tab page in place of its last tabs (see
++  // CloseTab()).
++  if (browser_view_ &&
++      oblada::workspaces::CloseLastTabs(browser_view_->browser(), selected)) {
++    return;
++  }
++  if (tab_closing_helper_) {
++    tab_closing_helper_->MaybeEnterTabClosingMode(std::nullopt, source);
++  }
++  model_->ExecuteContextMenuCommand(*index, tabs::CommandCloseTab);
++}
++
+ void TabStripCollectionController::ToggleSelected(
+     const tabs::TabInterface* tab_interface) {
+   std::optional<int> tab_index = model_->GetIndexOfTab(tab_interface);
+@@ -615,6 +657,8 @@ void TabStripCollectionController::UpdateFocusModeTheme(
+     }
+   }
+ 
++  // Oblada: workspaces (focused groups) keep the window's theme.
++  color.reset();
+   if (browser_view_ && browser_view_->browser_widget()) {
+     browser_view_->browser_widget()->SetUserColorOverride(color);
+   }

@@ -1,0 +1,24 @@
+diff --git a/chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.cc b/chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.cc
+index 42f6047a11..cc6864da55 100644
+--- a/chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.h"
+ 
++#include "oblada/browser/ui/sidebar_layout.h"  // Oblada
++
+ #include <string_view>
+ 
+ #include "base/functional/bind.h"
+@@ -162,8 +164,9 @@ void OmniboxPopupWebUIBaseContent::OnLocationBarBoundsChanged() {
+   is_window_resizing_ = (location_bar_width != last_location_bar_width_);
+   last_location_bar_width_ = location_bar_width;
+ 
++  // Oblada: as wide as the popup (see oblada::sidebar::SuggestionsWidth()).
+   int width =
+-      location_bar_width +
++      oblada::sidebar::SuggestionsWidth(location_bar_->BoundsInScreen()) +
+       RoundedOmniboxResultsFrame::GetLocationBarAlignmentInsets().width();
+ 
+   if (popup_presenter_) {

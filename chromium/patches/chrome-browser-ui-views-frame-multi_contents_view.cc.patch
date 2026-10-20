@@ -1,0 +1,79 @@
+diff --git a/chrome/browser/ui/views/frame/multi_contents_view.cc b/chrome/browser/ui/views/frame/multi_contents_view.cc
+index 76475b5693..71ccab2ca5 100644
+--- a/chrome/browser/ui/views/frame/multi_contents_view.cc
++++ b/chrome/browser/ui/views/frame/multi_contents_view.cc
+@@ -29,6 +29,7 @@
+ #include "chrome/browser/ui/views/frame/multi_contents_view_delegate.h"
+ #include "chrome/browser/ui/views/frame/multi_contents_view_drop_target_controller.h"
+ #include "chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h"
++#include "oblada/browser/ui/split_handle.h"  // Oblada
+ #include "chrome/browser/ui/views/frame/safe_invoke/safe_invoke.h"
+ #include "chrome/browser/ui/views/frame/scrim_view.h"
+ #include "chrome/browser/ui/views/frame/themed_background.h"
+@@ -135,6 +136,18 @@ MultiContentsView::MultiContentsView(
+   lens_overlay_view->SetLayoutManager(std::make_unique<views::FillLayout>());
+   lens_overlay_view_ = AddChildView(std::move(lens_overlay_view));
+ 
++  // Oblada: grips to move a pane of a split, or take it out (see SplitHandle).
++  for (size_t i = 0; i < contents_container_views_.size(); ++i) {
++    oblada_split_handles_.push_back(
++        AddChildView(std::make_unique<oblada::split::SplitHandle>(
++            browser_view_->browser(), this,
++            base::BindRepeating(
++                [](MultiContentsView* view, size_t index) -> views::WebView* {
++                  return view->contents_container_views_[index]->contents_view();
++                },
++                base::Unretained(this), i))));
++  }
++
+   for (auto& contents_container_view : contents_container_views_) {
+     auto& view_map = container_focusable_map_[contents_container_view];
+ 
+@@ -506,8 +519,8 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+ 
+   gfx::Rect available_space = gfx::Rect(width, height);
+ 
+-  const bool show_background =
+-      drop_target_view_->GetVisible() || IsInSplitView();
++  // Oblada: panes float on the window's background, like the page.
++  const bool show_background = false;
+   layouts.child_layouts.emplace_back(background_view_.get(), show_background,
+                                      available_space);
+ 
+@@ -553,6 +566,24 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+                                      lens_overlay_view_->GetVisible(),
+                                      gfx::Rect(width, height));
+ 
++  // Oblada: the panes' grips, in the room left above them (or, stacked, between).
++  using oblada::split::SplitHandle;
++  const bool show_handles =
++      IsInSplitView() && split_view_insets_.top() >= SplitHandle::kBandHeight;
++  for (size_t i = 0; i < oblada_split_handles_.size(); ++i) {
++    const gfx::Rect& pane = i == 0 ? start_rect : end_rect;
++    const bool stacked_second =
++        i == 1 && GetSplitLayout() != split_tabs::SplitTabLayout::kSideBySide;
++    const int y =
++        stacked_second
++            ? resize_rect.CenterPoint().y() - SplitHandle::kBandHeight / 2
++            : pane.y() - SplitHandle::kBandHeight;
++    layouts.child_layouts.emplace_back(
++        oblada_split_handles_[i].get(), show_handles,
++        gfx::Rect(pane.CenterPoint().x() - SplitHandle::kWidth / 2, y,
++                  SplitHandle::kWidth, SplitHandle::kBandHeight));
++  }
++
+   layouts.host_size = gfx::Size(width, height);
+   return layouts;
+ }
+@@ -579,9 +610,8 @@ void MultiContentsView::BeforeApplyLayout(const views::ProposedLayout& layout) {
+   views::ProposedLayout target_layout;
+   {
+     // Need to temporarily override the split view insets.
+-    const auto split_view_insets =
+-        gfx::Insets::TLBR(split_view_insets_.top(), kSplitViewContentInset,
+-                          kSplitViewContentInset, kSplitViewContentInset);
++    // Oblada: the panes have no insets of their own (see SetSplitViewInsets()).
++    const auto split_view_insets = split_view_insets_;
+     base::AutoReset inset_override(&split_view_insets_, split_view_insets);
+     target_layout = CalculateProposedLayout(
+         views::SizeBounds(target_content_bounds_->actual_size));

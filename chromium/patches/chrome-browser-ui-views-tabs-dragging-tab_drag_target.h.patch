@@ -1,0 +1,22 @@
+diff --git a/chrome/browser/ui/views/tabs/dragging/tab_drag_target.h b/chrome/browser/ui/views/tabs/dragging/tab_drag_target.h
+index 3bd8c25ee8..8a27ec14d4 100644
+--- a/chrome/browser/ui/views/tabs/dragging/tab_drag_target.h
++++ b/chrome/browser/ui/views/tabs/dragging/tab_drag_target.h
+@@ -17,6 +17,7 @@ struct DragSessionData;
+ class TabDragContext;
+ 
+ namespace tabs {
++class TabInterface;
+ class TabModel;
+ }
+ 
+@@ -44,6 +45,9 @@ class TabDragTarget {
+         int drag_idx) = 0;
+     virtual const DragSessionData& GetSessionData() const = 0;
+     virtual const TabDragContext* GetAttachedContext() const = 0;
++    // Oblada: the tab that was active before the drag (pressing a tab activates
++    // it), if it's still open.
++    virtual tabs::TabInterface* GetInitiallyActiveTab() const;
+   };
+ 
+   virtual ~TabDragTarget() = default;

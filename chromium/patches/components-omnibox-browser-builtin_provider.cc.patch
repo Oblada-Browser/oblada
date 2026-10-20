@@ -1,0 +1,71 @@
+diff --git a/components/omnibox/browser/builtin_provider.cc b/components/omnibox/browser/builtin_provider.cc
+index 04fb056ed1..845de42c95 100644
+--- a/components/omnibox/browser/builtin_provider.cc
++++ b/components/omnibox/browser/builtin_provider.cc
+@@ -52,12 +52,20 @@ void BuiltinProvider::DoBuiltinAutocompletion(const std::u16string& text) {
+   const std::u16string embedderAbout = base::StrCat(
+       {base::UTF8ToUTF16(client_->GetEmbedderRepresentationOfAboutScheme()),
+        url::kStandardSchemeSeparator16});
++  // Oblada: Chromium's pages are suggested as oblada://, unless chrome:// is typed.
++  const std::u16string kObladaAbout = u"oblada://";
++  const std::u16string shownAbout =
++      base::StartsWith(text, u"c", base::CompareCase::INSENSITIVE_ASCII)
++          ? embedderAbout
++          : kObladaAbout;
+ 
+   const int kUrl = ACMatchClassification::URL;
+   const int kMatch = kUrl | ACMatchClassification::MATCH;
+ 
+-  bool starting_about = base::StartsWith(embedderAbout, text,
+-                                         base::CompareCase::INSENSITIVE_ASCII);
++  bool starting_about =
++      base::StartsWith(embedderAbout, text,
++                       base::CompareCase::INSENSITIVE_ASCII) ||
++      base::StartsWith(kObladaAbout, text, base::CompareCase::INSENSITIVE_ASCII);
+   if (starting_about ||
+       base::StartsWith(kAbout, text, base::CompareCase::INSENSITIVE_ASCII)) {
+     // Highlight the input portion matching |embedderAbout|; or if the user
+@@ -67,12 +75,14 @@ void BuiltinProvider::DoBuiltinAutocompletion(const std::u16string& text) {
+     if (starting_about)
+       style_matches.emplace_back(0, 0, text.length());
+     else if (text.length() > kAboutSchemeLength)
+-      style_matches.emplace_back(0, 0, embedderAbout.length());
++      style_matches.emplace_back(0, 0, shownAbout.length());
+     ACMatchClassifications styles =
+         ClassifyTermMatches(style_matches, std::string::npos, kMatch, kUrl);
+     // Include some common builtin URLs as the user types the scheme.
+-    for (const std::u16string& url :
+-         client_->GetBuiltinsToProvideAsUserTypes()) {
++    for (std::u16string url : client_->GetBuiltinsToProvideAsUserTypes()) {
++      if (base::StartsWith(url, embedderAbout)) {
++        url.replace(0, embedderAbout.length(), shownAbout);
++      }
+       AddBuiltinMatch(url, std::u16string(), styles);
+     }
+   } else {
+@@ -105,13 +115,13 @@ void BuiltinProvider::DoBuiltinAutocompletion(const std::u16string& text) {
+       std::u16string host_and_path =
+           base::UTF8ToUTF16(url.GetHost() + url.GetPath());
+       base::TrimString(host_and_path, u"/", &host_and_path);
+-      size_t match_length = embedderAbout.length() + host_and_path.length();
++      size_t match_length = shownAbout.length() + host_and_path.length();
+       for (Builtins::const_iterator i(builtins_.begin());
+            (i != builtins_.end()) && (matches_.size() < provider_max_matches_);
+            ++i) {
+         if (base::StartsWith(*i, host_and_path,
+                              base::CompareCase::INSENSITIVE_ASCII)) {
+-          std::u16string match_string = embedderAbout + *i;
++          std::u16string match_string = shownAbout + *i;
+           TermMatches style_matches = {{0, 0, match_length}};
+           ACMatchClassifications styles = ClassifyTermMatches(
+               style_matches, match_string.length(), kMatch, kUrl);
+@@ -164,7 +174,8 @@ void BuiltinProvider::AddBuiltinMatch(const std::u16string& match_string,
+   match.suggest_type = omnibox::TYPE_NAVIGATION;
+   match.fill_into_edit = match_string;
+   match.inline_autocompletion = inline_completion;
+-  match.destination_url = GURL(match_string);
++  // Oblada: oblada:// suggestions lead to the chrome:// page.
++  match.destination_url = url_formatter::FixupURL(base::UTF16ToUTF8(match_string));
+   match.contents = match_string;
+   match.contents_class = styles;
+   matches_.push_back(match);

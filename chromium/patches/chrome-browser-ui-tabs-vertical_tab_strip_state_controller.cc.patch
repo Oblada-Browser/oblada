@@ -1,0 +1,53 @@
+diff --git a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
+index 22ece00a8c..db68704912 100644
+--- a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
++++ b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+ 
++#include <algorithm>  // Oblada
++
+ #include <optional>
+ 
+ #include "base/i18n/rtl.h"
+@@ -60,8 +62,8 @@ VerticalTabStripStateController::VerticalTabStripStateController(
+                                 *this) {
+   pref_change_registrar_.Init(pref_service_);
+ 
+-  is_vertical_tabs_enabled_ =
+-      pref_service_->GetBoolean(prefs::kVerticalTabsEnabled);
++  // Oblada: tabs are always vertical, whatever the pref says.
++  is_vertical_tabs_enabled_ = true;
+ 
+   pref_change_registrar_.Add(
+       prefs::kVerticalTabsEnabled,
+@@ -183,6 +185,9 @@ bool VerticalTabStripStateController::ShouldDisplayVerticalTabs() const {
+ }
+ 
+ void VerticalTabStripStateController::SetVerticalTabsEnabled(bool enabled) {
++  if (!enabled) {
++    return;  // Oblada: tabs are always vertical.
++  }
+   // If the user already has a pending mode switch, but tries to change tab
+   // strip mode again, ensure the toast is displayed.
+   if (enable_state_lock_count_ > 0 && enabled != is_vertical_tabs_enabled_ &&
+@@ -236,6 +241,8 @@ int VerticalTabStripStateController::GetUncollapsedWidth() const {
+ }
+ 
+ void VerticalTabStripStateController::SetUncollapsedWidth(int width) {
++  // Oblada: a narrower one saved before there was a minimum.
++  width = std::max(width, kVerticalTabStripMinUncollapsedWidth);
+   if (state_.uncollapsed_width != width) {
+     state_.uncollapsed_width = width;
+     NotifyCollapseChanged();
+@@ -310,8 +317,7 @@ void VerticalTabStripStateController::NotifyModeChanged() {
+ }
+ 
+ void VerticalTabStripStateController::OnModeChanged() {
+-  const bool new_enabled =
+-      pref_service_->GetBoolean(prefs::kVerticalTabsEnabled);
++  const bool new_enabled = true;  // Oblada: tabs are always vertical.
+   if (new_enabled &&
+       !pref_service_->GetBoolean(prefs::kVerticalTabsEnabledFirstTime)) {
+     base::RecordAction(

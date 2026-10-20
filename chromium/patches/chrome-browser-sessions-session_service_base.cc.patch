@@ -1,0 +1,41 @@
+diff --git a/chrome/browser/sessions/session_service_base.cc b/chrome/browser/sessions/session_service_base.cc
+index 0fdde07d4d..d2e0bc29d0 100644
+--- a/chrome/browser/sessions/session_service_base.cc
++++ b/chrome/browser/sessions/session_service_base.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/sessions/session_service_base.h"
+ 
++#include "oblada/browser/containers/containers.h"  // Oblada
++
+ #include <stddef.h>
+ 
+ #include <memory>
+@@ -285,6 +287,13 @@ void SessionServiceBase::TabInserted(WebContents* contents) {
+     SetTabExtensionAppID(session_tab_helper->window_id(),
+                          session_tab_helper->session_id(), app_id);
+   }
++  // Oblada: remember the tab's container, to restore the tab into it.
++  if (std::string container = oblada::containers::GetContainerId(contents);
++      !container.empty()) {
++    ScheduleCommand(sessions::CreateAddTabExtraDataCommand(
++        session_tab_helper->session_id(), oblada::containers::kSessionKey,
++        container));
++  }
+ 
+   // Record the association between the SessionStorageNamespaceHandle and the
+   // tab.
+@@ -640,6 +649,13 @@ void SessionServiceBase::BuildCommandsForTab(
+     command_storage_manager()->AppendRebuildCommand(
+         sessions::CreateSetTabExtensionAppIDCommand(session_id, app_id));
+   }
++  // Oblada: the tab's container (see TabInserted).
++  if (std::string container = oblada::containers::GetContainerId(tab);
++      !container.empty()) {
++    command_storage_manager()->AppendRebuildCommand(
++        sessions::CreateAddTabExtraDataCommand(
++            session_id, oblada::containers::kSessionKey, container));
++  }
+ 
+   for (int i = min_index; i < max_index; ++i) {
+     NavigationEntry* entry = (i == pending_index)

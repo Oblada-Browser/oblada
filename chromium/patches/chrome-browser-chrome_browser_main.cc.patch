@@ -1,0 +1,22 @@
+diff --git a/chrome/browser/chrome_browser_main.cc b/chrome/browser/chrome_browser_main.cc
+index cbf3b6c563..b49af7d571 100644
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/chrome_browser_main.h"
+ 
++#include "oblada/browser/oblada_browser_main_extra_parts.h"  // Oblada
++
+ #include <memory>
+ #include <string>
+ #include <tuple>
+@@ -842,6 +844,8 @@ std::unique_ptr<content::BrowserMainParts> ChromeBrowserMainParts::Create(
+ 
+   main_parts->AddParts(std::make_unique<ChromeBrowserMainExtraPartsMemory>());
+ 
++  main_parts->AddParts(oblada::CreateBrowserMainExtraParts());  // Oblada
++
+   chrome::AddMetricsExtraParts(main_parts.get());
+ 
+   main_parts->AddParts(

@@ -1,0 +1,16 @@
+diff --git a/components/url_formatter/url_formatter.cc b/components/url_formatter/url_formatter.cc
+index 2f6cb31790..0f4c583c54 100644
+--- a/components/url_formatter/url_formatter.cc
++++ b/components/url_formatter/url_formatter.cc
+@@ -626,6 +626,11 @@ std::u16string FormatUrlWithAdjustments(
+   std::u16string url_string;
+   url_string.insert(url_string.end(), spec.begin(), spec.begin() + scheme_size);
+   new_parsed->scheme = parsed.scheme;
++  // Oblada: Chromium's own pages are shown as oblada:// (url_fixer.cc maps it
++  // back). The two names are as long, so nothing after the scheme moves.
++  if (url.SchemeIs("chrome")) {
++    url_string.replace(0, 6, u"oblada");
++  }
+ 
+   // Username & password.
+   if (((format_types & kFormatUrlOmitUsernamePassword) != 0) ||

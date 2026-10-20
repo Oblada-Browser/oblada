@@ -1,0 +1,48 @@
+{
+  "fill": {
+    "linear-gradient": [
+      "extended-srgb:0.16863,0.63922,0.89020,1.00000",
+      "extended-srgb:0.03922,0.23529,0.54902,1.00000"
+    ],
+    "orientation": {
+      "start": {
+        "x": 0,
+        "y": 0
+      },
+      "stop": {
+        "x": 0.3,
+        "y": 1
+      }
+    }
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "spot.svg",
+          "name": "spot",
+          "glass": false
+        },
+        {
+          "image-name": "fish.svg",
+          "name": "fish",
+          "glass": true
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}

@@ -1,0 +1,103 @@
+diff --git a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
+index 03f7acd0bf..9e3c81cfdc 100644
+--- a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
++++ b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
+@@ -44,6 +44,8 @@
+ #include "chrome/browser/ui/views/frame/browser_widget.h"
+ #include "chrome/browser/ui/views/frame/glass_frame_service.h"
+ #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
++#include "chrome/browser/ui/views/toolbar/toolbar_view.h"  // Oblada
++#include "oblada/browser/ui/sidebar_layout.h"  // Oblada
+ #include "chrome/browser/ui/views/web_apps/frame_toolbar/web_app_frame_toolbar_utils.h"
+ #include "chrome/browser/ui/web_applications/app_browser_controller.h"
+ #include "chrome/common/pref_names.h"
+@@ -112,7 +114,9 @@ bool ShouldHandleKeyboardEvent(const input::NativeWebKeyboardEvent& event) {
+   // Values updated after discussion with UX.
+   static constexpr std::array<std::array<double, 2>, 2> kDefaultOpacities = {{
+       {0.55, 0.80},  // Horizontal: light, dark
+-      {0.65, 0.80},  // Vertical: light, dark
++      // Oblada: the sidebar shows what's behind it, as Zen's and Arc's do,
++      // tinted with its workspace's colors.
++      {0.22, 0.30},  // Vertical: light, dark
+   }};
+ 
+   const double opacity = kDefaultOpacities[is_vertical_tabs][is_dark_mode];
+@@ -133,13 +137,6 @@ bool IsCommandTriggeredFromMacMenu(NSInteger parent_menu_tag, int command_id) {
+   return is_mouse_click || is_menu_item_focused;
+ }
+ 
+-// Returns the corner padding used to extend the glass frame region past the
+-// vertical tab strip corners to ensure the toolbar and window material corner
+-// radii meet at the tangent point without visual gaps or overlap.
+-int GetGlassCornerPadding() {
+-  return GetLayoutConstant(LayoutConstant::kToolbarCornerRadius) * 2;
+-}
+-
+ }  // namespace
+ 
+ // NSGlassEffectView intercepts hit testing even when added below the
+@@ -278,6 +275,15 @@ - (NSTouchBar*)makeTouchBar {
+     if (!browser_view_->ShouldDrawTabStrip()) {
+       *titlebar_height += kWebAppMenuMargin * 2;
+     }
++    // Oblada: with the toolbar in the sidebar, the window controls are centered on
++    // its row of buttons, not on the whole toolbar (see oblada/browser/ui/sidebar_layout.h).
++    if (ToolbarView* toolbar = browser_view_->toolbar();
++        toolbar && oblada::sidebar::ToolbarInset(toolbar) >= 0) {
++      *titlebar_height =
++          oblada::sidebar::ButtonRowHeight(toolbar->GetPreferredSize().height(),
++                                         toolbar->location_bar_view()) +
++          browser_view_->browser_widget()->GetFrameView()->GetTopInset(true);
++    }
+   } else {
+     *override_titlebar_height = false;
+     *titlebar_height = 0;
+@@ -308,34 +314,9 @@ - (NSTouchBar*)makeTouchBar {
+ }
+ 
+ std::optional<int> BrowserNativeWidgetMac::GetGlassFrameWidth() const {
+-  // If vertical tabs are not being drawn (e.g. horizontal tab strip mode,
+-  // popup/app windows, or window too narrow to render vertical tabs), the glass
+-  // effect view spans the full window width without horizontal restriction.
+-  if (!browser_view_ || !browser_view_->ShouldDrawVerticalTabStrip()) {
+-    return std::nullopt;
+-  }
+-
+-  const int corner_padding = GetGlassCornerPadding();
+-  const int max_width =
+-      VerticalTabStripRegionView::kUncollapsedMaxWidth + corner_padding;
+-
+-  auto* const controller =
+-      tabs::VerticalTabStripStateController::From(browser_view_->browser());
+-  CHECK(controller);
+-
+-  // While actively dragging either the window live resize handle or the
+-  // vertical tab strip resize handle, expand the glass view to cover the
+-  // maximum possible vertical tab strip width to avoid continuous resizing on
+-  // every mouse movement.
+-  if (is_window_live_resizing_ || controller->is_resizing()) {
+-    return max_width;
+-  }
+-
+-  const int width =
+-      (controller->IsCollapsed() ? VerticalTabStripRegionView::kCollapsedWidth
+-                                 : controller->GetUncollapsedWidth()) +
+-      corner_padding;
+-  return std::min(width, max_width);
++  // Oblada: the glass spans the whole window, as in Zen: the page floats on it
++  // all around, rather than the glass ending past the sidebar.
++  return std::nullopt;
+ }
+ 
+ void BrowserNativeWidgetMac::OnFocusWindowToolbar() {
+@@ -507,6 +488,10 @@ - (NSTouchBar*)makeTouchBar {
+         result->new_toggle_state =
+             prefs->GetBoolean(prefs::kShowFullscreenToolbar);
+       }
++      // Oblada: tabbed windows always keep their sidebar in full screen.
++      result->set_hidden_state = true;
++      result->new_hidden_state =
++          browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL;
+       break;
+     }
+     case IDC_SHOW_FULL_URLS: {
