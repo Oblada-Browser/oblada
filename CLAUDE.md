@@ -8,6 +8,7 @@ It's a Chromium fork laid out like Brave. Chromium itself is never committed; th
 
 | Path | What it is |
 | --- | --- |
+| `Makefile` | the commands, over the scripts below: `make` lists them (`build`, `patches`, `test`, `screenshot`, `dmg`, `bump`, `release`…). Written for macOS's GNU Make 3.81 |
 | `chromium/CHROMIUM_VERSION` | the pinned Chromium release |
 | `chromium/oblada/VERSION` | Oblada's own version (0.1.0…), apart from Chromium's: the About page and `oblada://version` show it with the Chromium it's based on, and releases are named and tagged after it. C++ gets it as `OBLADA_VERSION` from the generated `oblada/version.h` |
 | `chromium/args.gn` | build args, copied into the build directory by `build.sh` |
@@ -15,6 +16,8 @@ It's a Chromium fork laid out like Brave. Chromium itself is never committed; th
 | `chromium/patches/` | Oblada's edits to Chromium's files, one patch per file |
 | `chromium/overrides/` | files that replace Chromium's whole (the logo's images and vector icons), copied over them at the same paths |
 | `chromium/scripts/` | `sync.sh`, `build.sh`, `patches.sh`, `rebrand.py`, `smoke.mjs`, `screenshot.mjs`, `lib/oblada.mjs`, `dmg.sh` and `release.sh` (see Releases) |
+| `changelogs/` | public release notes, as Zen's, one JSON file per version (`0_1_1.json`) for the website to read when it's generated; `changelogs/README.md` describes the format: `obladaVersion`, `chromiumVersion`, `releaseDate` (strings: `releaseDate` is `YYYY-MM-DD`, empty until the release) and `released` (bool), `releaseId` (a number, one more for each release: 0.1.0 was 1, 0.1.1 is 2), and optional lists of short sentences for users, `added`, `changed`, `removed`, `fixed`, `knownIssues`, `notes` |
+| `devlogs/` | what changed in each version in detail, for contributors, one Markdown file per version (`0_1_1.md`) |
 | `branding/` | the logo, an occhiata's tail: `logo.py` draws it, `export.sh` writes every image and vector icon Chromium shows its logo with into `chromium/overrides/`. `vector_icon.py --svg <size>` gives the one-color glyph as an SVG path for the `chrome-product` icon of WebUI iconsets, which are carried as patches. `dmg/` is the DMG window's background: `render.mjs` draws `background.html` into its PNGs |
 
 ## Workflow
@@ -23,11 +26,12 @@ It's a Chromium fork laid out like Brave. Chromium itself is never committed; th
 - `chromium/scripts/build.sh` applies what isn't applied yet (patches, overrides, and the "Chromium" → "Oblada" renaming of strings in every language by `rebrand.py`), then builds. Don't hand-edit `*chromium_strings*` files.
 - Build output is `Oblada.app` in `out/Oblada`, or in the checkout's existing build directory (the scripts find it). Renaming a build directory means a full rebuild of about 6 hours. A typical incremental build takes a few minutes; run long ones in the background.
 - User-visible strings for Oblada's own UI live in `oblada/browser/l10n.cc`, in English and Italian. Prefs are named `oblada.*`. Internal pages are shown as `oblada://` (they are `chrome://` underneath).
+- Every change goes, as it lands, into the next release's devlog (`devlogs/<x_y_z>.md`: what and how, with files and names) and, if users would notice it, its changelog (`changelogs/<x_y_z>.json`: one plain sentence in `added`, `changed`, `removed`, `fixed`, `knownIssues` or `notes`). Both are in English and kept up to date until the release.
 - Commit only when the user asks.
 
 ## Releases
 
-Releases are published on GitHub (`Oblada-Browser/oblada`) with `chromium/scripts/release.sh <notes.md>`; the DMG is never committed. A release is Oblada's version (`chromium/oblada/VERSION`): tag `0.1.1`, `Oblada-0.1.1-arm64.dmg`. The file holds the version of the last release until the next one: raise it (0.1.0 → 0.1.1) to release, and `release.sh` refuses a version already released from another commit. The first release, 0.1.0, kept its old tag, `155.0.8059.85-1`: the next one is 0.1.1. The notes get the Chromium version it's built on. The release is marked as the latest. The website's download button links straight to one release's DMG (`lib/site.ts` in the website's repo): point it at the new one with each release. `dmg.sh` signs the app ad hoc as a whole (the build is only linker-signed, which macOS calls damaged once downloaded) and lays out the DMG's window with dmgbuild, without opening Finder. Release notes are in English: what Oblada is, crediting Zen, how to install it past Gatekeeper, known limits.
+Releases are published on GitHub (`Oblada-Browser/oblada`) with `chromium/scripts/release.sh <notes.md>`; the DMG is never committed. A release is Oblada's version (`chromium/oblada/VERSION`): tag `0.1.1`, `Oblada-0.1.1-arm64.dmg`. The file holds the version of the last release until the next one: raise it (0.1.0 → 0.1.1) to release, and `release.sh` refuses a version already released from another commit. The first release, 0.1.0, kept its old tag, `155.0.8059.85-1`: the next one is 0.1.1. The notes get the Chromium version it's built on, and start from the version's changelog (`changelogs/`): on release day, set its `released` to true and its `releaseDate`, and replace the devlog's "Not released yet" line with the date. The release is marked as the latest. The website's download button links straight to one release's DMG (`lib/site.ts` in the website's repo): point it at the new one with each release. `dmg.sh` signs the app ad hoc as a whole (the build is only linker-signed, which macOS calls damaged once downloaded) and lays out the DMG's window with dmgbuild, without opening Finder. Release notes are in English: what Oblada is, crediting Zen, how to install it past Gatekeeper, known limits.
 
 ## Testing: never take the user's focus
 

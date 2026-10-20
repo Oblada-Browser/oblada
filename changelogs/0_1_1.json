@@ -1,0 +1,33 @@
+{
+  "added": [
+    "A downloads button at the bottom of the sidebar, next to your workspaces: it shows how your downloads are going, and lists the recent ones.",
+    "Install a website as an app from the site panel (the button at the end of the address bar), or open it in its app once it's installed."
+  ],
+  "changed": [
+    "The bookmark star moved from the address bar to the site panel, leaving the address more room. It's filled when the page is already bookmarked.",
+    "Oblada now reopens your tabs and workspaces when it starts. You can change this in Settings, On startup.",
+    "The first launch opens Oblada's welcome, instead of Chromium's window for signing in to Google.",
+    "\"Import bookmarks and settings\" opens Oblada's own import.",
+    "Clicking the address bar shows the whole address, not just the site.",
+    "About Oblada shows Oblada's own version and the Chromium version it's based on.",
+    "\"Get help\" leads to Oblada's issues on GitHub."
+  ],
+  "removed": [
+    "\"You and Google\" in Settings: Oblada doesn't use Google accounts.",
+    "The \"Continue where you left off\" bar at startup.",
+    "The update check in About Oblada, which always failed. Download new versions from GitHub."
+  ],
+  "fixed": [
+    "The site's icon could stay stuck above the address bar after hovering it.",
+    "The credits page (oblada://credits) now lists every open source project in Oblada and its license.",
+    "About Oblada said \"made possible by the Oblada open source project\" instead of Chromium."
+  ],
+  "knownIssues": [
+    "Oblada doesn't update itself yet: new versions are on GitHub."
+  ],
+  "obladaVersion": "0.1.1",
+  "releaseId": 2,
+  "chromiumVersion": "155.0.8059.85",
+  "releaseDate": "",
+  "released": false
+}

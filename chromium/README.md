@@ -11,15 +11,18 @@ Oblada as a Chromium fork, laid out like Brave: Chromium itself is never committ
 | `overrides/` | Oblada's logo files, which replace Chromium's at the same paths in the checkout (made by `branding/export.sh`) |
 | `scripts/` | `sync.sh`, `build.sh`, `patches.sh`, `smoke.mjs`, `screenshot.mjs`, `dmg.sh`, `release.sh` |
 
-The checkout lives in `~/chromium` (override with `OBLADA_CHROMIUM`). It takes about 35 GB of
-sources and toolchains, plus about 60 GB per build directory.
+The checkout lives in `~/chromium` (override with `OBLADA_CHROMIUM`). It takes about 32 GB of
+sources and toolchains, plus about 11 GB per build directory (without debug symbols, as
+`args.gn` has it).
+
+The repo's `Makefile` runs these scripts (`make` lists its commands):
 
 ```sh
-chromium/scripts/sync.sh      # check out CHROMIUM_VERSION, apply patches (re-run after bumping it)
-chromium/scripts/build.sh     # build Oblada.app (in out/Oblada, or the checkout's existing build directory)
-chromium/scripts/patches.sh update   # after editing Chromium files in ~/chromium/src
-node chromium/scripts/smoke.mjs      # check the patches in the build (headless, no window)
-node chromium/scripts/screenshot.mjs out.png   # the window, browser UI included, headless
+make sync       # chromium/scripts/sync.sh: check out CHROMIUM_VERSION, apply patches (re-run after bumping it)
+make build      # build.sh: build Oblada.app (in out/Oblada, or the checkout's existing build directory)
+make patches    # patches.sh update: after editing Chromium files in ~/chromium/src
+make test       # smoke.mjs: check the patches in the build (headless, no window)
+make screenshot PNG=out.png   # screenshot.mjs: the window, browser UI included, headless
 ```
 
 `smoke.mjs` also installs uBlock Origin and Multi-Account Containers from
@@ -35,8 +38,9 @@ built from `oblada/common/extensions/api` and registered next to Chrome's.
 Releases are on GitHub, with a DMG to download (DMGs are never committed):
 
 ```sh
-chromium/scripts/dmg.sh       # Oblada-<version>-arm64.dmg, in the build directory
-chromium/scripts/release.sh /tmp/notes.md   # build, pack and publish the commit
+make dmg                           # dmg.sh: Oblada-<version>-arm64.dmg, in the build directory
+make bump TO=0.1.1                 # raise chromium/oblada/VERSION, then commit and push it
+make release NOTES=/tmp/notes.md   # release.sh: build, pack and publish the commit
 ```
 
 `release.sh` wants the commit pushed and nothing uncommitted, in the repo or in the

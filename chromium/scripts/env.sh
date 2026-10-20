@@ -1,5 +1,5 @@
 # Sourced by the other scripts. The Chromium checkout lives outside this repo
-# ($OBLADA_CHROMIUM, default ~/chromium): ~35 GB of sources plus ~60 GB per build.
+# ($OBLADA_CHROMIUM, default ~/chromium): ~32 GB of sources plus ~11 GB per build.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OBLADA_CHROMIUM="${OBLADA_CHROMIUM:-$HOME/chromium}"
 SRC="$OBLADA_CHROMIUM/src"
