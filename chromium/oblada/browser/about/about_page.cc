@@ -46,13 +46,7 @@ void AddAboutStrings(content::WebUIDataSource* source) {
                             kArchitecture},
                         nullptr));
 
-  base::Time::Exploded now;
-  base::Time::Now().LocalExplode(&now);
-  source->AddString(
-      "aboutProductCopyright",
-      base::ReplaceStringPlaceholders(
-          L10n("about.copyright"),
-          std::vector<std::u16string>{base::NumberToString16(now.year)}, nullptr));
+  source->AddString("aboutProductCopyright", Copyright());
 
   // Chromium's credits ("made possible by the Chromium open source project and
   // other open source software"), then Oblada's own source code.
@@ -66,6 +60,18 @@ void AddAboutStrings(content::WebUIDataSource* source) {
                     base::ReplaceStringPlaceholders(
                         L10n("about.source"),
                         std::vector<std::u16string>{kSourceURL}, nullptr)}));
+}
+
+std::u16string Authors() {
+  return L10n("about.authors");
+}
+
+std::u16string Copyright() {
+  base::Time::Exploded now;
+  base::Time::Now().LocalExplode(&now);
+  return base::ReplaceStringPlaceholders(
+      L10n("about.copyright"),
+      std::vector<std::u16string>{base::NumberToString16(now.year)}, nullptr);
 }
 
 }  // namespace oblada::about

@@ -1,6 +1,8 @@
 #ifndef OBLADA_BROWSER_ABOUT_ABOUT_PAGE_H_
 #define OBLADA_BROWSER_ABOUT_ABOUT_PAGE_H_
 
+#include <string>
+
 namespace content {
 class WebUIDataSource;
 }  // namespace content
@@ -17,6 +19,11 @@ inline constexpr char kHelpURL[] = "https://github.com/Oblada-Browser/oblada/iss
 
 // Replaces Chromium's About page strings in `source`, Settings' data source.
 void AddAboutStrings(content::WebUIDataSource* source);
+
+// Who makes Oblada, and its copyright this year, where Chromium names its own (also on
+// oblada://version, version_ui.cc). Chromium is credited in oblada://credits.
+std::u16string Authors();
+std::u16string Copyright();
 
 }  // namespace oblada::about
 

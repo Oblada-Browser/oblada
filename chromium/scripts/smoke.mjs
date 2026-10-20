@@ -191,8 +191,16 @@ async function coreChecks(o) {
     check('product is named Oblada, with its own version',
       /Oblada/.test(body) &&
         body.includes(`${version('../oblada/VERSION')} (Chromium ${chromiumVersion})`) &&
-        !/\bChromium\b(?! ?OS)/.test(body.replace(/Chromium (open[- ]source|Authors|project|\d)/gi, '')),
+        !/\bChromium\b(?! ?OS)/.test(body.replace(/Chromium (open[- ]source|project|\d)/gi, '')),
       body.split('\n').map((l) => l.trim()).filter((l) => /Oblada|Chromium/.test(l)).slice(0, 3).join(' | '));
+    // Oblada's logo (its version, 141 points wide, not Chromium's 171), and no "(Developer
+    // Build)": releases are built that way too.
+    const page = await o.evaluate(`import('chrome://resources/js/load_time_data.js').then(({loadTimeData}) => ({
+      logo: document.querySelector('#logo img').naturalWidth,
+      unofficial: document.body.innerText.includes(loadTimeData.getString('official')),
+    }))`, s);
+    check('the version page has Oblada\'s logo and no build label', page.logo === 141 && !page.unofficial,
+      `logo ${page.logo} wide, build label ${page.unofficial ? 'shown' : 'hidden'}`);
     // Without a <title>, the tab shows its address: chrome:// must be displayed as oblada://.
     const title = async () => (await o.pages()).find((p) => p.targetId === versionId)?.title;
     const before = await title();

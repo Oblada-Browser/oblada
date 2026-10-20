@@ -229,6 +229,7 @@ constexpr auto kStrings = std::to_array<Entry>({
     {"split.close", "Close tab", "Chiudi la scheda"},
     {"about.version", "Version $1, based on Chromium $2 ($3)",
      "Versione $1, basata su Chromium $2 ($3)"},
+    {"about.authors", "The Oblada Authors", "Gli autori di Oblada"},
     {"about.copyright", "Copyright $1 The Oblada Authors.",
      "Copyright $1 gli autori di Oblada."},
     {"about.source",

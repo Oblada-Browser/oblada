@@ -21,7 +21,7 @@ Two kinds of changes are not patches:
 - **Logo images:** they are copied over Chromium's from `chromium/overrides/`, which
   `branding/export.sh` makes.
 
-There are 129 patches for Chromium 155 (`chromium/CHROMIUM_VERSION`). This file describes
+There are 130 patches for Chromium 155 (`chromium/CHROMIUM_VERSION`). This file describes
 each one, and how they depend on each other and on Oblada's code. Update it when a patch
 is added, removed or changes purpose.
 
@@ -141,7 +141,7 @@ source adds. Each pair is listed in the entries.
 | Extensions & Firefox add-ons | `chrome_download_manager_delegate.cc`, `cookies_api.cc`, `tabs_api.{h,cc}`, `tabs.json`, `extension_tab_util.cc`, `chrome_extensions_browser_api_provider.cc`, `chrome_extensions_api_provider.cc`, `manifest_v2_handler.cc`, `extensions_toolbar_desktop.cc` |
 | Menus | `app_menu_model.cc`, `action_app_menu_manager.cc`, `app_menu.cc`, `browser_app_menu_button.cc`, `tab_menu_model.{h,cc}`, `main_menu_builder.mm`, `system_menu_model_builder.cc` |
 | URLs & search | `url_fixer.cc`, `url_formatter.cc`, `chrome_autocomplete_scheme_classifier.cc`, `builtin_provider.cc`, `template_url_prepopulate_data.cc` |
-| Internal pages | `chrome_web_ui_configs.cc`, `settings_ui.cc`, `page_visibility.ts`, `about_handler.cc`, `chrome_pages.cc`, `version_ui.cc`, `chrome_urls/resources/app.{ts,html.ts}` |
+| Internal pages | `chrome_web_ui_configs.cc`, `settings_ui.cc`, `page_visibility.ts`, `about_handler.cc`, `chrome_pages.cc`, `version_ui.cc`, `about_version.html`, `chrome_urls/resources/app.{ts,html.ts}` |
 
 ## The patches
 
@@ -821,8 +821,16 @@ Settings' import dialog included: importing is Oblada's own (see `chrome_pages.c
 
 #### `chrome/browser/ui/webui/version/version_ui.cc`
 `chrome-browser-ui-webui-version-version_ui.cc.patch`. `oblada://version` shows Oblada's
-version (`chromium/oblada/VERSION`) and the Chromium it's built on.
-- Oblada code: the generated `oblada/version.h` (see `oblada/browser/sources.gni`).
+version (`chromium/oblada/VERSION`) and the Chromium it's built on, and Oblada's authors and
+copyright, where Chromium named its own (Chromium is credited in `oblada://credits`). Its
+logo is Oblada's from `chromium/overrides/components/resources` (`branding/export.sh`).
+- Oblada code: the generated `oblada/version.h` (see `oblada/browser/sources.gni`),
+  `oblada/browser/about/about_page.h` (`Authors()`, `Copyright()`).
+
+#### `components/webui/version/resources/about_version.html`
+`components-webui-version-resources-about_version.html.patch`. No "(Developer Build)" after
+the version: Chromium says so of any build Google doesn't make officially, Oblada's
+releases included.
 
 #### `components/webui/chrome_urls/resources/app.ts`, `app.html.ts`
 `components-webui-chrome_urls-resources-app.ts.patch`,

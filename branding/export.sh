@@ -79,4 +79,7 @@ print(f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 97 22" width="97"
 PY
   png "$WORK/name$suffix.svg" 97 "$THEME/default_100_percent/chromium/product_logo_name_22$suffix.png"
   png "$WORK/name$suffix.svg" 194 "$THEME/default_200_percent/chromium/product_logo_name_22$suffix.png"
+  # The same, 32 points high, at the top of oblada://version.
+  png "$WORK/name$suffix.svg" 141 "$OVERRIDES/components/resources/default_100_percent/chromium/product_logo$suffix.png"
+  png "$WORK/name$suffix.svg" 282 "$OVERRIDES/components/resources/default_200_percent/chromium/product_logo$suffix.png"
 done

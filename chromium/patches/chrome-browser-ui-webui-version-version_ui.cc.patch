@@ -1,18 +1,19 @@
 diff --git a/chrome/browser/ui/webui/version/version_ui.cc b/chrome/browser/ui/webui/version/version_ui.cc
-index 4c523d48d8..09856d3bdf 100644
+index 4c523d48d8..b56475d799 100644
 --- a/chrome/browser/ui/webui/version/version_ui.cc
 +++ b/chrome/browser/ui/webui/version/version_ui.cc
-@@ -4,6 +4,9 @@
+@@ -4,6 +4,10 @@
  
  #include "chrome/browser/ui/webui/version/version_ui.h"
  
 +#include "base/strings/strcat.h"  // Oblada
++#include "oblada/browser/about/about_page.h"  // Oblada
 +#include "oblada/version.h"  // Oblada
 +
  #include <memory>
  #include <string>
  #include <string_view>
-@@ -247,8 +250,11 @@ void VersionUI::AddVersionDetailStrings(content::WebUIDataSource* html_source) {
+@@ -247,8 +251,11 @@ void VersionUI::AddVersionDetailStrings(content::WebUIDataSource* html_source) {
                                    VersionProcessorVariation());
  
    // Data strings.
@@ -26,3 +27,18 @@ index 4c523d48d8..09856d3bdf 100644
    html_source->AddString(version_ui::kVersionSuffix,
                           GetVersionInformationalSuffix());
  
+@@ -256,11 +263,9 @@ void VersionUI::AddVersionDetailStrings(content::WebUIDataSource* html_source) {
+ 
+   html_source->AddString(version_ui::kJSEngine, "V8");
+   html_source->AddString(version_ui::kJSVersion, V8_VERSION_STRING);
+-  html_source->AddString(
+-      version_ui::kCopyright,
+-      base::i18n::MessageFormatter::FormatWithNumberedArgs(
+-          l10n_util::GetStringUTF16(IDS_ABOUT_VERSION_COPYRIGHT),
+-          base::Time::Now()));
++  // Oblada: its authors and copyright, not Chromium's (credited in oblada://credits).
++  html_source->AddString(version_ui::kCompany, oblada::about::Authors());
++  html_source->AddString(version_ui::kCopyright, oblada::about::Copyright());
+   html_source->AddString(version_ui::kCL, version_info::GetLastChange());
+   html_source->AddString(version_ui::kUserAgent,
+                          embedder_support::GetUserAgent());
