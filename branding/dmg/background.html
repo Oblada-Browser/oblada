@@ -1,0 +1,79 @@
+<!doctype html>
+<!-- The background of Oblada's DMG window (660×420), rendered into background.png and
+     background@2x.png by render.mjs. Finder puts the app's icon at (165, 220) and
+     Applications at (495, 220) (chromium/scripts/dmg_settings.py). -->
+<html>
+<head>
+<meta charset="utf-8">
+<!-- The website's fonts. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Fraunces:opsz,wght,SOFT,WONK@9..144,100..900,0..100,0..1&display=block">
+<style>
+  html, body { margin: 0; width: 660px; height: 420px; overflow: hidden; }
+  /* The website's dive: the shallows at the top, then the blue under the icons' labels,
+     as far from black as from white, so Finder's labels read in light and dark mode
+     alike, then the deep and the seabed. */
+  body {
+    position: relative;
+    background: linear-gradient(180deg,
+      #d9f1ea 0px, #8ad6d6 78px, #6cc8d6 132px, #49b2d6 196px,
+      #1e78c2 268px, #1e78c2 318px, #0b4592 376px, #061a3d 420px);
+  }
+  .ray {
+    position: absolute; top: -60px; height: 380px;
+    background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 85%);
+    transform: skewX(-16deg); filter: blur(9px); mix-blend-mode: soft-light;
+  }
+  h1 {
+    position: absolute; left: 0; right: 0; top: 30px; margin: 0; text-align: center;
+    font: 560 50px/1 Fraunces, serif; letter-spacing: -0.025em; color: #0f2340;
+    font-variation-settings: "SOFT" 100, "WONK" 0, "opsz" 72;
+  }
+  .note {
+    position: absolute; left: 0; right: 0; top: 136px; text-align: center;
+    font: 600 25px/1 Caveat, cursive; color: #fbfdff; transform: rotate(-3deg);
+    text-shadow: 0 1px 6px rgba(6,26,61,.25);
+  }
+  svg { position: absolute; left: 0; top: 0; }
+
+  /* Mockups only (render.mjs --mock): Finder's icons and labels. */
+  .icon { position: absolute; width: 128px; height: 128px; }
+  .label { position: absolute; width: 160px; text-align: center; font: 13px -apple-system, system-ui; }
+</style>
+</head>
+<body>
+  <div class="ray" style="left: 70px; width: 70px; opacity: .9"></div>
+  <div class="ray" style="left: 190px; width: 34px; opacity: .7"></div>
+  <div class="ray" style="left: 300px; width: 110px; opacity: .6"></div>
+  <div class="ray" style="left: 470px; width: 46px; opacity: .8"></div>
+  <div class="ray" style="left: 570px; width: 80px; opacity: .5"></div>
+
+  <h1>Oblada</h1>
+  <div class="note">drag to install</div>
+
+  <svg width="660" height="420" viewBox="0 0 660 420">
+    <defs>
+      <linearGradient id="back-dune" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b79a68"/><stop offset="1" stop-color="#8f7650"/></linearGradient>
+      <linearGradient id="front-dune" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eddcb5"/><stop offset="1" stop-color="#d9c194"/></linearGradient>
+    </defs>
+    <!-- The arrow, from the app to Applications. -->
+    <g fill="none" stroke="#fbfdff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".92">
+      <path d="M 262 214 C 300 182, 356 176, 396 204"/>
+      <path d="M 380 186 L 398 206 L 373 210"/>
+    </g>
+    <!-- Bubbles. -->
+    <g fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.55)" stroke-width="1.4">
+      <circle cx="58" cy="352" r="6"/>
+      <circle cx="74" cy="322" r="3.5"/>
+      <circle cx="64" cy="298" r="2.5"/>
+      <circle cx="604" cy="336" r="7"/>
+      <circle cx="590" cy="304" r="4"/>
+      <circle cx="600" cy="280" r="2.5"/>
+      <circle cx="330" cy="356" r="3"/>
+      <circle cx="342" cy="334" r="2"/>
+    </g>
+    <!-- The seabed. -->
+    <path d="M 0 402 C 80 388, 150 396, 230 400 C 320 405, 390 390, 470 394 C 560 398, 610 390, 660 396 L 660 420 L 0 420 Z" fill="url(#back-dune)"/>
+    <path d="M 0 410 C 110 402, 190 412, 300 410 C 400 408, 470 401, 560 406 C 610 409, 640 405, 660 404 L 660 420 L 0 420 Z" fill="url(#front-dune)"/>
+  </svg>
+</body>
+</html>

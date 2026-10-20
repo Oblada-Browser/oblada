@@ -13,8 +13,8 @@ It's a Chromium fork laid out like Brave. Chromium itself is never committed; th
 | `chromium/oblada/` | Oblada's own code (namespace `oblada`), linked into the checkout as `src/oblada`; sources are listed in `oblada/browser/sources.gni` |
 | `chromium/patches/` | Oblada's edits to Chromium's files, one patch per file |
 | `chromium/overrides/` | files that replace Chromium's whole (the logo's images and vector icons), copied over them at the same paths |
-| `chromium/scripts/` | `sync.sh`, `build.sh`, `patches.sh`, `rebrand.py`, `smoke.mjs`, `screenshot.mjs`, `lib/oblada.mjs` |
-| `branding/` | the logo, an occhiata's tail: `logo.py` draws it, `export.sh` writes every image and vector icon Chromium shows its logo with into `chromium/overrides/`. `vector_icon.py --svg <size>` gives the one-color glyph as an SVG path for the `chrome-product` icon of WebUI iconsets, which are carried as patches |
+| `chromium/scripts/` | `sync.sh`, `build.sh`, `patches.sh`, `rebrand.py`, `smoke.mjs`, `screenshot.mjs`, `lib/oblada.mjs`, `dmg.sh` and `release.sh` (see Releases) |
+| `branding/` | the logo, an occhiata's tail: `logo.py` draws it, `export.sh` writes every image and vector icon Chromium shows its logo with into `chromium/overrides/`. `vector_icon.py --svg <size>` gives the one-color glyph as an SVG path for the `chrome-product` icon of WebUI iconsets, which are carried as patches. `dmg/` is the DMG window's background: `render.mjs` draws `background.html` into its PNGs |
 
 ## Workflow
 
@@ -23,6 +23,10 @@ It's a Chromium fork laid out like Brave. Chromium itself is never committed; th
 - Build output is `Oblada.app` in `out/Oblada`, or in the checkout's existing build directory (the scripts find it). Renaming a build directory means a full rebuild of about 6 hours. A typical incremental build takes a few minutes; run long ones in the background.
 - User-visible strings for Oblada's own UI live in `oblada/browser/l10n.cc`, in English and Italian. Prefs are named `oblada.*`. Internal pages are shown as `oblada://` (they are `chrome://` underneath).
 - Commit only when the user asks.
+
+## Releases
+
+Releases are published on GitHub (`Oblada-Browser/oblada`) with `chromium/scripts/release.sh <tag> <notes.md>`; the DMG is never committed. Tags are Chromium's version and Oblada's revision on it (`155.0.8059.85-1`, `-2`…). The release is marked as the latest: the website's download button leads to `/releases/latest`. `dmg.sh` signs the app ad hoc as a whole (the build is only linker-signed, which macOS calls damaged once downloaded) and lays out the DMG's window with dmgbuild, without opening Finder. Release notes are in English: what Oblada is, crediting Zen, how to install it past Gatekeeper, known limits.
 
 ## Testing: never take the user's focus
 

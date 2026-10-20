@@ -8,12 +8,13 @@ Oblada is a Chromium fork laid out like Brave: Chromium itself is never committe
 chromium/scripts/sync.sh      # check out the pinned Chromium release and apply the patches
 chromium/scripts/build.sh     # build Oblada.app
 node chromium/scripts/smoke.mjs   # check the build (headless: no window, no focus taken)
+chromium/scripts/release.sh <tag> /tmp/notes.md   # publish the commit on GitHub, with its DMG
 ```
 
 | Path | What it is |
 | --- | --- |
 | `chromium/` | the browser: `oblada/` (Oblada's code), `patches/` (its edits to Chromium, described in [PATCHES.md](PATCHES.md)), `scripts/` |
-| `branding/` | the logo, the tail of an occhiata (*Oblada melanura*): `logo.py` draws it, `export.sh` makes the browser's icons from it |
+| `branding/` | the logo, the tail of an occhiata (*Oblada melanura*): `logo.py` draws it, `export.sh` makes the browser's icons from it; `dmg/` is the background of the DMG's window |
 
 ## License
 
