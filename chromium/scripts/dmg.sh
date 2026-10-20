@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Packs the build into a DMG, Oblada-<version>-<arch>.dmg in the build directory: the app
-# and a link to Applications over branding/dmg's background. Prints the DMG's path last.
+# Packs the build into a DMG, Oblada-<version>-<arch>.dmg in the build directory (Oblada's
+# version, chromium/oblada/VERSION): the app and a link to Applications over branding/dmg's
+# background. Prints the DMG's path last.
 #   dmg.sh
 # The build is signed by the linker alone, which macOS calls damaged once downloaded: the
 # app in the DMG is signed ad hoc as a whole, helpers included (there's no Developer ID
@@ -14,7 +15,7 @@ quiet() { "$@" 2> >(grep -v 'is deprecated' >&2); }
 
 APP="$OUT/Oblada.app"
 [ -d "$APP" ] || { echo "no build in $OUT: run build.sh first" >&2; exit 1; }
-VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
+VERSION="$(tr -d '[:space:]' < "$HERE/oblada/VERSION")"
 ARCH="$(lipo -archs "$APP/Contents/MacOS/Oblada" | tr ' ' '-')"
 DMG="$OUT/Oblada-$VERSION-$ARCH.dmg"
 

@@ -1,8 +1,19 @@
 diff --git a/chrome/browser/ui/ui_features.cc b/chrome/browser/ui/ui_features.cc
-index 7a0e331ded..232dda0944 100644
+index 7a0e331ded..1c1e235084 100644
 --- a/chrome/browser/ui/ui_features.cc
 +++ b/chrome/browser/ui/ui_features.cc
-@@ -551,9 +551,11 @@ BASE_FEATURE_PARAM(bool,
+@@ -383,7 +383,9 @@ BASE_FEATURE(kNonMilestoneUpdateToast, base::FEATURE_ENABLED_BY_DEFAULT);
+ BASE_FEATURE(kRespectShouldTriggerSessionRestoreOnDesktop,
+              base::FEATURE_ENABLED_BY_DEFAULT);
+ 
+-BASE_FEATURE(kSessionRestoreInfobar, base::FEATURE_ENABLED_BY_DEFAULT);
++// Oblada: no infobar about restoring tabs: it restores them by default, as Zen
++// and Arc do (see session_startup_pref.cc).
++BASE_FEATURE(kSessionRestoreInfobar, base::FEATURE_DISABLED_BY_DEFAULT);
+ 
+ BASE_FEATURE_PARAM(bool,
+                    kSetDefaultToContinueSession,
+@@ -551,9 +553,11 @@ BASE_FEATURE_PARAM(bool,
  BASE_FEATURE(kAiOverlayDisableNavigationContext,
               base::FEATURE_DISABLED_BY_DEFAULT);
  

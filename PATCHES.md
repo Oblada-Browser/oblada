@@ -16,11 +16,12 @@ chromium/scripts/patches.sh reset    # revert every patched file (before moving 
 
 Two kinds of changes are not patches:
 - **Renaming:** "Chromium" becomes "Oblada" in every translation by
-  `chromium/scripts/rebrand.py` at build time.
+  `chromium/scripts/rebrand.py` at build time, except where the Chromium project itself is
+  meant ("made possible by the Chromium open source project").
 - **Logo images:** they are copied over Chromium's from `chromium/overrides/`, which
   `branding/export.sh` makes.
 
-There are 119 patches for Chromium 155 (`chromium/CHROMIUM_VERSION`). This file describes
+There are 126 patches for Chromium 155 (`chromium/CHROMIUM_VERSION`). This file describes
 each one, and how they depend on each other and on Oblada's code. Update it when a patch
 is added, removed or changes purpose.
 
@@ -121,21 +122,21 @@ source adds. Each pair is listed in the entries.
 | Area | Patches |
 | --- | --- |
 | Build | `chrome/browser/ui/BUILD.gn`, `chrome/browser/extensions/BUILD.gn`, `chrome/common/extensions/BUILD.gn` |
-| Startup, prefs, stability | `chrome_browser_main.cc`, `browser_prefs.cc`, `base/check.cc`, `web_ui_main_frame_observer.cc`, `startup/infobar_utils.cc` |
+| Startup, prefs, stability | `chrome_browser_main.cc`, `browser_prefs.cc`, `session_startup_pref.cc`, `base/check.cc`, `web_ui_main_frame_observer.cc`, `startup/infobar_utils.cc` |
 | Branding | `BRANDING`, `chrome_paths_mac.mm`, three `icons.html.ts` |
 | Window & frame | `ui_base_features.cc`, `browser_native_widget_mac.mm`, `browser_frame_view_mac.mm`, `browser_view_layout_delegate_impl.cc`, `fullscreen_util_mac.cc`, `window_feature_controller.cc` |
-| Sidebar & compact mode | `browser_view_tabbed_layout_impl.cc`, `toolbar_view.cc`, `vertical_tab_strip_region_view.{h,cc}`, `vertical_tab_strip_state.h`, `vertical_tab_strip_state_controller.{h,cc}`, `tab_strip_prefs.cc`, `browser_command_controller.cc`, `vertical_tab_strip_bottom_container.cc` |
+| Sidebar & compact mode | `browser_view_tabbed_layout_impl.cc`, `toolbar_view.cc`, `vertical_tab_strip_region_view.{h,cc}`, `vertical_tab_strip_state.h`, `vertical_tab_strip_state_controller.{h,cc}`, `tab_strip_prefs.cc`, `browser_command_controller.cc`, `vertical_tab_strip_bottom_container.cc`, `download_toolbar_ui_controller.cc` |
 | Tabs | `tab_style.cc`, `tab_hover_card_controller.cc`, `tab_strip_collection_controller.{h,cc}` |
 | Workspaces | `ui_features.cc`, `browser_commands.cc`, `browser_widget.cc`, `tab_group_header_view.{h,cc}`, `tab_collection_animating_layout_manager.{h,cc}`, `vertical_tab_strip_focus_swipe_controller.cc`, `saved_tab_group_model_listener.cc`, `tab_group_sync_delegate_desktop.cc`, `saved_tab_groups/public/pref_names.cc`, `bookmark_utils.cc` |
 | Containers | `chrome_content_browser_client_navigation_throttles.cc`, `tab_helpers.cc`, `browser_navigator.cc`, `web_contents_impl.cc`, `session_service_base.cc`, `browser_live_tab_context.cc`, `browser_tabrestore.cc`, `render_view_context_menu.{h,cc}`, `new_tab_button.{h,cc}`, `new_tab_button_menu_model.{h,cc}`, `tab_view.cc` |
 | Address bar | `location_bar_view.{h,cc}`, `top_container_view.cc`, `browser_view_layout_impl.cc`, `omnibox_view_views.cc`, `omnibox_popup_presenter_base.cc`, `omnibox_popup_webui_base_content.cc`, `rounded_omnibox_results_frame.cc`, `location_bar_model_delegate.cc`, `aim_eligibility_service_features.cc` |
 | Split view | `multi_contents_view.{h,cc}`, `multi_contents_drop_target_view.cc`, `multi_contents_view_drop_target_controller.{h,cc}`, `multi_contents_resize_area.h`, `contents_container_view.cc`, `contents_container_outline.{h,cc}`, `split_tab_view.{h,cc}`, `tab_view_vertical_layout.cc`, `tab_drag_controller.{h,cc}`, `tab_drag_target.h` |
 | Peek | `web_contents_delegate.{h,cc}` (content), `render_widget_host_view_mac.mm`, `browser_web_contents_delegate.{h,cc}` |
-| New Tab & welcome | `search.cc`, `contents_web_view.{h,cc}` |
+| New Tab & welcome | `search.cc`, `contents_web_view.{h,cc}`, `startup_browser_creator_impl.cc` |
 | Extensions & Firefox add-ons | `chrome_download_manager_delegate.cc`, `cookies_api.cc`, `tabs_api.{h,cc}`, `tabs.json`, `extension_tab_util.cc`, `chrome_extensions_browser_api_provider.cc`, `chrome_extensions_api_provider.cc`, `manifest_v2_handler.cc`, `extensions_toolbar_desktop.cc` |
 | Menus | `app_menu_model.cc`, `action_app_menu_manager.cc`, `app_menu.cc`, `browser_app_menu_button.cc`, `tab_menu_model.{h,cc}`, `main_menu_builder.mm`, `system_menu_model_builder.cc` |
 | URLs & search | `url_fixer.cc`, `url_formatter.cc`, `chrome_autocomplete_scheme_classifier.cc`, `builtin_provider.cc`, `template_url_prepopulate_data.cc` |
-| Internal pages | `chrome_web_ui_configs.cc`, `settings_ui.cc`, `chrome_urls/resources/app.{ts,html.ts}` |
+| Internal pages | `chrome_web_ui_configs.cc`, `settings_ui.cc`, `page_visibility.ts`, `about_handler.cc`, `chrome_pages.cc`, `version_ui.cc`, `chrome_urls/resources/app.{ts,html.ts}` |
 
 ## The patches
 
@@ -167,8 +168,9 @@ providers.
 
 #### `chrome/browser/chrome_browser_main.cc`
 `chrome-browser-chrome_browser_main.cc.patch`. Adds Oblada's `ChromeBrowserMainExtraParts`
-(`oblada::CreateBrowserMainExtraParts()`). Its `PostBrowserStart()` starts the Firefox
-add-ons, workspaces and peek.
+(`oblada::CreateBrowserMainExtraParts()`). Its `PreProfileInit()` marks Chromium's first run
+window (signing in to Google) as done, so that it never opens; its `PostBrowserStart()`
+starts the Firefox add-ons, workspaces and peek.
 - Oblada code: `oblada/browser/oblada_browser_main_extra_parts.h`.
 
 #### `chrome/browser/prefs/browser_prefs.cc`
@@ -177,6 +179,12 @@ add-ons, workspaces and peek.
 add-ons, New Tab page and workspaces. New Oblada prefs go in `oblada/browser/prefs.cc`, not
 here.
 - Oblada code: `oblada/browser/prefs.h`.
+
+#### `chrome/browser/prefs/session_startup_pref.cc`
+`chrome-browser-prefs-session_startup_pref.cc.patch`. On startup, Oblada reopens the last
+session's tabs (and so its workspaces) by default, as Zen and Arc do; Settings' "On
+startup" can still change it. Needed by: `ui_features.cc` turning off the infobar that
+offered it.
 
 #### `base/check.cc`
 `base-check.cc.patch`. `DUMP_WILL_BE_CHECK` failures log an error and go on instead of
@@ -189,8 +197,11 @@ ones.
 internal page no longer crashes the browser, as it would in a non-official build.
 
 #### `chrome/browser/ui/startup/infobar_utils.cc`
-`chrome-browser-ui-startup-infobar_utils.cc.patch`. Removes the "Google API keys are
-missing" infobar at startup: Oblada doesn't use them.
+`chrome-browser-ui-startup-infobar_utils.cc.patch`. Startup infobars:
+- No "Google API keys are missing": Oblada doesn't use them.
+- No prompts (restoring tabs, the default browser, PDFs) over `oblada://welcome`, which has
+  its own steps. Warnings (an obsolete system, dangerous flags) still show.
+- Oblada code: `oblada/browser/welcome/welcome_ui.h`.
 
 ### Branding
 
@@ -322,6 +333,16 @@ to horizontal tabs.
 sidebar's new tab button shows its label: a Zen-like "+ New tab" row aligned with the tab
 titles.
 
+#### `chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc`
+`chrome-browser-ui-views-download-bubble-download_toolbar_ui_controller.cc.patch`. The
+downloads button is at the bottom of the sidebar, as in Zen, rather than in the toolbar.
+- The progress ring, badge and bubble go to the sidebar's button, and the bubble opens
+  above it.
+- The toolbar's button no longer shows when a download starts, nor does the animation
+  rising from the page to it.
+- Oblada code: `oblada/browser/ui/downloads_button.h` (the button, which
+  `oblada/browser/workspaces/workspace_switcher.h` puts before the workspaces).
+
 ### Tabs
 
 #### `chrome/browser/ui/tabs/tab_style.cc`
@@ -349,9 +370,11 @@ Workspaces are tab groups shown with Chromium's group "focus" mode, one at a tim
 (`chromium/oblada/browser/workspaces/`).
 
 #### `chrome/browser/ui/ui_features.cc`
-`chrome-browser-ui-ui_features.cc.patch`. Turns `kTabGroupsFocusing` on, which workspaces
-are built on. Tabs of hidden workspaces keep running instead of being frozen
-(`kTabGroupsFocusFreezing` off), as in Zen.
+`chrome-browser-ui-ui_features.cc.patch`.
+- Turns `kTabGroupsFocusing` on, which workspaces are built on. Tabs of hidden workspaces
+  keep running instead of being frozen (`kTabGroupsFocusFreezing` off), as in Zen.
+- Turns `kSessionRestoreInfobar` off: no infobar offering to restore tabs at startup, as
+  Oblada restores them by default (see `session_startup_pref.cc`).
 
 #### `chrome/browser/ui/browser_commands.cc`
 `chrome-browser-ui-browser_commands.cc.patch`.
@@ -465,10 +488,15 @@ tab ▸" in the New Tab button's context menu.
 the sidebar.
 - **Look:** a translucent rounded rectangle without a focus ring.
 - **Additions:** the container chip and the site panel's button.
+- **The site panel** has the bookmark star and the app's install instead
+  (`HidePageActionsInPanel()`).
 - **Quiet** (`IsObladaQuiet()`): only the site, until it is hovered, focused or showing one
-  of its bubbles.
+  of its bubbles. What it hides is clipped to nothing, layers included (a button's icon
+  goes on a layer of its own while its hover highlight fades, and would stay above the
+  bar).
 - **Floating** (`UpdateObladaFloating()`): it floats over the page, Arc-like, while it has
-  the focus.
+  the focus, with the whole URL however it got the focus (Chromium leaves a click with the
+  site alone, which is what the sidebar shows).
 - Oblada code: `oblada/browser/ui/floating_location_bar.h`, `sidebar_layout.h`,
   `site_panel.h`, `oblada/browser/containers/container_chip.h`.
 
@@ -594,6 +622,12 @@ rather than the search engine's. Incognito keeps its own.
 (the New Tab page, `oblada://welcome`) show the window through them. The background is
 updated as pages change (`PrimaryPageChanged()`), so other pages are opaque again.
 - Oblada code: `oblada/browser/new_tab/new_tab_ui.h`.
+
+#### `chrome/browser/ui/startup/startup_browser_creator_impl.cc`
+`chrome-browser-ui-startup-startup_browser_creator_impl.cc.patch`. The first launch after
+installing opens `oblada://welcome` instead of the New Tab page. Chromium's own first run
+window doesn't open before it (see `chrome_browser_main.cc`).
+- Oblada code: `oblada/browser/welcome/welcome_ui.h`.
 
 ### Extensions and Firefox add-ons
 
@@ -725,8 +759,35 @@ Their hosts must not clash with Chrome's.
 - Oblada code: `oblada/browser/containers/containers_ui.h` (`oblada::RegisterWebUIConfigs()`).
 
 #### `chrome/browser/ui/webui/settings/settings_ui.cc`
-`chrome-browser-ui-webui-settings-settings_ui.cc.patch`. Hides the Settings page about
-Google's AI features.
+`chrome-browser-ui-webui-settings-settings_ui.cc.patch`.
+- Hides the Settings page about Google's AI features.
+- The About page has Oblada's version (with Chromium's), its copyright and a link to its
+  source code.
+- Oblada code: `oblada/browser/about/about_page.h`.
+
+#### `chrome/browser/ui/webui/settings/about_handler.cc`
+`chrome-browser-ui-webui-settings-about_handler.cc.patch`. The About page shows no update
+status: Oblada has no updater (new versions are GitHub releases), and Chromium's check
+would fail with "error code 0".
+
+#### `chrome/browser/resources/settings/page_visibility.ts`
+`chrome-browser-resources-settings-page_visibility.ts.patch`. Settings has no "You and
+Google" page (a Google account, sync), which Oblada has no use for. Its routes go with it,
+Settings' import dialog included: importing is Oblada's own (see `chrome_pages.cc`).
+
+#### `chrome/browser/ui/chrome_pages.cc`
+`chrome-browser-ui-chrome_pages.cc.patch`.
+- Help (the Help menu, the About page's "Get help") opens Oblada's GitHub issues rather
+  than Google's help center.
+- "Import bookmarks and settings" opens Oblada's import, in its welcome
+  (`oblada://welcome/#import`), as Settings' import dialog went with "You and Google"
+  (see `page_visibility.ts`).
+- Oblada code: `oblada/browser/about/about_page.h`, `oblada/browser/welcome/welcome_ui.h`.
+
+#### `chrome/browser/ui/webui/version/version_ui.cc`
+`chrome-browser-ui-webui-version-version_ui.cc.patch`. `oblada://version` shows Oblada's
+version (`chromium/oblada/VERSION`) and the Chromium it's built on.
+- Oblada code: the generated `oblada/version.h` (see `oblada/browser/sources.gni`).
 
 #### `components/webui/chrome_urls/resources/app.ts`, `app.html.ts`
 `components-webui-chrome_urls-resources-app.ts.patch`,

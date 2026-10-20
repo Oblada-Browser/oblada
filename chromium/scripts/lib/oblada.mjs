@@ -90,7 +90,9 @@ function testCopy(app) {
   }
 }
 
-export async function launch({ app = defaultApp, profile, args = [] }) {
+// `firstRun`: as the first launch after installing, rather than skipping what that
+// opens (headless Oblada always passes --no-first-run, which this overrides).
+export async function launch({ app = defaultApp, profile, args = [], firstRun = false }) {
   const portFile = path.join(profile, 'DevToolsActivePort');
   fs.mkdirSync(profile, { recursive: true });
   fs.rmSync(portFile, { force: true });
@@ -98,7 +100,7 @@ export async function launch({ app = defaultApp, profile, args = [] }) {
     '--headless',
     `--user-data-dir=${profile}`,
     '--remote-debugging-port=0',
-    '--no-first-run',
+    firstRun ? '--force-first-run' : '--no-first-run',
     '--no-default-browser-check',
     // Never the user's keychain (a new build would have to be allowed to it first).
     '--use-mock-keychain',

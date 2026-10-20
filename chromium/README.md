@@ -6,7 +6,7 @@ Oblada as a Chromium fork, laid out like Brave: Chromium itself is never committ
 | --- | --- |
 | `CHROMIUM_VERSION` | the Chromium release Oblada is built on |
 | `args.gn` | build configuration (copied to `out/Oblada/args.gn`) |
-| `oblada/` | Oblada's own C++/WebUI code, linked into the checkout as `src/oblada` |
+| `oblada/` | Oblada's own C++/WebUI code, linked into the checkout as `src/oblada`; `oblada/VERSION` is Oblada's version, apart from Chromium's |
 | `patches/` | Oblada's edits to Chromium files, one patch per file (see [PATCHES.md](../PATCHES.md)) |
 | `overrides/` | Oblada's logo files, which replace Chromium's at the same paths in the checkout (made by `branding/export.sh`) |
 | `scripts/` | `sync.sh`, `build.sh`, `patches.sh`, `smoke.mjs`, `screenshot.mjs`, `dmg.sh`, `release.sh` |
@@ -36,12 +36,14 @@ Releases are on GitHub, with a DMG to download (DMGs are never committed):
 
 ```sh
 chromium/scripts/dmg.sh       # Oblada-<version>-arm64.dmg, in the build directory
-chromium/scripts/release.sh 155.0.8059.85-2 /tmp/notes.md   # build, pack and publish the commit
+chromium/scripts/release.sh /tmp/notes.md   # build, pack and publish the commit
 ```
 
 `release.sh` wants the commit pushed and nothing uncommitted, in the repo or in the
 checkout's Chromium files. It marks the release as the latest, where the website's
-download button leads. Tags are Chromium's version and Oblada's revision on it. The app
+download button leads. Releases are named and tagged after Oblada's version
+(`oblada/VERSION`, e.g. `0.1.1`): raise it for each one; the notes say which Chromium it's
+built on. The app
 in the DMG is signed ad hoc, as a whole: there's no Developer ID yet, so macOS asks to
 "Open Anyway" the first time. `node branding/dmg/render.mjs` redraws the DMG's background
 from `branding/dmg/background.html` (`--mock <dir>` also shows it with Finder's icons).

@@ -7,7 +7,9 @@ recomputes each changed message's fingerprint with grit, and moves the translati
 new fingerprints with the same renaming applied.
 
 Messages that talk about the Chromium project itself ("...the Chromium open source
-project...") are left alone. Re-running is harmless. Prints the files it changed.
+project...") are left alone, as is the name of the link to it ("Oblada is made possible by
+the <link>Chromium</link> open source project"). Re-running is harmless. Prints the files
+it changed.
 
 usage: rebrand.py <chromium src dir>
 """
@@ -25,7 +27,7 @@ STRING_FILES = [
     ('chrome/app/chromium_strings.grd', 'chrome/app/resources'),
     ('components/components_chromium_strings.grd', 'components/strings'),
 ]
-NAME = re.compile(r'Chromium(?![ ]?OS)(?!\w)')
+NAME = re.compile(r'Chromium(?![ ]?OS)(?!\w)(?!<ph name="END_LINK_CHROMIUM")')
 PROTECTED = re.compile(r'Chromium (open[- ]source|Authors|project)', re.I)
 MESSAGE = re.compile(r'(<message\b[^>]*>)(.*?)(</message>)', re.S)
 TRANSLATION = re.compile(r'<translation id="(\d+)">(.*?)</translation>', re.S)

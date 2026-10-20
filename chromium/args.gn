@@ -20,3 +20,7 @@ disable_fieldtrial_testing_config = true
 # Like Chrome: Chromium's internal checks (DCHECKs) off. On, they slow the browser
 # down and close it whenever one fails.
 dcheck_always_on = false
+
+# Like Chrome: the credits page (oblada://credits) lists every open source project in
+# the browser and its license, generated at build time, rather than Chromium's sample.
+generate_about_credits = true

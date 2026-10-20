@@ -181,10 +181,17 @@ async function coreChecks(o) {
 
   const versionId = (await o.send('Target.createTarget', { url: 'chrome://version' })).targetId;
   {
+    const version = (file) => fs.readFileSync(new URL(file, import.meta.url), 'utf8').trim();
+    const chromiumVersion = version('../CHROMIUM_VERSION');
     const s = await o.attach(versionId);
-    await until('version page', async () => (await o.text(s)).includes('155.'));
+    await until('version page', async () => (await o.text(s)).includes(chromiumVersion));
     const body = await o.text(s);
-    check('product is named Oblada', /Oblada/.test(body) && !/\bChromium\b(?! ?OS)/.test(body.replace(/Chromium (open[- ]source|Authors|project)/gi, '')),
+    // Chromium only for the project itself and the version Oblada is built on, next to
+    // Oblada's own (chromium/oblada/VERSION).
+    check('product is named Oblada, with its own version',
+      /Oblada/.test(body) &&
+        body.includes(`${version('../oblada/VERSION')} (Chromium ${chromiumVersion})`) &&
+        !/\bChromium\b(?! ?OS)/.test(body.replace(/Chromium (open[- ]source|Authors|project|\d)/gi, '')),
       body.split('\n').map((l) => l.trim()).filter((l) => /Oblada|Chromium/.test(l)).slice(0, 3).join(' | '));
     // Without a <title>, the tab shows its address: chrome:// must be displayed as oblada://.
     const title = async () => (await o.pages()).find((p) => p.targetId === versionId)?.title;
@@ -543,10 +550,31 @@ async function closeChecks(o) {
     closed ? 'closed' : `${(await pages()).length} tabs left`);
 }
 
+async function firstRunChecks() {
+  // The first launch after installing opens Oblada's welcome, alone, and Chromium's
+  // first run window (signing in to Google) is marked as done instead of opening.
+  const firstRunProfile = path.join(tmp, 'first-run');
+  const o = await launchOblada({ app, profile: firstRunProfile, firstRun: true });
+  let tabs = [];
+  try {
+    tabs = await until('first window', async () => {
+      const pages = (await o.pages()).filter((p) => p.type === 'page');
+      return pages.length && pages;
+    });
+  } finally {
+    await o.kill();
+  }
+  const state = JSON.parse(fs.readFileSync(path.join(firstRunProfile, 'Local State'), 'utf8'));
+  check('the first launch opens the welcome, not Chromium\'s first run',
+    tabs.length === 1 && tabs[0].url === 'chrome://welcome/' && state.browser?.first_run_finished === true,
+    `${tabs.map((t) => t.url).join(', ')}; first run finished: ${state.browser?.first_run_finished}`);
+}
+
 // The user keeps working meanwhile, so the check is that Oblada is never the frontmost app.
 const focus = watchFocus();
 let oblada;
 try {
+  await firstRunChecks();
   oblada = await launch();
   await coreChecks(oblada);
   await splitChecks(oblada);
@@ -554,7 +582,8 @@ try {
   await firefoxChecks(oblada);
   if (process.env.OBLADA_SMOKE_NETWORK !== '0') await amoChecks(oblada);
   await oblada.quit();
-  oblada = await launch(['--restore-last-session']);
+  // No flag asking for it: Oblada restores the last session by default.
+  oblada = await launch();
   await restoreChecks(oblada);
   await closeChecks(oblada);
 } catch (e) {

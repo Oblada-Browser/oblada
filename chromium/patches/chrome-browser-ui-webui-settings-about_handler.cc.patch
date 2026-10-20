@@ -1,0 +1,20 @@
+diff --git a/chrome/browser/ui/webui/settings/about_handler.cc b/chrome/browser/ui/webui/settings/about_handler.cc
+index 2352aa8bee..d20ddfabf9 100644
+--- a/chrome/browser/ui/webui/settings/about_handler.cc
++++ b/chrome/browser/ui/webui/settings/about_handler.cc
+@@ -871,6 +871,15 @@ void AboutHandler::OnExtendedUpdatesSettingChanged() {
+ #endif  // BUILDFLAG(IS_CHROMEOS)
+ 
+ void AboutHandler::RequestUpdate() {
++  // Oblada: it has no updater (new versions are GitHub releases): no update status
++  // rather than a check that fails.
++  const bool oblada_has_updater = false;
++  if (!oblada_has_updater) {
++    SetUpdateStatus(VersionUpdater::DISABLED, /*progress=*/0, /*rollback=*/false,
++                    /*powerwash=*/false, std::string(), /*size=*/0,
++                    std::u16string());
++    return;
++  }
+   version_updater_->CheckForUpdate(
+       base::BindRepeating(&AboutHandler::SetUpdateStatus,
+                           weak_factory_.GetWeakPtr()),

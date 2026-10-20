@@ -8,7 +8,7 @@ Oblada is a Chromium fork laid out like Brave: Chromium itself is never committe
 chromium/scripts/sync.sh      # check out the pinned Chromium release and apply the patches
 chromium/scripts/build.sh     # build Oblada.app
 node chromium/scripts/smoke.mjs   # check the build (headless: no window, no focus taken)
-chromium/scripts/release.sh <tag> /tmp/notes.md   # publish the commit on GitHub, with its DMG
+chromium/scripts/release.sh /tmp/notes.md   # publish the commit on GitHub as chromium/oblada/VERSION, with its DMG
 ```
 
 | Path | What it is |

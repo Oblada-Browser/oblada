@@ -14,6 +14,8 @@
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/extensions/extension_context_menu_model.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/actions/chrome_action_id.h"
+#include "chrome/browser/ui/bookmarks/bookmark_tab_helper.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/bubble_anchor_util.h"
@@ -29,8 +31,12 @@
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/location_bar/location_icon_state_helper.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
+#include "chrome/browser/ui/views/page_action/page_action_container_view.h"
+#include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
+#include "chrome/browser/ui/web_applications/web_app_ui_utils.h"
 #include "components/omnibox/browser/location_bar_model.h"
+#include "components/omnibox/browser/vector_icons.h"
 #include "components/security_state/core/security_state.h"
 #include "components/vector_icons/vector_icons.h"
 #include "oblada/browser/l10n.h"
@@ -40,7 +46,9 @@
 #include "ui/base/models/image_model.h"
 #include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/color/color_id.h"
+#include "ui/compositor/layer.h"
 #include "ui/gfx/font.h"
+#include "ui/gfx/geometry/rect.h"
 #include "ui/views/animation/ink_drop.h"
 #include "ui/views/background.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
@@ -65,8 +73,8 @@ namespace {
 // The button's view id in the location bar (one Chromium's view_ids.h leaves unused).
 constexpr int kButtonViewId = 55630;
 
-constexpr int kColumns = 4;
-constexpr gfx::Size kTileSize(56, 44);
+constexpr int kColumns = 5;
+constexpr gfx::Size kTileSize(44, 44);
 constexpr int kTileRadius = 10;
 constexpr int kSpacing = 8;
 constexpr int kIconSize = 20;
@@ -129,16 +137,34 @@ class SitePanelView : public views::View {
     SetLayoutManager(std::make_unique<views::BoxLayout>(
         views::BoxLayout::Orientation::kVertical, gfx::Insets(), 12));
 
-    // The page.
+    // The page. The bookmark star and installing the site as an app are here
+    // rather than in the address bar (see HidePageActionsInPanel()).
     auto* actions = AddChildView(std::make_unique<views::BoxLayoutView>());
     actions->SetBetweenChildSpacing(kSpacing);
-    AddCommand(actions, IDC_BOOKMARK_THIS_TAB, kStarIcon, L10n("panel.bookmark"));
+    const BookmarkTabHelper* bookmarks =
+        contents() ? BookmarkTabHelper::FromWebContents(contents()) : nullptr;
+    if (bookmarks && bookmarks->is_starred()) {
+      AddCommand(actions, IDC_BOOKMARK_THIS_TAB, omnibox::kStarFilledIcon,
+                 L10n("panel.bookmarked"), ui::kColorSysPrimary);
+    } else {
+      AddCommand(actions, IDC_BOOKMARK_THIS_TAB, omnibox::kStarIcon,
+                 L10n("panel.bookmark"));
+    }
     AddCommand(actions, IDC_SHARING_HUB_SCREENSHOT, kPhotoCameraIcon,
                L10n("panel.screenshot"));
     AddCommand(actions, IDC_SHOW_READING_MODE_SIDE_PANEL,
                kMenuBookChromeRefreshOldIcon, L10n("panel.reading_mode"));
     AddCommand(actions, IDC_COPY_URL, kLinkChromeRefreshOldIcon,
                L10n("panel.copy_link"));
+    // Once installed (in a window of its own), the site opens in its app.
+    if (web_app::GetInstallPWALabel(browser_).empty() &&
+        !web_app::GetOpenPWALabel(browser_).empty()) {
+      AddCommand(actions, IDC_OPEN_IN_PWA_WINDOW, kDesktopWindowsIcon,
+                 L10n("panel.open_app"));
+    } else {
+      AddCommand(actions, IDC_INSTALL_PWA, vector_icons::kInstallDesktopIcon,
+                 L10n("panel.install_app"));
+    }
 
     // The extensions.
     auto* title = AddChildView(std::make_unique<views::Label>(L10n("panel.extensions")));
@@ -194,12 +220,13 @@ class SitePanelView : public views::View {
   void AddCommand(views::View* row,
                   int command_id,
                   const gfx::VectorIcon& icon,
-                  const std::u16string& tooltip) {
+                  const std::u16string& tooltip,
+                  ui::ColorId color = ui::kColorIcon) {
     auto tile = CreateTile(base::BindRepeating(&SitePanelView::RunCommand,
                                                base::Unretained(this), command_id),
                            tooltip);
     tile->SetImageModel(views::Button::STATE_NORMAL,
-                        ui::ImageModel::FromVectorIcon(icon, ui::kColorIcon, kIconSize));
+                        ui::ImageModel::FromVectorIcon(icon, color, kIconSize));
     tile->SetImageModel(
         views::Button::STATE_DISABLED,
         ui::ImageModel::FromVectorIcon(icon, ui::kColorIconDisabled, kIconSize));
@@ -395,6 +422,32 @@ void AddSitePanelButton(views::View* location_bar, BrowserWindowInterface* brows
 
 views::View* SitePanelButtonOf(views::View* location_bar) {
   return location_bar->GetViewByID(kButtonViewId);
+}
+
+void HidePageActionsInPanel(views::View* location_bar,
+                            page_actions::PageActionContainerView* container) {
+  if (!container) {
+    return;
+  }
+  const bool in_panel = SitePanelButtonOf(location_bar) && location_bar->parent() &&
+                        sidebar::ToolbarInset(location_bar->parent()) >= 0;
+  for (actions::ActionId id : {kActionBookmarkThisTab, kActionInstallPwa}) {
+    views::View* view = container->GetPageActionView(id);
+    if (!view || view->GetProperty(views::kViewIgnoredByLayoutKey) == in_panel) {
+      continue;
+    }
+    // Still there, out of sight, for what Chromium anchors to it or highlights;
+    // its icon included, which has a layer of its own (for its animations).
+    view->SetProperty(views::kViewIgnoredByLayoutKey, in_panel);
+    if (!view->layer()) {
+      view->SetPaintToLayer();
+      view->layer()->SetFillsBoundsOpaquely(false);
+    }
+    view->layer()->SetMasksToBounds(in_panel);
+    if (in_panel) {
+      view->SetBoundsRect(gfx::Rect());
+    }
+  }
 }
 
 views::View* ExtensionsAnchor(views::View* toolbar) {

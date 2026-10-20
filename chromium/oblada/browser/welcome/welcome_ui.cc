@@ -145,6 +145,10 @@ class WelcomeHandler : public content::WebUIMessageHandler {
 
 }  // namespace
 
+bool IsWelcomeURL(const GURL& url) {
+  return url.SchemeIs(content::kChromeUIScheme) && url.host() == kWelcomeHost;
+}
+
 WelcomeUI::WelcomeUI(content::WebUI* web_ui)
     : content::WebUIController(web_ui) {
   web_ui->AddMessageHandler(std::make_unique<WelcomeHandler>());
@@ -168,15 +172,21 @@ WelcomeUI::WelcomeUI(content::WebUI* web_ui)
   constexpr char kPlatform[] = "linux";
 #endif
   base::ReplaceSubstringsAfterOffset(&html, 0, "$platform", kPlatform);
+  // The page itself whatever follows it (e.g. oblada://welcome/#import, which
+  // opens at the import), its style and its script.
   source->SetRequestFilter(
       base::BindRepeating([](const std::string& path) {
-        return path.empty() || path == "welcome.css" || path == "welcome.js";
+        const std::string_view file =
+            std::string_view(path).substr(0, path.find_first_of("?#"));
+        return file.empty() || file == "welcome.css" || file == "welcome.js";
       }),
       base::BindRepeating(
           [](const std::string& html, const std::string& path,
              content::WebUIDataSource::GotDataCallback done) {
-            std::string data = path == "welcome.css"  ? kWelcomeCss
-                               : path == "welcome.js" ? kWelcomeJs
+            const std::string_view file =
+                std::string_view(path).substr(0, path.find_first_of("?#"));
+            std::string data = file == "welcome.css"  ? kWelcomeCss
+                               : file == "welcome.js" ? kWelcomeJs
                                                       : html;
             std::move(done).Run(
                 base::MakeRefCounted<base::RefCountedString>(std::move(data)));

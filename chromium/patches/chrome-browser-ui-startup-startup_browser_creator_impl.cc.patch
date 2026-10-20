@@ -1,0 +1,28 @@
+diff --git a/chrome/browser/ui/startup/startup_browser_creator_impl.cc b/chrome/browser/ui/startup/startup_browser_creator_impl.cc
+index 7eab8f7d29..42b1d0c02d 100644
+--- a/chrome/browser/ui/startup/startup_browser_creator_impl.cc
++++ b/chrome/browser/ui/startup/startup_browser_creator_impl.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/startup/startup_browser_creator_impl.h"
+ 
++#include "oblada/browser/welcome/welcome_ui.h"  // Oblada
++
+ #include <stddef.h>
+ 
+ #include <algorithm>
+@@ -665,6 +667,14 @@ StartupBrowserCreatorImpl::DetermineStartupTabs(
+       return {std::move(distribution_tabs), launch_result};
+     }
+ 
++    // Oblada: the first launch after installing opens Oblada's welcome
++    // (oblada://welcome) rather than the New Tab page.
++    if (is_first_run_ == chrome::startup::IsFirstRun::kYes &&
++        process_startup == chrome::startup::IsProcessStartup::kYes) {
++      AppendTabs({StartupTab(GURL(oblada::welcome::kWelcomeURL))}, &tabs);
++      return {std::move(tabs), launch_result};
++    }
++
+     // Whether a first run experience was or will be shown as part of this
+     // startup.
+     bool has_first_run_experience = false;

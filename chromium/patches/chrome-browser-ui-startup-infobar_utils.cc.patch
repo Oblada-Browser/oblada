@@ -1,8 +1,17 @@
 diff --git a/chrome/browser/ui/startup/infobar_utils.cc b/chrome/browser/ui/startup/infobar_utils.cc
-index 598e361a29..7c8c472142 100644
+index 598e361a29..6e6df2945b 100644
 --- a/chrome/browser/ui/startup/infobar_utils.cc
 +++ b/chrome/browser/ui/startup/infobar_utils.cc
-@@ -253,19 +253,7 @@ void AddInfoBarsIfNecessary(BrowserWindowInterface* browser,
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/startup/infobar_utils.h"
+ 
++#include "oblada/browser/welcome/welcome_ui.h"  // Oblada
++
+ #include <memory>
+ #include <utility>
+ 
+@@ -253,19 +255,7 @@ void AddInfoBarsIfNecessary(BrowserWindowInterface* browser,
    infobars::ContentInfoBarManager* infobar_manager =
        infobars::ContentInfoBarManager::FromWebContents(web_contents);
  
@@ -23,3 +32,15 @@ index 598e361a29..7c8c472142 100644
  
    if (ObsoleteSystem::IsObsoleteNowOrSoon()) {
      PrefService* local_state = g_browser_process->local_state();
+@@ -306,7 +296,10 @@ void AddInfoBarsIfNecessary(BrowserWindowInterface* browser,
+ #if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_ANDROID)
+   if (is_web_app ||
+       startup_command_line.HasSwitch(switches::kNoDefaultBrowserCheck) ||
+-      startup_command_line.HasSwitch(switches::kNoFirstRun)) {
++      startup_command_line.HasSwitch(switches::kNoFirstRun) ||
++      // Oblada: none of these prompts (restoring tabs, the default browser...)
++      // over its welcome, which has its own steps.
++      oblada::welcome::IsWelcomeURL(web_contents->GetVisibleURL())) {
+     return;
+   }
+ 

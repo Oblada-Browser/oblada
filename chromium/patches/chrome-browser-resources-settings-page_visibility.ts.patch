@@ -1,0 +1,36 @@
+diff --git a/chrome/browser/resources/settings/page_visibility.ts b/chrome/browser/resources/settings/page_visibility.ts
+index feff9bdf64..1eab5198f0 100644
+--- a/chrome/browser/resources/settings/page_visibility.ts
++++ b/chrome/browser/resources/settings/page_visibility.ts
+@@ -44,7 +44,31 @@ export interface PrivacyPageVisibility {
+ 
+ function createPageVisibility(): PageVisibility|undefined {
+   if (!loadTimeData.getBoolean('isGuest')) {
++    // Oblada: every page but "You and Google" (a Google account, sync), which it
++    // has no use for. Importing is Oblada's own (oblada://welcome/#import).
++    // <if expr="not is_chromeos">
++    return {
++      a11y: true,
++      ai: true,
++      appearance: true,
++      autofill: true,
++      defaultBrowser: true,
++      downloads: true,
++      extensions: true,
++      languages: true,
++      onStartup: true,
++      people: false,
++      performance: true,
++      privacy: {networkPrediction: true, searchPrediction: true},
++      reset: true,
++      safetyHub: true,
++      system: true,
++      yourSavedInfo: true,
++    };
++    // </if>
++    // <if expr="is_chromeos">
+     return undefined;
++    // </if>
+   }
+ 
+   // <if expr="not is_chromeos">

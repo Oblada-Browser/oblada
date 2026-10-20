@@ -34,10 +34,10 @@ std::unique_ptr<ui::SimpleMenuModel> CreateMoveToWorkspaceMenu(
 class WorkspaceMenu;
 class WorkspaceSlider;
 
-// The workspaces, at the bottom of the sidebar as in Zen: a button each (its icon,
-// else a dot of its color; the one shown stands out) and "+" to add one. A
-// workspace's menu (right click) renames it, changes its icon or the container its
-// new tabs open in, or deletes it.
+// The bottom of the sidebar as in Zen: the downloads button (downloads_button.h),
+// then the workspaces, a button each (its icon, else a dot of its color; the one
+// shown stands out), and "+" to add one. A workspace's menu (right click) renames
+// it, changes its icon or the container its new tabs open in, or deletes it.
 class WorkspaceSwitcher : public views::View, public TabStripModelObserver {
   METADATA_HEADER(WorkspaceSwitcher, views::View)
 
@@ -67,6 +67,7 @@ class WorkspaceSwitcher : public views::View, public TabStripModelObserver {
   void ShowMenu(const std::string& id, views::View* anchor);
 
   raw_ptr<BrowserWindowInterface> browser_;
+  raw_ptr<views::View> downloads_ = nullptr;
   bool compact_ = false;
   bool update_pending_ = false;
   std::unique_ptr<WorkspaceMenu> menu_;

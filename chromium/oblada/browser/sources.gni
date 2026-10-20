@@ -3,6 +3,8 @@
 # and views like the rest of that target does, and a separate target depending on it
 # would be a dependency cycle.
 oblada_ui_sources = [
+  "//oblada/browser/about/about_page.cc",
+  "//oblada/browser/about/about_page.h",
   "//oblada/browser/containers/container_chip.cc",
   "//oblada/browser/containers/container_chip.h",
   "//oblada/browser/containers/containers.cc",
@@ -51,6 +53,8 @@ oblada_ui_sources = [
   "//oblada/browser/prefs.h",
   "//oblada/browser/ui/drag_ghost.cc",
   "//oblada/browser/ui/drag_ghost.h",
+  "//oblada/browser/ui/downloads_button.cc",
+  "//oblada/browser/ui/downloads_button.h",
   "//oblada/browser/ui/floating_location_bar.cc",
   "//oblada/browser/ui/floating_location_bar.h",
   "//oblada/browser/ui/icons.cc",
@@ -73,6 +77,20 @@ oblada_ui_sources = [
   "//oblada/browser/workspaces/workspaces.cc",
   "//oblada/browser/workspaces/workspaces.h",
 ]
+
+# Oblada's version (oblada/VERSION, apart from Chromium's), for its code as
+# OBLADA_VERSION in "oblada/version.h". Written when it changes, which rebuilds only
+# the files that include it.
+oblada_version = read_file("//oblada/VERSION", "trim string")
+write_file("$root_gen_dir/oblada/version.h",
+           [
+             "// Generated from oblada/VERSION by oblada/browser/sources.gni.",
+             "#ifndef OBLADA_VERSION_H_",
+             "#define OBLADA_VERSION_H_",
+             "#define OBLADA_VERSION \"$oblada_version\"",
+             "#endif  // OBLADA_VERSION_H_",
+           ])
+
 # Targets Oblada's sources above need.
 oblada_ui_deps = [
   "//components/user_data_importer/content",

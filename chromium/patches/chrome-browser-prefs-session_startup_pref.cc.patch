@@ -1,0 +1,17 @@
+diff --git a/chrome/browser/prefs/session_startup_pref.cc b/chrome/browser/prefs/session_startup_pref.cc
+index 0159cee9db..c94f6e834e 100644
+--- a/chrome/browser/prefs/session_startup_pref.cc
++++ b/chrome/browser/prefs/session_startup_pref.cc
+@@ -63,6 +63,12 @@ void SessionStartupPref::RegisterProfilePrefs(
+ 
+ // static
+ SessionStartupPref::Type SessionStartupPref::GetDefaultStartupType() {
++  // Oblada: it reopens the tabs (and workspaces) of the last session, as Zen and
++  // Arc do, unless set otherwise in Settings ("On startup").
++  const bool oblada_continue_session = true;
++  if (oblada_continue_session) {
++    return SessionStartupPref::LAST;
++  }
+ #if BUILDFLAG(IS_CHROMEOS)
+   return SessionStartupPref::LAST;
+ #else

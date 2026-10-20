@@ -266,7 +266,8 @@ void SwipeTimed(std::string_view spec) {
 // "wait:<ms>" (before the actions after it) and
 // "ws-new", "ws-next", "ws-prev", "ws-icon:<id>", "ws-color:<n>" (a TabGroupColorId),
 // "ws-tint:<0|1>",
-// "ws-picker", "ws-container:<id>" (workspaces), "swipe:<dx>[:hold]", "swipe-timed:<dx>:<ms>" and "swipe-end" (see
+// "ws-picker", "ws-container:<id>" (workspaces), "hover:<view class>[:<n>]" (as
+// "click:", for the view's hover highlight), "swipe:<dx>[:hold]", "swipe-timed:<dx>:<ms>" and "swipe-end" (see
 // Swipe()), and "film:<count>:<ms>" (see Film()).
 void RunActions(BrowserWindowInterface* browser,
                 views::Widget* widget,
@@ -436,9 +437,12 @@ void RunActions(BrowserWindowInterface* browser,
                                 split_tabs::SplitTabLayout::kSideBySide),
                             split_tabs::SplitTabCreatedSource::kTabContextMenu);
       }
-    } else if (action.starts_with("click:")) {
+    } else if (action.starts_with("click:") || action.starts_with("hover:")) {
       // "click:<view class>[:<n>]": its n-th view (the first by default), in the
-      // window or in a bubble open on it.
+      // window or in a bubble open on it. "hover:" moves the pointer over it
+      // instead, as far as its window's events go (e.g. a button's highlight);
+      // what asks where the pointer is (IsMouseHovered()) still gets the real one.
+      const bool hover = action.starts_with("hover:");
       const std::vector<std::string_view> parts = base::SplitStringPiece(
           action.substr(6), ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
       int n = 0;
@@ -457,7 +461,16 @@ void RunActions(BrowserWindowInterface* browser,
       views::View* view = n >= 0 && n < static_cast<int>(candidates.size())
                               ? candidates[n]
                               : nullptr;
-      if (view) {
+      if (view && hover && view->GetWidget()) {
+        // The pointer moved over it, as its window gets that (entering it, and
+        // whatever handles that, e.g. its ink drop).
+        gfx::Point center = view->GetLocalBounds().CenterPoint();
+        views::View* root = view->GetWidget()->GetRootView();
+        views::View::ConvertPointToTarget(view, root, &center);
+        root->OnMouseMoved(ui::MouseEvent(ui::EventType::kMouseMoved, center,
+                                          center, base::TimeTicks::Now(),
+                                          ui::EF_NONE, ui::EF_NONE));
+      } else if (view) {
         const gfx::Point center = view->GetLocalBounds().CenterPoint();
         const base::TimeTicks now = base::TimeTicks::Now();
         view->OnMousePressed(ui::MouseEvent(ui::EventType::kMousePressed, center,

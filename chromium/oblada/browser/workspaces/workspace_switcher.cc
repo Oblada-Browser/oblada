@@ -27,6 +27,7 @@
 #include "components/tabs/public/tab_interface.h"
 #include "oblada/browser/containers/containers.h"
 #include "oblada/browser/l10n.h"
+#include "oblada/browser/ui/downloads_button.h"
 #include "oblada/browser/ui/icons.h"
 #include "oblada/browser/workspaces/workspace_slider.h"
 #include "oblada/browser/workspaces/workspaces.h"
@@ -429,6 +430,8 @@ WorkspaceSwitcher::WorkspaceSwitcher(BrowserWindowInterface* browser)
                        views::BoxLayout::Orientation::kHorizontal,
                        gfx::Insets::VH(6, 0), kSpacing))
       ->set_main_axis_alignment(views::BoxLayout::MainAxisAlignment::kCenter);
+  downloads_ = AddChildView(downloads::CreateButton(browser_));
+  downloads_->SetPreferredSize(gfx::Size(kButtonSize, kButtonSize));
   browser_->GetTabStripModel()->AddObserver(this);
   subscription_ = ObserveWorkspaces(
       browser_->GetProfile(),
@@ -451,7 +454,7 @@ void WorkspaceSwitcher::RemovedFromWidget() {
 }
 
 void WorkspaceSwitcher::Layout(PassKey) {
-  if (compact_ || children().empty()) {
+  if (compact_ || !downloads_ || children().size() < 2) {
     LayoutSuperclass<views::View>(this);
     return;
   }
@@ -459,13 +462,23 @@ void WorkspaceSwitcher::Layout(PassKey) {
   const int count = static_cast<int>(children().size());
   const int size = std::clamp((area.width() - (count - 1) * kSpacing / 2) / count,
                               kMinButtonSize, kButtonSize);
-  const int spacing =
-      count > 1 ? std::clamp((area.width() - count * size) / (count - 1), 0,
-                             kMaxSpacing)
-                : 0;
-  int x = area.x() + (area.width() - count * size - (count - 1) * spacing) / 2;
   const int y = area.y() + (area.height() - size) / 2;
+  // The downloads button at the start; the workspaces in the middle, or as near
+  // as they fit past it.
+  downloads_->SetBounds(area.x(), y, size, size);
+  const int start = area.x() + size + kSpacing;
+  const int buttons = count - 1;
+  const int spacing =
+      buttons > 1 ? std::clamp(
+                        (area.right() - start - buttons * size) / (buttons - 1),
+                        0, kMaxSpacing)
+                  : 0;
+  const int width = buttons * size + (buttons - 1) * spacing;
+  int x = std::max(start, area.x() + (area.width() - width) / 2);
   for (views::View* child : children()) {
+    if (child == downloads_) {
+      continue;
+    }
     child->SetBounds(x, y, size, size);
     x += size + spacing;
   }
@@ -517,7 +530,13 @@ void WorkspaceSwitcher::Rebuild() {
                         : static_cast<int>(tab_groups::TabGroupColorId::kGrey)))
               : std::nullopt);
   }
-  RemoveAllChildViews();
+  // All but the downloads button, which stays.
+  for (views::View* child :
+       std::vector<views::View*>(children().begin(), children().end())) {
+    if (child != downloads_) {
+      RemoveChildViewT(child);
+    }
+  }
   for (const Workspace& workspace : GetWorkspaces(browser_->GetProfile())) {
     AddChildView(std::make_unique<WorkspaceButton>(
         base::BindRepeating(&SwitchTo, browser_, workspace.id),

@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.cc b/chrome/browser/ui/views/location_bar/location_bar_view.cc
-index 9251f8590b..f45f2b382b 100644
+index 9251f8590b..cf5ce18327 100644
 --- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
 +++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
 @@ -4,6 +4,16 @@
@@ -27,13 +27,15 @@ index 9251f8590b..f45f2b382b 100644
  #include "chrome/browser/ui/views/location_bar/content_setting_image_view.h"
  #include "chrome/browser/ui/views/location_bar/location_bar_actions.h"
  #include "chrome/browser/ui/views/location_bar/location_bar_layout.h"
-@@ -172,6 +183,28 @@
+@@ -172,6 +183,43 @@
  
  namespace {
  
 +// Oblada: puts `view` out of sight in a quiet address bar (see
 +// LocationBarView::IsObladaQuiet()), leaving nothing of it drawn: e.g. a hover
-+// highlight, which is on a layer of its own and would stay where the view was.
++// highlight, which is on a layer of its own and would stay where the view was,
++// or a button's icon, which goes on a layer of its own above the highlight and
++// would show above the bar (see ShowObladaQuietView()).
 +void HideObladaQuietView(views::View* view) {
 +  if (!view->bounds().IsEmpty()) {
 +    std::vector<views::View*> pending = {view};
@@ -51,12 +53,25 @@ index 9251f8590b..f45f2b382b 100644
 +    }
 +  }
 +  view->SetBoundsRect(gfx::Rect());
++  if (!view->layer()) {
++    view->SetPaintToLayer();
++    view->layer()->SetFillsBoundsOpaquely(false);
++  }
++  view->layer()->SetMasksToBounds(true);
++}
++
++// Oblada: undoes HideObladaQuietView()'s clip, for `view` to show again (its focus
++// ring is drawn around it).
++void ShowObladaQuietView(views::View* view) {
++  if (view && view->layer()) {
++    view->layer()->SetMasksToBounds(false);
++  }
 +}
 +
  int IncrementalMinimumWidth(const views::View* view) {
    return (view && view->GetVisible()) ? view->GetMinimumSize().width() : 0;
  }
-@@ -233,6 +266,12 @@ LocationBarView::LocationBarView(BrowserWindowInterface* browser,
+@@ -233,6 +281,12 @@ LocationBarView::LocationBarView(BrowserWindowInterface* browser,
              return false;
            }
  
@@ -69,7 +84,7 @@ index 9251f8590b..f45f2b382b 100644
            // Show focus ring when the Omnibox is visibly focused and the popup
            // is closed.
            return v->GetOmniboxController()->edit_model()->is_caret_visible() &&
-@@ -511,6 +550,9 @@ void LocationBarView::Init() {
+@@ -511,6 +565,9 @@ void LocationBarView::Init() {
  
    RegisterOmniboxActions(browser_);
  
@@ -79,7 +94,7 @@ index 9251f8590b..f45f2b382b 100644
    is_initialized_ = true;
  }
  
-@@ -666,6 +708,11 @@ void LocationBarView::OnDidChangeFocus(views::View* before, views::View* now) {
+@@ -666,6 +723,11 @@ void LocationBarView::OnDidChangeFocus(views::View* before, views::View* now) {
    if (Contains(before) != Contains(now)) {
      NotifyFocusChanged();
    }
@@ -91,7 +106,7 @@ index 9251f8590b..f45f2b382b 100644
  
    // TODO(crbug.com/376283383): Remove things below once Lens Overlay is
    // migrated to the new page actions design.
-@@ -822,8 +869,15 @@ void LocationBarView::Layout(PassKey) {
+@@ -822,8 +884,15 @@ void LocationBarView::Layout(PassKey) {
    // to position our child views in this case, because other things may be
    // positioned relative to them (e.g. the "bookmark added" bubble if the user
    // hits ctrl-d).
@@ -109,11 +124,15 @@ index 9251f8590b..f45f2b382b 100644
    const int trailing_decorations_edge_padding = GetLayoutConstant(
        LayoutConstant::kLocationBarTrailingDecorationEdgePadding);
  
-@@ -853,12 +907,19 @@ void LocationBarView::Layout(PassKey) {
+@@ -853,12 +922,23 @@ void LocationBarView::Layout(PassKey) {
      }
    }
  
 +  oblada_quiet_ = IsObladaQuiet();
++  // Oblada: what a quiet layout hid shows again, unless this one hides it too.
++  ShowObladaQuietView(location_icon_view_);
++  ShowObladaQuietView(oblada::site_panel::SitePanelButtonOf(this));
++  ShowObladaQuietView(page_action_container_);
 +  const security_state::SecurityLevel oblada_security =
 +      GetLocationBarModel()->GetSecurityLevel();
    if (ShouldShowKeywordBubble()) {
@@ -129,13 +148,15 @@ index 9251f8590b..f45f2b382b 100644
    } else if (location_icon_view_->GetShowText() &&
               !ShouldChipOverrideLocationIcon()) {
      location_icon_view_->SetVisible(true);
-@@ -883,7 +944,26 @@ void LocationBarView::Layout(PassKey) {
+@@ -883,7 +963,28 @@ void LocationBarView::Layout(PassKey) {
      }
    };
  
 -  if (features::IsPageActionsElevatedToolbarEnabled()) {
 +  // Oblada: Zen's site panel button at the very end, then the tab's container.
-+  // Quiet, neither it nor the page's actions.
++  // Quiet, neither it nor the page's actions. The bookmark star and installing
++  // the site as an app are in the panel.
++  oblada::site_panel::HidePageActionsInPanel(this, page_action_container_);
 +  if (views::View* site_panel = oblada::site_panel::SitePanelButtonOf(this)) {
 +    if (oblada_quiet_) {
 +      HideObladaQuietView(site_panel);
@@ -157,7 +178,7 @@ index 9251f8590b..f45f2b382b 100644
      if (page_action_container_ && page_action_container_->GetVisible()) {
        const bool is_capsule_active = page_action_container_->IsCapsuleActive();
        const int capsule_height =
-@@ -1054,6 +1134,7 @@ void LocationBarView::Update(WebContents* contents) {
+@@ -1054,6 +1155,7 @@ void LocationBarView::Update(WebContents* contents) {
  
    RefreshContentSettingViews();
    RefreshPageActionIconViews();
@@ -165,7 +186,7 @@ index 9251f8590b..f45f2b382b 100644
    location_icon_view_->Update(
        /*suppress_animations=*/contents, GetOmniboxController()->IsPopupOpen());
  
-@@ -1388,6 +1469,14 @@ void LocationBarView::RefreshBackground() {
+@@ -1388,6 +1490,14 @@ void LocationBarView::RefreshBackground() {
    SkColor hovered =
        color_provider->GetColor(kColorLocationBarBackgroundHovered);
  
@@ -180,7 +201,7 @@ index 9251f8590b..f45f2b382b 100644
    background_color_ = gfx::Tween::ColorValueBetween(opacity, normal, hovered);
    if (is_caret_visible) {
      // Match the background color to the popup if the Omnibox is visibly
-@@ -1419,6 +1508,25 @@ void LocationBarView::RefreshBackground() {
+@@ -1419,6 +1529,25 @@ void LocationBarView::RefreshBackground() {
  
    if (is_popup_mode_) {
      SetBackground(views::CreateSolidBackground(background_color_));
@@ -206,7 +227,7 @@ index 9251f8590b..f45f2b382b 100644
    } else {
      SetBackground(CreateRoundRectBackground(
          background_color_, border_color, size(),
-@@ -1428,7 +1536,11 @@ void LocationBarView::RefreshBackground() {
+@@ -1428,7 +1557,11 @@ void LocationBarView::RefreshBackground() {
  
    // Keep the views::Textfield in sync. It needs an opaque background to
    // correctly enable subpixel AA.
@@ -219,7 +240,7 @@ index 9251f8590b..f45f2b382b 100644
  
    // The divider between indicators and request chips should have the same color
    // as the omnibox.
-@@ -2040,7 +2152,9 @@ void LocationBarView::OnOmniboxFocused() {
+@@ -2040,7 +2173,9 @@ void LocationBarView::OnOmniboxFocused() {
    // Only show hover animation in unfocused steady state.  Since focusing
    // the omnibox is intentional, snapping is better than transitioning here.
    hover_animation_.Reset();
@@ -229,7 +250,7 @@ index 9251f8590b..f45f2b382b 100644
  
    // The AI mode page action should only be visible when the omnibox
    // is focused, so if there is a change in focus, refresh the icon.
-@@ -2060,7 +2174,18 @@ void LocationBarView::OnOmniboxBlurred() {
+@@ -2060,7 +2195,18 @@ void LocationBarView::OnOmniboxBlurred() {
    if (views::FocusRing::Get(this)) {
      views::FocusRing::Get(this)->Refresh();
    }
@@ -248,7 +269,7 @@ index 9251f8590b..f45f2b382b 100644
  
    // The AI mode page action should only be visible when the omnibox
    // is focused, so if there is a change in focus, refresh the icon.
-@@ -2083,6 +2208,81 @@ void LocationBarView::OnOmniboxHovered(bool is_hovering) {
+@@ -2083,6 +2229,86 @@ void LocationBarView::OnOmniboxHovered(bool is_hovering) {
    } else {
      hover_animation_.Hide();
    }
@@ -316,6 +337,11 @@ index 9251f8590b..f45f2b382b 100644
 +  oblada::sidebar::SetLocationBarFloating(
 +      this, browser_view ? browser_view->multi_contents_view() : nullptr,
 +      floating, GetLocationBarModel()->GetURLForDisplay());
++  // Floating, it shows the whole URL to edit, not just the site the sidebar
++  // shows: Chromium does that for the keyboard's focus, but not for a click's.
++  if (oblada::sidebar::IsLocationBarFloating(this)) {
++    GetOmniboxController()->edit_model()->Unelide();
++  }
 +  // Larger text while floating.
 +  const gfx::FontList font_list =
 +      views::TypographyProvider::Get()

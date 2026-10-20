@@ -22,7 +22,7 @@ const char kWelcomeHtml[] = R"oblada(<!doctype html>
   <button class="primary big" data-next>$i18n{start}</button>
 </section>
 
-<section class="step">
+<section class="step" id="import">
   <div class="fit"><div class="art importer">
     <div class="sources" id="sources"></div>
     <p class="none" id="no-sources" hidden>$i18n{import_none}</p>
@@ -1479,7 +1479,11 @@ function fit() {
 }
 addEventListener('resize', fit);
 fit();
-show(0);
+// oblada://welcome/#import (the menus' "Import bookmarks and settings") goes to the
+// import, as it opens or later.
+const showImport = () => show(steps.indexOf(document.getElementById('import')));
+addEventListener('hashchange', () => location.hash === '#import' && showImport());
+location.hash === '#import' ? showImport() : show(0);
 )oblada";
 
 }  // namespace oblada::welcome

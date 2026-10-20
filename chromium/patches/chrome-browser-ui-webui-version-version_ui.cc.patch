@@ -1,0 +1,28 @@
+diff --git a/chrome/browser/ui/webui/version/version_ui.cc b/chrome/browser/ui/webui/version/version_ui.cc
+index 4c523d48d8..09856d3bdf 100644
+--- a/chrome/browser/ui/webui/version/version_ui.cc
++++ b/chrome/browser/ui/webui/version/version_ui.cc
+@@ -4,6 +4,9 @@
+ 
+ #include "chrome/browser/ui/webui/version/version_ui.h"
+ 
++#include "base/strings/strcat.h"  // Oblada
++#include "oblada/version.h"  // Oblada
++
+ #include <memory>
+ #include <string>
+ #include <string_view>
+@@ -247,8 +250,11 @@ void VersionUI::AddVersionDetailStrings(content::WebUIDataSource* html_source) {
+                                   VersionProcessorVariation());
+ 
+   // Data strings.
+-  html_source->AddString(version_ui::kVersion,
+-                         version_info::GetVersionNumber());
++  // Oblada: its own version, and the Chromium it is built on.
++  html_source->AddString(
++      version_ui::kVersion,
++      base::StrCat({OBLADA_VERSION " (Chromium ",
++                    version_info::GetVersionNumber(), ")"}));
+   html_source->AddString(version_ui::kVersionSuffix,
+                          GetVersionInformationalSuffix());
+ 

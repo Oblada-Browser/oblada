@@ -1,0 +1,37 @@
+diff --git a/chrome/browser/ui/chrome_pages.cc b/chrome/browser/ui/chrome_pages.cc
+index 7d078c2241..235b1091ac 100644
+--- a/chrome/browser/ui/chrome_pages.cc
++++ b/chrome/browser/ui/chrome_pages.cc
+@@ -4,6 +4,9 @@
+ 
+ #include "chrome/browser/ui/chrome_pages.h"
+ 
++#include "oblada/browser/about/about_page.h"  // Oblada
++#include "oblada/browser/welcome/welcome_ui.h"  // Oblada
++
+ #include <stddef.h>
+ 
+ #include <memory>
+@@ -201,6 +204,11 @@ void ShowHelpImpl(BrowserWindowInterface* browser,
+                    << static_cast<std::underlying_type<HelpSource>::type>(
+                           source);
+   }
++  // Oblada: its help is its GitHub issues, not Google's help center.
++  if (source == HelpSource::kKeyboard || source == HelpSource::kMenu ||
++      source == HelpSource::kWebUI) {
++    url = GURL(oblada::about::kHelpURL);
++  }
+   if (browser) {
+     ShowSingletonTab(browser, url);
+   } else {
+@@ -615,7 +623,9 @@ void ShowSafeBrowsingEnhancedProtectionWithIph(
+ 
+ void ShowImportDialog(BrowserWindowInterface* browser) {
+   base::RecordAction(UserMetricsAction("Import_ShowDlg"));
+-  ShowSettingsSubPage(browser, kImportDataSubPage);
++  // Oblada: its own import, in its welcome; Settings' was in "You and Google",
++  // which it hides.
++  ShowSingletonTab(browser, GURL(oblada::welcome::kImportURL));
+ }
+ 
+ void ShowAboutChrome(BrowserWindowInterface* browser) {

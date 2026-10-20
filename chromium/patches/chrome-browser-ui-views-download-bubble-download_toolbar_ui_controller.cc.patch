@@ -1,0 +1,73 @@
+diff --git a/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc b/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc
+index 68ff793722..ab05a231d5 100644
+--- a/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc
++++ b/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h"
+ 
++#include "oblada/browser/ui/downloads_button.h"  // Oblada
++
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+ 
+ DEFINE_USER_DATA(DownloadToolbarUIController);
+@@ -100,6 +102,10 @@ PinnedToolbarActions* GetPinnedToolbarActions(BrowserView* browser_view) {
+ }
+ 
+ ToolbarButton* GetDownloadsButton(BrowserView* browser_view) {
++  // Oblada: the sidebar's, at its bottom (oblada/browser/ui/downloads_button.h).
++  if (ToolbarButton* button = oblada::downloads::SidebarButton(browser_view)) {
++    return button;
++  }
+   auto* container = GetPinnedToolbarActions(browser_view);
+   return container ? container->GetDownloadButton() : nullptr;
+ }
+@@ -476,6 +482,10 @@ void DownloadToolbarUIController::TearDownPreBrowserWindowDestruction() {
+ }
+ 
+ void DownloadToolbarUIController::Show() {
++  // Oblada: the sidebar's button is always there; not the toolbar's too.
++  if (oblada::downloads::SidebarButton(browser_view_)) {
++    return;
++  }
+   auto* container = GetPinnedToolbarActions(browser_view_);
+   if (!container) {
+     return;
+@@ -859,7 +869,10 @@ void DownloadToolbarUIController::ShowPendingDownloadStartedAnimation() {
+     return;
+   }
+   // Animation cleans itself up after it's done.
+-  if (auto* button = GetDownloadsButton(browser_view_)) {
++  // Oblada: none to the sidebar's button: it would rise from the page to a
++  // toolbar above it.
++  if (auto* button = GetDownloadsButton(browser_view_);
++      button && !oblada::downloads::SidebarButton(browser_view_)) {
+     const ui::ColorProvider* color_provider = button->GetColorProvider();
+     new DownloadBubbleStartedAnimationViews(
+         web_contents, button->GetBoundsInScreen(),
+@@ -960,6 +973,14 @@ void DownloadToolbarUIController::ShowBubble(
+     return;
+   }
+ 
++  // Oblada: from the sidebar's button, while it shows.
++  if (ToolbarButton* button = oblada::downloads::SidebarButton(browser_view_);
++      button && button->IsDrawn()) {
++    pending_bubble_ = true;
++    OnBubbleAnchorAssembled(views::BubbleAnchor(button));
++    return;
++  }
++
+   auto* container = GetPinnedToolbarActions(browser_view_);
+   if (!container) {
+     return;
+@@ -996,7 +1017,9 @@ void DownloadToolbarUIController::OnBubbleAnchorAssembled(
+     }
+   }
+   auto bubble_delegate = std::make_unique<views::BubbleDialogDelegate>(
+-      anchor.value(), views::BubbleBorder::TOP_RIGHT,
++      anchor.value(),
++      oblada::downloads::BubbleArrow(anchor.value().GetIfView(),  // Oblada
++                                     views::BubbleBorder::TOP_RIGHT),
+       views::BubbleBorder::DIALOG_SHADOW,
+       /*autosize=*/true);
+   bubble_delegate->SetOwnedByWidget(
