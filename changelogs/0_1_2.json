@@ -1,0 +1,22 @@
+{
+  "added": [
+    "Oblada updates itself: once a day it looks for a new version, downloads it in the background and installs it when you quit, or right away from About Oblada's Relaunch button. Your tabs come back after the relaunch.",
+    "Before importing passwords from another browser, Oblada tells you macOS will ask for your Mac's password."
+  ],
+  "fixed": [
+    "On a Mac with another Chromium-based browser, Oblada no longer asks for your password when it first opens: it keeps its own key in the Keychain."
+  ],
+  "knownIssues": [
+    "After each update, macOS asks once for your Mac's password before Oblada can read its saved passwords and cookies."
+  ],
+  "notes": [
+    "Updates are signed: Oblada installs only versions signed by its developers, and checks them before unpacking them.",
+    "This version still has to be installed by hand, as before; the next ones arrive on their own.",
+    "If you used an earlier version, you'll have to sign in to websites again, and passwords saved in Oblada can't be read anymore: Oblada's key for them changed."
+  ],
+  "obladaVersion": "0.1.2",
+  "releaseId": 3,
+  "chromiumVersion": "155.0.8059.85",
+  "releaseDate": "2026-10-21",
+  "released": true
+}
