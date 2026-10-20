@@ -28,6 +28,6 @@
   "obladaVersion": "0.1.1",
   "releaseId": 2,
   "chromiumVersion": "155.0.8059.85",
-  "releaseDate": "",
-  "released": false
+  "releaseDate": "2026-10-20",
+  "released": true
 }
