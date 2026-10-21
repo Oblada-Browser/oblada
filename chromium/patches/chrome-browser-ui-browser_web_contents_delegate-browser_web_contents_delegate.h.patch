@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h
-index aad7c7d14a..98951691d4 100644
+index 360d1abf0b..3e46fb362b 100644
 --- a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h
 +++ b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h
-@@ -132,6 +132,7 @@ class BrowserWebContentsDelegate : public content::WebContentsDelegate {
+@@ -134,6 +134,7 @@ class BrowserWebContentsDelegate : public content::WebContentsDelegate {
    void SetContentsBounds(content::WebContents* source,
                           const gfx::Rect& bounds) override;
    void UpdateTargetURL(content::WebContents* source, const GURL& url) override;

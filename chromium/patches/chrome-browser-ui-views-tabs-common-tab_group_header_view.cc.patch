@@ -1,19 +1,8 @@
 diff --git a/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc b/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc
-index c7c218422c..483da8b8c4 100644
+index ee897b06f4..b1fc61c200 100644
 --- a/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc
 +++ b/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc
-@@ -4,16 +4,21 @@
- 
- #include "chrome/browser/ui/views/tabs/common/tab_group_header_view.h"
- 
-+
-+
- #include "base/task/single_thread_task_runner.h"
- #include "build/build_config.h"
- #include "build/buildflag.h"
- #include "chrome/app/vector_icons/vector_icons.h"
- #include "chrome/browser/ui/browser_element_identifiers.h"
-+#include "chrome/browser/ui/color/chrome_color_id.h"
+@@ -13,8 +13,10 @@
  #include "chrome/browser/ui/tabs/tab_group_data.h"
  #include "chrome/browser/ui/tabs/tab_group_theme.h"
  #include "chrome/browser/ui/tabs/tab_style.h"
@@ -24,7 +13,7 @@ index c7c218422c..483da8b8c4 100644
  #include "chrome/browser/ui/views/tabs/common/tab_group_style.h"
  #include "chrome/browser/ui/views/tabs/groups/tab_group_accessibility.h"
  #include "chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_tracker.h"
-@@ -26,6 +31,8 @@
+@@ -27,6 +29,8 @@
  #include "components/tab_groups/tab_group_visual_data.h"
  #include "components/tabs/public/tab_group.h"
  #include "components/vector_icons/vector_icons.h"
@@ -33,7 +22,7 @@ index c7c218422c..483da8b8c4 100644
  #include "ui/base/l10n/l10n_util.h"
  #include "ui/base/metadata/metadata_impl_macros.h"
  #include "ui/base/models/image_model.h"
-@@ -33,6 +40,8 @@
+@@ -34,6 +38,8 @@
  #include "ui/base/ui_base_features.h"
  #include "ui/color/color_provider.h"
  #include "ui/gfx/color_utils.h"
@@ -42,7 +31,7 @@ index c7c218422c..483da8b8c4 100644
  #include "ui/views/accessibility/view_accessibility.h"
  #include "ui/views/animation/ink_drop.h"
  #include "ui/views/background.h"
-@@ -45,6 +54,7 @@
+@@ -46,6 +52,7 @@
  #include "ui/views/controls/scroll_view.h"
  #include "ui/views/interaction/element_tracker_views.h"
  #include "ui/views/layout/layout_types.h"
@@ -50,17 +39,27 @@ index c7c218422c..483da8b8c4 100644
  #include "ui/views/view.h"
  #include "ui/views/view_class_properties.h"
  #include "ui/views/widget/widget.h"
-@@ -55,6 +65,9 @@ constexpr int kFocusRingInset = 2;
+@@ -56,6 +63,19 @@ constexpr int kFocusRingInset = 2;
  constexpr int kAttentionIndicatorWidth = 8;
  // The amount of padding between the label and any sync icon.
  constexpr int kSyncIconLabelPadding = 2;
 +// Oblada: between a workspace's icon and its name, as between a tab's favicon
 +// and its title.
 +constexpr int kObladaIconLabelPadding = 8;
++
++// Oblada: the window's BrowserView when `header` is in the sidebar, where a
++// group is a workspace (oblada/browser/workspaces/); else null.
++BrowserView* GetObladaBrowserView(const views::View* header,
++                                  TabStripOrientation orientation) {
++  return orientation == TabStripOrientation::kVertical && header->GetWidget()
++             ? BrowserView::GetBrowserViewForNativeWindow(
++                   header->GetWidget()->GetNativeWindow())
++             : nullptr;
++}
  
  views::ScrollView* GetScrollView(views::View* view) {
    views::View* ancestor = view;
-@@ -100,19 +113,19 @@ void UpdateEditorButtonColors(views::LabelButton* button,
+@@ -101,19 +121,19 @@ void UpdateEditorButtonColors(views::LabelButton* button,
    button->SetImageModel(
        views::Button::STATE_NORMAL,
        ui::ImageModel::FromVectorIcon(features::IsRoundedIconsEnabled()
@@ -83,7 +82,7 @@ index c7c218422c..483da8b8c4 100644
                                           : kBrowserToolsChromeRefreshOldIcon,
                                       foreground_color, kIconSize));
  }
-@@ -161,7 +174,7 @@ TabGroupHeaderView::TabGroupHeaderView(
+@@ -162,7 +182,7 @@ TabGroupHeaderView::TabGroupHeaderView(
  
    if (editor_bubble_button_) {
      ConfigureEditorBubbleButton(editor_bubble_button_);
@@ -92,7 +91,7 @@ index c7c218422c..483da8b8c4 100644
    }
    editor_bubble_opened_subscription_ =
        editor_bubble_tracker_.RegisterOnBubbleOpened(base::BindRepeating(
-@@ -170,6 +183,17 @@ TabGroupHeaderView::TabGroupHeaderView(
+@@ -171,6 +191,17 @@ TabGroupHeaderView::TabGroupHeaderView(
        editor_bubble_tracker_.RegisterOnBubbleClosed(base::BindRepeating(
            &TabGroupHeaderView::OnBubbleClosed, base::Unretained(this)));
  
@@ -110,7 +109,7 @@ index c7c218422c..483da8b8c4 100644
    SetCrossAxisAlignment(views::LayoutAlignment::kCenter);
    SetInteriorMargin(gfx::Insets::VH(0, GetHorizontalInset()));
    SetDefault(views::kFlexBehaviorKey,
-@@ -491,6 +515,10 @@ void TabGroupHeaderView::ShowContextMenuForViewImpl(
+@@ -485,6 +516,10 @@ void TabGroupHeaderView::ShowContextMenuForViewImpl(
        true;
  #endif
  
@@ -121,53 +120,57 @@ index c7c218422c..483da8b8c4 100644
    if (!expand_on_hover_lock_) {
      expand_on_hover_lock_ = delegate_->AcquireExpandOnHoverLock();
    }
-@@ -525,11 +553,30 @@ void TabGroupHeaderView::OnDataChanged(
-   is_shared_ = tab_group_data.is_sharing_group;
- 
-   group_header_label_->SetText(tab_group_visual_data_.title());
+@@ -523,6 +558,15 @@ void TabGroupHeaderView::OnDataChanged(
+   } else {
+     group_header_label_->SetText(tab_group_visual_data_.title());
+   }
 +  // Oblada: in the sidebar a group is a workspace (oblada/browser/workspaces/), whose
-+  // header is just its icon and name, Zen-like.
-+  BrowserView* const oblada_browser_view =
-+      orientation_ == TabStripOrientation::kVertical && GetWidget()
-+          ? BrowserView::GetBrowserViewForNativeWindow(
-+                GetWidget()->GetNativeWindow())
-+          : nullptr;
-+  if (oblada_browser_view) {
++  // header is just its icon and name, Zen-like (see UpdateColors() too).
++  if (GetObladaBrowserView(this, orientation_)) {
 +    // Its icon in the tabs' favicon column, its name lined up with their titles.
 +    group_header_label_->SetFontList(gfx::FontList().DeriveWithSizeDelta(1).DeriveWithWeight(
 +        gfx::Font::Weight::MEDIUM));
 +    sync_icon_->SetProperty(views::kMarginsKey,
 +                            gfx::Insets::TLBR(0, 0, 0, kObladaIconLabelPadding));
 +  }
-   if (GetColorProvider()) {
-     SkColor background_color = GetColorProvider()->GetColor(
-         GetTabGroupTabStripColorId(tab_group_visual_data_.color(),
-                                    GetWidget()->ShouldPaintAsActive()));
-     SkColor foreground_color = GetForegroundColor();
-+    if (oblada_browser_view) {
-+      background_color = SK_ColorTRANSPARENT;
-+      foreground_color = GetColorProvider()->GetColor(
-+          kColorTabForegroundActiveFrameActive);
-+    }
  
-     // Update label.
-     group_header_label_->SetEnabledColor(foreground_color);
-@@ -537,7 +584,13 @@ void TabGroupHeaderView::OnDataChanged(
-     // Update save tab group related items, the sync icon and attention
-     // indicator.
-     sync_icon_->SetVisible(is_shared_);
--    if (is_shared_) {
-+    // Oblada: the workspace's icon where the sync icon would be.
-+    if (oblada_browser_view) {
-+      sync_icon_->SetImage(oblada::workspaces::WorkspaceIcon(
-+          oblada_browser_view->browser(), tab_group_visual_data_.title(),
-+          kIconSize));
-+      sync_icon_->SetVisible(true);
-+    } else if (is_shared_) {
-       sync_icon_->SetImage(ui::ImageModel::FromVectorIcon(
-           features::IsRoundedIconsEnabled() ? kGroupCustomIcon
-                                             : kPeopleGroupOldIcon,
-@@ -722,12 +775,15 @@ void TabGroupHeaderView::SetEditorBubbleButtonVisibilityOnHover(
+   UpdateColors();
+   if (GetColorProvider()) {
+@@ -613,8 +657,16 @@ void TabGroupHeaderView::UpdateColors() {
+   if (!GetColorProvider()) {
+     return;
+   }
+-  const SkColor background_color = GetBackgroundColor();
+-  const SkColor foreground_color = GetForegroundColor();
++  SkColor background_color = GetBackgroundColor();
++  SkColor foreground_color = GetForegroundColor();
++  // Oblada: a workspace's header has no chip, and the tabs' text color.
++  BrowserView* const oblada_browser_view =
++      GetObladaBrowserView(this, orientation_);
++  if (oblada_browser_view) {
++    background_color = SK_ColorTRANSPARENT;
++    foreground_color =
++        GetColorProvider()->GetColor(kColorTabForegroundActiveFrameActive);
++  }
+ 
+   // Update label.
+   group_header_label_->SetEnabledColor(foreground_color);
+@@ -622,7 +674,13 @@ void TabGroupHeaderView::UpdateColors() {
+   // Update save tab group related items, the sync icon and attention
+   // indicator.
+   sync_icon_->SetVisible(is_shared_);
+-  if (is_shared_) {
++  // Oblada: the workspace's icon where the sync icon would be.
++  if (oblada_browser_view) {
++    sync_icon_->SetImage(oblada::workspaces::WorkspaceIcon(
++        oblada_browser_view->browser(), tab_group_visual_data_.title(),
++        kIconSize));
++    sync_icon_->SetVisible(true);
++  } else if (is_shared_) {
+     sync_icon_->SetImage(ui::ImageModel::FromVectorIcon(
+         features::IsRoundedIconsEnabled() ? kGroupCustomIcon
+                                           : kPeopleGroupOldIcon,
+@@ -702,12 +760,15 @@ void TabGroupHeaderView::SetEditorBubbleButtonVisibilityOnHover(
    if (!editor_bubble_button_) {
      return;
    }
@@ -185,17 +188,13 @@ index c7c218422c..483da8b8c4 100644
    if (editor_bubble_tracker_.is_open()) {
      return;
    }
-@@ -739,6 +795,24 @@ void TabGroupHeaderView::ShowEditorBubble() {
+@@ -719,6 +780,20 @@ void TabGroupHeaderView::ShowEditorBubble() {
        /*stop_context_menu_propagation=*/false));
  }
  
 +bool TabGroupHeaderView::ShowObladaWorkspaceMenu() {
 +  // Oblada: the workspace's menu rather than the group's editor.
-+  BrowserView* const browser_view =
-+      orientation_ == TabStripOrientation::kVertical && GetWidget()
-+          ? BrowserView::GetBrowserViewForNativeWindow(
-+                GetWidget()->GetNativeWindow())
-+          : nullptr;
++  BrowserView* const browser_view = GetObladaBrowserView(this, orientation_);
 +  if (!browser_view) {
 +    return false;
 +  }

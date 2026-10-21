@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
-index d3fa7eea6d..6bde644b54 100644
+index 3bc40bcc91..2c3e03e99d 100644
 --- a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
 +++ b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
 @@ -3,6 +3,8 @@
@@ -11,7 +11,7 @@ index d3fa7eea6d..6bde644b54 100644
  
  #include "base/check_deref.h"
  #include "base/metrics/histogram_macros.h"
-@@ -447,6 +449,11 @@ bool BrowserWebContentsDelegate::CanDragEnter(
+@@ -445,6 +447,11 @@ bool BrowserWebContentsDelegate::CanDragEnter(
      content::WebContents* source,
      const content::DropData& data,
      blink::DragOperationsMask operations_allowed) {
@@ -23,7 +23,7 @@ index d3fa7eea6d..6bde644b54 100644
  #if BUILDFLAG(IS_CHROMEOS)
    // Disallow drag-and-drop navigation for Settings windows which do not support
    // external navigation.
-@@ -798,6 +805,8 @@ void BrowserWebContentsDelegate::SetContentsBounds(content::WebContents* source,
+@@ -796,6 +803,8 @@ void BrowserWebContentsDelegate::SetContentsBounds(content::WebContents* source,
  
  void BrowserWebContentsDelegate::UpdateTargetURL(content::WebContents* source,
                                                   const GURL& url) {
@@ -32,7 +32,7 @@ index d3fa7eea6d..6bde644b54 100644
    std::vector<StatusBubble*> status_bubbles =
        browser_ui_controller_->GetStatusBubbles();
    for (StatusBubble* status_bubble : status_bubbles) {
-@@ -876,6 +885,12 @@ void BrowserWebContentsDelegate::BeforeUnloadFired(
+@@ -874,6 +883,12 @@ void BrowserWebContentsDelegate::BeforeUnloadFired(
                                          proceed_to_fire_unload);
  }
  
@@ -45,7 +45,7 @@ index d3fa7eea6d..6bde644b54 100644
  bool BrowserWebContentsDelegate::ShouldFocusLocationBarByDefault(
      content::WebContents* source) {
    // Navigations in background tabs shouldn't change the focus state of the
-@@ -904,7 +919,9 @@ bool BrowserWebContentsDelegate::ShouldFocusLocationBarByDefault(
+@@ -902,7 +917,9 @@ bool BrowserWebContentsDelegate::ShouldFocusLocationBarByDefault(
           url.host() == chrome::kChromeUINewTabHost) ||
          (virtual_url.SchemeIs(content::kChromeUIScheme) &&
           virtual_url.host() == chrome::kChromeUINewTabHost)) {

@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/browser_command_controller.cc b/chrome/browser/ui/browser_command_controller.cc
-index 3741ba7671..979a35acf6 100644
+index 921461b9e9..025b025c6b 100644
 --- a/chrome/browser/ui/browser_command_controller.cc
 +++ b/chrome/browser/ui/browser_command_controller.cc
-@@ -1751,7 +1751,8 @@ void BrowserCommandController::InitCommandState() {
+@@ -1768,7 +1768,8 @@ void BrowserCommandController::InitCommandState() {
    UpdateTabRestoreCommandState();
    command_updater_->UpdateCommandEnabled(IDC_EXIT, true);
    command_updater_->UpdateCommandEnabled(IDC_NAME_WINDOW, true);

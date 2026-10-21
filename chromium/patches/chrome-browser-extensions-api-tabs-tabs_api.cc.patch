@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/extensions/api/tabs/tabs_api.cc b/chrome/browser/extensions/api/tabs/tabs_api.cc
-index 0892d1b23e..32439072ce 100644
+index 2a631eb9fc..9c9821862f 100644
 --- a/chrome/browser/extensions/api/tabs/tabs_api.cc
 +++ b/chrome/browser/extensions/api/tabs/tabs_api.cc
 @@ -4,6 +4,9 @@
@@ -12,7 +12,7 @@ index 0892d1b23e..32439072ce 100644
  #include "base/metrics/histogram_functions.h"
  #include "base/metrics/histogram_macros.h"
  #include "base/notimplemented.h"
-@@ -2007,6 +2010,18 @@ bool TabsQueryFunction::MatchesTab(::tabs::TabInterface* candidate_tab,
+@@ -2021,6 +2024,18 @@ bool TabsQueryFunction::MatchesTab(::tabs::TabInterface* candidate_tab,
      return false;
    }
  
@@ -31,7 +31,7 @@ index 0892d1b23e..32439072ce 100644
    if (query_info_.group_id.has_value()) {
      std::optional<tab_groups::TabGroupId> group = candidate_tab->GetGroup();
      if (query_info_.group_id.value() == -1) {
-@@ -2132,6 +2147,18 @@ ExtensionFunction::ResponseAction TabsCreateFunction::Run() {
+@@ -2146,6 +2161,18 @@ ExtensionFunction::ResponseAction TabsCreateFunction::Run() {
    original_url_ = std::move(create_properties.url);
    split_with_tab_id_ = create_properties.split_with_tab_id;
  
@@ -50,7 +50,7 @@ index 0892d1b23e..32439072ce 100644
  #if BUILDFLAG(IS_ANDROID)
    // TODO(https://crbug.com/480192698): Remove this restriction once split tabs
    // are supported on Desktop Android.
-@@ -2381,7 +2408,12 @@ void TabsCreateFunction::OpenTabInBrowser(BrowserWindowInterface& browser,
+@@ -2393,7 +2420,12 @@ void TabsCreateFunction::OpenTabInBrowser(BrowserWindowInterface& browser,
    options.split_with_tab_id = split_with_tab_id_;
  
    base::expected<content::WebContents*, std::string> result =

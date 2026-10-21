@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/tabs/common/tab_view.cc b/chrome/browser/ui/views/tabs/common/tab_view.cc
-index cc16ff231e..a9e1636b8b 100644
+index 5292c13b13..1daf25381a 100644
 --- a/chrome/browser/ui/views/tabs/common/tab_view.cc
 +++ b/chrome/browser/ui/views/tabs/common/tab_view.cc
 @@ -4,6 +4,8 @@
@@ -11,7 +11,7 @@ index cc16ff231e..a9e1636b8b 100644
  #include <optional>
  #include <string>
  
-@@ -786,6 +788,9 @@ void TabView::OnPaint(gfx::Canvas* canvas) {
+@@ -820,6 +822,9 @@ void TabView::OnPaint(gfx::Canvas* canvas) {
    }
  
    tab_styling()->PaintTab(canvas);
@@ -21,7 +21,7 @@ index cc16ff231e..a9e1636b8b 100644
  
    views::View::OnPaint(canvas);
  }
-@@ -1237,7 +1242,8 @@ void TabView::CloseButtonPressed(const ui::Event& event) {
+@@ -1271,7 +1276,8 @@ void TabView::CloseButtonPressed(const ui::Event& event) {
  
    const bool from_mouse = event.type() == ui::EventType::kMouseReleased &&
                            !(event.flags() & ui::EF_FROM_TOUCH);

@@ -9,7 +9,7 @@ Oblada as a Chromium fork, laid out like Brave: Chromium itself is never committ
 | `oblada/` | Oblada's own C++/WebUI code, linked into the checkout as `src/oblada`; `oblada/VERSION` is Oblada's version, apart from Chromium's |
 | `patches/` | Oblada's edits to Chromium files, one patch per file (see [PATCHES.md](../PATCHES.md)) |
 | `overrides/` | Oblada's logo files, which replace Chromium's at the same paths in the checkout (made by `branding/export.sh`) |
-| `scripts/` | `sync.sh`, `build.sh`, `patches.sh`, `sparkle.sh`, `smoke.mjs`, `updates.mjs`, `screenshot.mjs`, `dmg.sh`, `appcast.py`, `release.sh` |
+| `scripts/` | `sync.sh`, `deps.py`, `build.sh`, `patches.sh`, `sparkle.sh`, `smoke.mjs`, `updates.mjs`, `screenshot.mjs`, `dmg.sh`, `appcast.py`, `release.sh` |
 
 The checkout lives in `~/chromium` (override with `OBLADA_CHROMIUM`). It takes about 32 GB of
 sources and toolchains, plus about 11 GB per build directory (without debug symbols, as
@@ -68,5 +68,8 @@ in the DMG is signed ad hoc, as a whole: there's no Developer ID yet, so macOS a
 from `branding/dmg/background.html` (`--mock <dir>` also shows it with Finder's icons).
 
 Updating Chromium: change `CHROMIUM_VERSION`, run `sync.sh`, fix any patch that no longer
-applies, then `patches.sh update`. [PATCHES.md](../PATCHES.md) says what each patch is for
+applies, then `patches.sh update`. The build directory is rebuilt almost whole (~6 hours),
+and the checkout needs some 10 GB free for the new sources and the build: `sync.sh` keeps
+each dependency one commit deep (`deps.py`), as gclient alone would fetch their whole
+histories. [PATCHES.md](../PATCHES.md) says what each patch is for
 and which ones depend on each other; keep it up to date when patches change.

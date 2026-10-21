@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.cc b/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.cc
-index c16f623b16..fa42a55991 100644
+index a375430858..4da7e14d2f 100644
 --- a/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.cc
 +++ b/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.cc
-@@ -443,6 +443,13 @@ void TabCollectionAnimatingLayoutManager::ResetViewsToTargetLayout(
+@@ -444,6 +444,13 @@ void TabCollectionAnimatingLayoutManager::ResetViewsToTargetLayout(
    InvalidateHost(/*mark_layouts_changed=*/true);
  }
  

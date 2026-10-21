@@ -1,5 +1,5 @@
 diff --git a/components/omnibox/browser/builtin_provider.cc b/components/omnibox/browser/builtin_provider.cc
-index 04fb056ed1..845de42c95 100644
+index ea54a7ac14..91e514a2e1 100644
 --- a/components/omnibox/browser/builtin_provider.cc
 +++ b/components/omnibox/browser/builtin_provider.cc
 @@ -52,12 +52,20 @@ void BuiltinProvider::DoBuiltinAutocompletion(const std::u16string& text) {

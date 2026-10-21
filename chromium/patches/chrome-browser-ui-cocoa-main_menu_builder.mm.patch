@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/cocoa/main_menu_builder.mm b/chrome/browser/ui/cocoa/main_menu_builder.mm
-index 4a178fc76a..5922408c72 100644
+index 0476742487..298c38eee7 100644
 --- a/chrome/browser/ui/cocoa/main_menu_builder.mm
 +++ b/chrome/browser/ui/cocoa/main_menu_builder.mm
-@@ -324,8 +324,6 @@ typedef NS_ENUM(NSInteger, NSMenuItemImageVisibility) {
+@@ -308,8 +308,6 @@
                     .command_id(IDC_SHOW_AI_MODE_OMNIBOX_BUTTON),
                Item(IDS_CONTEXT_MENU_SHOW_SEARCH_TOOLS)
                    .command_id(IDC_SHOW_SEARCH_TOOLS),

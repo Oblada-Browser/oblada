@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/ui_features.cc b/chrome/browser/ui/ui_features.cc
-index 7a0e331ded..1c1e235084 100644
+index 562d852958..9db0ec0c96 100644
 --- a/chrome/browser/ui/ui_features.cc
 +++ b/chrome/browser/ui/ui_features.cc
-@@ -383,7 +383,9 @@ BASE_FEATURE(kNonMilestoneUpdateToast, base::FEATURE_ENABLED_BY_DEFAULT);
+@@ -377,7 +377,9 @@ BASE_FEATURE(kNonMilestoneUpdateToast, base::FEATURE_ENABLED_BY_DEFAULT);
  BASE_FEATURE(kRespectShouldTriggerSessionRestoreOnDesktop,
               base::FEATURE_ENABLED_BY_DEFAULT);
  

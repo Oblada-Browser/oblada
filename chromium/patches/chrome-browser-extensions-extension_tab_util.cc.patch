@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/extensions/extension_tab_util.cc b/chrome/browser/extensions/extension_tab_util.cc
-index 71c4c9d190..394252b682 100644
+index dd919b9675..9fb06d3bb6 100644
 --- a/chrome/browser/extensions/extension_tab_util.cc
 +++ b/chrome/browser/extensions/extension_tab_util.cc
 @@ -4,6 +4,8 @@
@@ -11,7 +11,7 @@ index 71c4c9d190..394252b682 100644
  #include <stddef.h>
  
  #include <algorithm>
-@@ -360,6 +362,10 @@ api::tabs::Tab ExtensionTabUtil::CreateTabObject(
+@@ -364,6 +366,10 @@ api::tabs::Tab ExtensionTabUtil::CreateTabObject(
    }
    api::tabs::Tab tab_object;
    tab_object.id = GetTabIdForExtensions(*contents);

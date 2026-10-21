@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import { defaultApp, launch as launchOblada, sleep, snapshot, until, watchFocus } from './lib/oblada.mjs';
+import { defaultApp, launch as launchOblada, silentWav, sleep, snapshot, until, watchFocus } from './lib/oblada.mjs';
 
 const app = process.argv[2] ?? defaultApp;
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'oblada-smoke-'));
@@ -59,6 +59,17 @@ const server = http.createServer((req, res) => {
       ? [{ version: '1.0', update_link: `${site}oblada-check-1.0.xpi` },
          { version: '1.1', update_link: `${site}oblada-check-1.1.xpi` }]
       : [] } } }));
+    return;
+  }
+  // Music (silence) for the media controls.
+  if (req.url === '/silence.wav') {
+    res.setHeader('Content-Type', 'audio/wav');
+    res.end(silentWav());
+    return;
+  }
+  if (req.url === '/?music') {
+    res.setHeader('Content-Type', 'text/html');
+    res.end('<!doctype html><title>Oblada test music</title><audio src="/silence.wav" loop></audio>');
     return;
   }
   res.setHeader('Content-Type', 'text/html');
@@ -269,6 +280,67 @@ async function splitChecks(o) {
   check('a split pane dragged by its grip onto the sidebar becomes a page again',
     separate.length === 1, JSON.stringify(separate));
   for (const targetId of tabs) await o.send('Target.closeTarget', { targetId });
+}
+
+// Music playing in a tab other than the one shown gets a card at the bottom of the
+// sidebar, as in Zen, whose buttons control it (see oblada/browser/ui/media_controls.h).
+async function mediaChecks(o) {
+  // The tabs as the MV2 extension sees them, e.g. which one is shown.
+  const background = (await o.pages()).find((p) => p.type === 'background_page'
+    && p.url.endsWith('/_generated_background_page.html'));
+  const extension = background && await o.attach(background.targetId);
+  const tabs = (body) => o.evaluate(`new Promise((resolve) => chrome.tabs.query({}, (tabs) => {
+    const music = tabs.find((t) => t.url?.endsWith('?music'));
+    try { resolve(${body}); } catch (e) { resolve(String(e)); } }))`, extension);
+  const music = (await o.send('Target.createTarget', { url: `${site}?music` })).targetId;
+  const s = await o.attach(music);
+  await until('music page', () => o.evaluate('document.readyState === "complete"', s));
+  const play = () => o.send('Runtime.evaluate',
+    { expression: 'document.querySelector("audio").play()', awaitPromise: true, userGesture: true }, s);
+  await play();
+  const other = (await o.send('Target.createTarget', { url: `${site}?after-music` })).targetId;
+  await sleep(1500);
+  const shot = path.join(tmp, 'media');
+  const cards = (name) => fs.readFileSync(`${shot}-${name}.layout.txt`, 'utf8').split('\n')
+    .filter((l) => /^\s*MediaCard \d+,\d+ /.test(l)).length;
+  await snapshot(snapshots, `${shot}-card.png`);
+  check('music playing in another tab gets a card at the bottom of the sidebar',
+    cards('card') === 1, `${cards('card')} cards`);
+
+  // Stacked, a card shows its row of buttons: previous, play/pause, next, sound.
+  const paused = () => o.evaluate('document.querySelector("audio").paused', s);
+  await snapshot(snapshots, `${shot}-pause.png`, 'click:CardButton:1');
+  check("a card's button pauses its music", await until('paused', paused, 5000).catch(() => false));
+  // (Its player, which stays in its media session; a muted tab's media would leave it.)
+  await snapshot(snapshots, `${shot}-mute.png`, 'click:CardButton:3');
+  const muted = await until('muted',
+    () => o.evaluate('document.querySelector("audio").muted', s), 5000).catch(() => false);
+  check("a card's sound button mutes it, and the card stays", muted && cards('mute') === 1,
+    `${cards('mute')} cards`);
+
+  // Clicking it shows its tab, which has no card while shown.
+  await snapshot(snapshots, `${shot}-show.png`, 'click:MediaCard');
+  const shown = await until('music tab shown', () => tabs('music.active'), 5000).catch(() => false);
+  check('clicking a card shows its tab, without the card', shown === true && cards('show') === 0,
+    `${cards('show')} cards`);
+
+  // Spread out (under the pointer), its close button pauses it and puts the card away
+  // until it plays again.
+  // Another tab of its window shown.
+  await tabs(`chrome.tabs.update(tabs.find((t) => t.windowId === music.windowId
+    && t.id !== music.id).id, { active: true }) ?? true`);
+  await play();
+  await sleep(1500);
+  await snapshot(snapshots, `${shot}-close.png`, 'hover:MediaCard wait:400 click:CardButton:0');
+  const closed = await until('paused', paused, 5000).catch(() => false);
+  check("a card's close button pauses its music and puts the card away",
+    closed && cards('close') === 0, `${cards('close')} cards`);
+  await play();
+  await sleep(1500);
+  await snapshot(snapshots, `${shot}-again.png`);
+  check('the card comes back when the music plays again', cards('again') === 1,
+    `${cards('again')} cards`);
+  for (const targetId of [music, other]) await o.send('Target.closeTarget', { targetId });
 }
 
 // Cookies and local storage a tab sees, as "cookie|localStorage".
@@ -586,6 +658,7 @@ try {
   oblada = await launch();
   await coreChecks(oblada);
   await splitChecks(oblada);
+  await mediaChecks(oblada);
   await containerChecks(oblada);
   await firefoxChecks(oblada);
   if (process.env.OBLADA_SMOKE_NETWORK !== '0') await amoChecks(oblada);

@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/frame/multi_contents_view.cc b/chrome/browser/ui/views/frame/multi_contents_view.cc
-index 76475b5693..71ccab2ca5 100644
+index a756f076ff..c922fb3d7d 100644
 --- a/chrome/browser/ui/views/frame/multi_contents_view.cc
 +++ b/chrome/browser/ui/views/frame/multi_contents_view.cc
 @@ -29,6 +29,7 @@
@@ -29,7 +29,7 @@ index 76475b5693..71ccab2ca5 100644
    for (auto& contents_container_view : contents_container_views_) {
      auto& view_map = container_focusable_map_[contents_container_view];
  
-@@ -506,8 +519,8 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+@@ -507,8 +520,8 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
  
    gfx::Rect available_space = gfx::Rect(width, height);
  
@@ -40,7 +40,7 @@ index 76475b5693..71ccab2ca5 100644
    layouts.child_layouts.emplace_back(background_view_.get(), show_background,
                                       available_space);
  
-@@ -553,6 +566,24 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+@@ -554,6 +567,24 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
                                       lens_overlay_view_->GetVisible(),
                                       gfx::Rect(width, height));
  
@@ -65,7 +65,7 @@ index 76475b5693..71ccab2ca5 100644
    layouts.host_size = gfx::Size(width, height);
    return layouts;
  }
-@@ -579,9 +610,8 @@ void MultiContentsView::BeforeApplyLayout(const views::ProposedLayout& layout) {
+@@ -580,9 +611,8 @@ void MultiContentsView::BeforeApplyLayout(const views::ProposedLayout& layout) {
    views::ProposedLayout target_layout;
    {
      // Need to temporarily override the split view insets.

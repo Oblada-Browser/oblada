@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/views/frame/layout/browser_view_layout_delegate_impl.cc b/chrome/browser/ui/views/frame/layout/browser_view_layout_delegate_impl.cc
-index df0b0fca8c..2d2ff5210d 100644
+index 162cb04878..96a3cd5dd7 100644
 --- a/chrome/browser/ui/views/frame/layout/browser_view_layout_delegate_impl.cc
 +++ b/chrome/browser/ui/views/frame/layout/browser_view_layout_delegate_impl.cc
-@@ -112,6 +112,23 @@ BrowserLayoutParams BrowserViewLayoutDelegateImpl::GetBrowserLayoutParams(
+@@ -113,6 +113,23 @@ BrowserLayoutParams BrowserViewLayoutDelegateImpl::GetBrowserLayoutParams(
          !params.visual_client_area.Contains(browser_bounds)) {
        use_browser_bounds = false;
      }

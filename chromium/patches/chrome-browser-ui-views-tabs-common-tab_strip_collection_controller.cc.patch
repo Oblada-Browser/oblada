@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.cc b/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.cc
-index 9d34a6658a..3c5b35a10d 100644
+index 3f0f0d4421..05bf16a5e8 100644
 --- a/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.cc
 +++ b/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.cc
 @@ -4,6 +4,8 @@
@@ -65,7 +65,7 @@ index 9d34a6658a..3c5b35a10d 100644
  void TabStripCollectionController::ToggleSelected(
      const tabs::TabInterface* tab_interface) {
    std::optional<int> tab_index = model_->GetIndexOfTab(tab_interface);
-@@ -615,6 +657,8 @@ void TabStripCollectionController::UpdateFocusModeTheme(
+@@ -618,6 +660,8 @@ void TabStripCollectionController::UpdateFocusModeTheme(
      }
    }
  

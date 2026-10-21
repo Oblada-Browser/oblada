@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/browser_live_tab_context.cc b/chrome/browser/ui/browser_live_tab_context.cc
-index b220ba6c8f..d5f9dafdff 100644
+index d48ee3c659..b1af6e9927 100644
 --- a/chrome/browser/ui/browser_live_tab_context.cc
 +++ b/chrome/browser/ui/browser_live_tab_context.cc
 @@ -4,6 +4,8 @@
@@ -8,10 +8,10 @@ index b220ba6c8f..d5f9dafdff 100644
  
 +#include "oblada/browser/containers/containers.h"  // Oblada
 +
+ #include <algorithm>
  #include <memory>
  #include <numeric>
- #include <optional>
-@@ -172,6 +174,12 @@ std::map<std::string, std::string> BrowserLiveTabContext::GetExtraDataForTab(
+@@ -200,6 +202,12 @@ std::map<std::string, std::string> BrowserLiveTabContext::GetExtraDataForTab(
  
    glic::PopulateGlicExtraData(tab_strip_model_->GetTabAtIndex(index),
                                &extra_data);

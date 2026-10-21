@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/sessions/session_service_base.cc b/chrome/browser/sessions/session_service_base.cc
-index 0fdde07d4d..d2e0bc29d0 100644
+index 2e2a9d24d7..8e388a4bf2 100644
 --- a/chrome/browser/sessions/session_service_base.cc
 +++ b/chrome/browser/sessions/session_service_base.cc
 @@ -4,6 +4,8 @@

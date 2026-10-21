@@ -1,34 +1,42 @@
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f557..9bc293f6fd 100644
+index fdfdd93f07..ebbae97b21 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-@@ -4,6 +4,11 @@
+@@ -4,6 +4,12 @@
  
  #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
  
 +#include "chrome/browser/ui/views/toolbar/toolbar_view.h"  // Oblada
 +#include "oblada/browser/ui/floating_location_bar.h"  // Oblada
++#include "oblada/browser/ui/media_controls.h"  // Oblada
 +#include "oblada/browser/ui/sidebar_layout.h"  // Oblada
 +#include "oblada/browser/workspaces/workspace_switcher.h"  // Oblada
 +
  #include <algorithm>
  #include <optional>
- 
-@@ -158,6 +163,13 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+ #include <utility>
+@@ -171,6 +177,20 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
                LayoutConstant::kVerticalTabStripCollapsedVerticalPadding),
            region_horizontal_padding, 0, region_horizontal_padding));
  
++  // Oblada: the media playing in the window's other tabs, above the workspaces
++  // (see oblada/browser/ui/media_controls.h).
++  oblada_media_ = content_area_view_->AddChildView(
++      std::make_unique<oblada::media::MediaControls>(browser_view->browser()));
++  oblada_media_->SetProperty(views::kMarginsKey,
++                             gfx::Insets::VH(0, region_horizontal_padding));
++
 +  // Oblada: the workspaces, at the bottom (see oblada/browser/workspaces/).
-+  oblada_workspaces_ =
-+      AddChildView(std::make_unique<oblada::workspaces::WorkspaceSwitcher>(
++  oblada_workspaces_ = content_area_view_->AddChildView(
++      std::make_unique<oblada::workspaces::WorkspaceSwitcher>(
 +          browser_view->browser()));
 +  oblada_workspaces_->SetProperty(views::kMarginsKey,
 +                                 gfx::Insets::VH(0, region_horizontal_padding));
 +
-   gemini_button_ = AddChildView(std::make_unique<views::View>());
+   gemini_button_ =
+       content_area_view_->AddChildView(std::make_unique<views::View>());
  
-   resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
-@@ -189,10 +201,8 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -206,10 +226,8 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
        kExpandOnHoverShadowElevation, kExpandOnHoverShadowAlpha));
    shadow_frame_->SetProperty(views::kViewIgnoredByLayoutKey, true);
  
@@ -40,18 +48,44 @@ index b7cdb8f557..9bc293f6fd 100644
 +  // (made by the WorkspaceSwitcher above), which the tabs follow 1:1.
  
    SetNotifyEnterExitOnChild(true);
-   UpdateColors();
-@@ -373,6 +383,21 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
+ }
+@@ -400,8 +418,12 @@ views::ProposedLayout VerticalTabStripRegionView::CalculateProposedLayout(
+     button_available_size.set_width(button_available_size.width() -
+                                     2 * horizontal_padding);
+   }
++  // Oblada: no row of buttons above the tabs in the sidebar.
++  const bool oblada_sidebar = IsObladaSidebar();
+   const gfx::Size button_size =
+-      top_button_container_->GetPreferredSize(button_available_size);
++      oblada_sidebar
++          ? gfx::Size()
++          : top_button_container_->GetPreferredSize(button_available_size);
+   const gfx::Size tab_strip_size =
+       tab_strip_view() ? tab_strip_view()->GetPreferredSize() : gfx::Size();
+   const gfx::Size organizer_panel_size =
+@@ -426,7 +448,7 @@ views::ProposedLayout VerticalTabStripRegionView::CalculateProposedLayout(
+   // Lay out the top button container.
+   layout.child_layouts.push_back(
+       {.child_view = top_button_container_.get(),
+-       .visible = true,
++       .visible = !oblada_sidebar,  // Oblada
+        .bounds =
+            gfx::Rect(horizontal_padding, 0,
+                      std::max(0, available.width() - 2 * horizontal_padding),
+@@ -456,7 +478,27 @@ views::ProposedLayout VerticalTabStripRegionView::CalculateProposedLayout(
+   return layout;
  }
  
++bool VerticalTabStripRegionView::IsObladaSidebar() const {
++  return browser_view()->toolbar() &&
++         oblada::sidebar::ToolbarInset(browser_view()->toolbar()) >= 0;
++}
++
  void VerticalTabStripRegionView::Layout(PassKey) {
 +  // Oblada: below the toolbar in the sidebar (oblada/browser/ui/sidebar_layout.h), just
-+  // the tabs, Zen-like: no row of buttons or line above them.
-+  const bool oblada_sidebar =
-+      browser_view()->toolbar() &&
-+      oblada::sidebar::ToolbarInset(browser_view()->toolbar()) >= 0;
-+  top_button_container_->SetVisible(!oblada_sidebar);
-+  top_button_separator_->SetVisible(!oblada_sidebar);
++  // the tabs, Zen-like: no line above them (nor the row of buttons, which
++  // CalculateProposedLayout() leaves out).
++  top_button_separator_->SetVisible(!IsObladaSidebar());
 +  // Oblada: wide enough (not collapsed, or expanded on hover), it looks like the
 +  // full sidebar: workspace headers, and the workspaces in a row at the bottom.
 +  const bool oblada_shown_expanded = width() > 2 * kCollapsedWidth;
@@ -59,11 +93,14 @@ index b7cdb8f557..9bc293f6fd 100644
 +  if (oblada_workspaces_) {
 +    oblada_workspaces_->SetCompact(!oblada_shown_expanded);
 +  }
++  if (oblada_media_) {
++    oblada_media_->SetCompact(!oblada_shown_expanded);
++  }
 +
-   LayoutSuperclass<views::AccessiblePaneView>(this);
+   LayoutSuperclass<BaseTabStripRegionView>(this);
  
-   // Manually position the resize area as it overlaps views handled by the flex
-@@ -689,8 +714,14 @@ VerticalTabStripRegionView::RegionViewFocusListener::RegionViewFocusListener(
+   // When animating the organizer panel in, as soon as it is visible, focus it.
+@@ -817,8 +859,14 @@ VerticalTabStripRegionView::RegionViewFocusListener::RegionViewFocusListener(
  void VerticalTabStripRegionView::RegionViewFocusListener::OnDidChangeFocus(
      views::View* focused_before,
      views::View* focused_now) {
@@ -79,7 +116,7 @@ index b7cdb8f557..9bc293f6fd 100644
      region_view_->UpdateExpandOnHoverState();
    }
  }
-@@ -850,7 +881,9 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -974,7 +1022,9 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
    }
  
    // If the force collapse lock is held, collapse the tab strip.
@@ -90,7 +127,7 @@ index b7cdb8f557..9bc293f6fd 100644
      if (is_expanded_on_hover_) {
        AnimateExpandOnHover(/*expand=*/false);
      }
-@@ -886,7 +919,9 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -1010,7 +1060,9 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
        !suppress_expand_on_hover_ &&
        state_controller_->IsExpandOnHoverEnabled() &&
        (hovered.value_or(IsMouseHovered()) ||
@@ -101,7 +138,7 @@ index b7cdb8f557..9bc293f6fd 100644
  
    if (!should_expand) {
      if (is_expanded_on_hover_ && keep_current_state_lock_count_ == 0) {
-@@ -939,8 +974,10 @@ void VerticalTabStripRegionView::RestartExpandOnHoverTimer(
+@@ -1063,8 +1115,10 @@ void VerticalTabStripRegionView::RestartExpandOnHoverTimer(
  void VerticalTabStripRegionView::OnMouseVelocityHeuristicInterval() {
    const bool should_expand =
        state_controller_->IsExpandOnHoverEnabled() &&
@@ -113,7 +150,7 @@ index b7cdb8f557..9bc293f6fd 100644
  
    if (!should_expand || is_expanded_on_hover_) {
      ResetExpandOnHoverTimers();
-@@ -1105,8 +1142,14 @@ void VerticalTabStripRegionView::UnregisterExpandOnHoverLock(
+@@ -1229,8 +1283,14 @@ void VerticalTabStripRegionView::UnregisterExpandOnHoverLock(
  void VerticalTabStripRegionView::OnOmniboxPopupVisibilityChanged(bool is_open) {
    if (is_open) {
      if (!omnibox_open_lock_) {

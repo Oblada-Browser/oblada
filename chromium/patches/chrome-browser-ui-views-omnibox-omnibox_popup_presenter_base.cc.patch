@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc b/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc
-index 4d709ce26b..da0e78f477 100644
+index 60a3274b86..8cd0f8accb 100644
 --- a/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc
 +++ b/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc
 @@ -4,6 +4,9 @@
@@ -12,7 +12,7 @@ index 4d709ce26b..da0e78f477 100644
  #include <optional>
  
  #include "base/auto_reset.h"
-@@ -190,6 +193,25 @@ void OmniboxPopupPresenterBase::OnVisualStateReady(
+@@ -194,6 +197,25 @@ void OmniboxPopupPresenterBase::OnVisualStateReady(
  }
  
  void OmniboxPopupPresenterBase::ShowWidget(base::TimeTicks show_request_time) {
@@ -38,7 +38,7 @@ index 4d709ce26b..da0e78f477 100644
    if (ShouldPreserveRequestedFocus() &&
        (widget_->IsActive() || focus_requested_)) {
      widget_->Show();
-@@ -349,6 +371,13 @@ void OmniboxPopupPresenterBase::SynchronizePopupBounds() {
+@@ -365,6 +387,13 @@ void OmniboxPopupPresenterBase::SynchronizePopupBounds() {
            std::max(content_height_, widget_bounds.height()));
      }
  

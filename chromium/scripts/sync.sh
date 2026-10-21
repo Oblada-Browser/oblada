@@ -34,7 +34,10 @@ elif [ "$(git -C "$SRC" describe --tags --exact-match 2>/dev/null)" != "$CHROMIU
 fi
 
 cd "$OBLADA_CHROMIUM"
+# gclient would bring existing dependencies up to date with their whole histories.
+python3 "$HERE/scripts/deps.py" fetch "$OBLADA_CHROMIUM"
 gclient sync --nohooks --no-history --delete_unversioned_trees
+python3 "$HERE/scripts/deps.py" prune "$OBLADA_CHROMIUM"
 gclient runhooks
 "$HERE/scripts/patches.sh" apply
 "$HERE/scripts/sparkle.sh"

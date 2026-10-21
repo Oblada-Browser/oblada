@@ -1,11 +1,15 @@
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-index 76f8e997d6..e8f6bcbc4c 100644
+index 52ee4b9479..731d14cd16 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-@@ -31,6 +31,10 @@
- #include "ui/views/controls/resize_area_delegate.h"
+@@ -34,6 +34,14 @@
  #include "ui/views/focus/focus_manager.h"
+ #include "ui/views/layout/delegating_layout_manager.h"
  
++namespace oblada::media {
++class MediaControls;
++}  // namespace oblada::media
++
 +namespace oblada::workspaces {
 +class WorkspaceSwitcher;
 +}  // namespace oblada::workspaces
@@ -13,7 +17,7 @@ index 76f8e997d6..e8f6bcbc4c 100644
  class BrowserView;
  class VerticalTabStripTopContainer;
  class VerticalTabStripBottomContainer;
-@@ -62,7 +66,9 @@ class VerticalTabStripRegionView final
+@@ -66,7 +74,9 @@ class VerticalTabStripRegionView final
  
    // TODO(crbug.com/465833741): Replace constant with derived value based on
    // caption buttons.
@@ -24,11 +28,23 @@ index 76f8e997d6..e8f6bcbc4c 100644
    // TODO(crbug.com/465832180): Replace constant based width final max width for
    // view.
    static constexpr int kUncollapsedMaxWidth = 400;
-@@ -241,6 +247,8 @@ class VerticalTabStripRegionView final
+@@ -165,6 +175,10 @@ class VerticalTabStripRegionView final
+   }
+ 
+  private:
++  // Oblada: whether it's below the toolbar in the sidebar
++  // (oblada/browser/ui/sidebar_layout.h), where it shows just the tabs.
++  bool IsObladaSidebar() const;
++
+   // Since VerticalTabStripRegionView inherits from AccessiblePaneView, which is
+   // a FocusChangeListener, we need to have a separate focus listener to avoid
+   // conflicts with the base class implementation which conditionally listens
+@@ -260,6 +274,9 @@ class VerticalTabStripRegionView final
    raw_ptr<VerticalTabStripTopContainer> top_button_container_ = nullptr;
    raw_ptr<views::Separator> top_button_separator_ = nullptr;
    raw_ptr<VerticalTabStripBottomContainer> bottom_button_container_ = nullptr;
-+  // Oblada: the workspaces, at the bottom.
++  // Oblada: the media playing in other tabs, and the workspaces, at the bottom.
++  raw_ptr<oblada::media::MediaControls> oblada_media_ = nullptr;
 +  raw_ptr<oblada::workspaces::WorkspaceSwitcher> oblada_workspaces_ = nullptr;
    raw_ptr<views::View> gemini_button_ = nullptr;
    raw_ptr<views::ResizeArea> resize_area_ = nullptr;

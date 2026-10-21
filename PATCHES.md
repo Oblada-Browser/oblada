@@ -21,7 +21,7 @@ Two kinds of changes are not patches:
 - **Logo images:** they are copied over Chromium's from `chromium/overrides/`, which
   `branding/export.sh` makes.
 
-There are 130 patches for Chromium 155 (`chromium/CHROMIUM_VERSION`). This file describes
+There are 130 patches for Chromium 156 (`chromium/CHROMIUM_VERSION`). This file describes
 each one, and how they depend on each other and on Oblada's code. Update it when a patch
 is added, removed or changes purpose.
 
@@ -51,7 +51,7 @@ source adds. Each pair is listed in the entries.
 | `chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc` | `chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h` | `SetObladaShownExpanded()` |
 | `chrome/browser/ui/views/tabs/common/tab_group_header_view.cc` | `chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h` | `IsObladaShownExpanded()`, `RegisterOnObladaShownExpandedChanged()` |
 | `chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h` | `chrome/browser/ui/tabs/vertical_tab_strip_state.h` | `kVerticalTabStripMinUncollapsedWidth` |
-| `chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc` | `chrome/browser/ui/tabs/vertical_tab_strip_state.h` | `kVerticalTabStripMinUncollapsedWidth` |
+| `chrome/browser/ui/tabs/vertical_tab_strip_state_controller_impl.cc` | `chrome/browser/ui/tabs/vertical_tab_strip_state.h` | `kVerticalTabStripMinUncollapsedWidth` |
 | `chrome/browser/ui/views/tabs/common/tab_view.cc` | `chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h` (and `.cc`) | `CloseTabOrSelection()` |
 | `chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h` | `chrome/browser/ui/views/tabs/dragging/tab_drag_target.h` | overrides `GetInitiallyActiveTab()` |
 | `chrome/browser/ui/views/frame/multi_contents_view_drop_target_controller.cc` | `tab_drag_target.h`, `tab_drag_controller.h` and `.cc` | `GetInitiallyActiveTab()` (its default definition is in `tab_drag_controller.cc`) |
@@ -71,7 +71,7 @@ source adds. Each pair is listed in the entries.
   - `chrome_autocomplete_scheme_classifier.cc` treats the typed text as a URL;
   - `builtin_provider.cc` suggests the pages;
   - the `chrome_urls` page lists them.
-- **Always-vertical tabs:** `tab_strip_prefs.cc` and `vertical_tab_strip_state_controller.cc`
+- **Always-vertical tabs:** `tab_strip_prefs.cc` and `vertical_tab_strip_state_controller_impl.cc`
   force them on. These patches remove every way back to horizontal tabs:
   - `browser_command_controller.cc`;
   - `main_menu_builder.mm`;
@@ -130,7 +130,7 @@ source adds. Each pair is listed in the entries.
 | Startup, prefs, stability | `chrome_browser_main.cc`, `browser_prefs.cc`, `session_startup_pref.cc`, `base/check.cc`, `web_ui_main_frame_observer.cc`, `startup/infobar_utils.cc` |
 | Branding | `BRANDING`, `chrome_paths_mac.mm`, `keychain_password_mac.mm`, three `icons.html.ts` |
 | Window & frame | `ui_base_features.cc`, `browser_native_widget_mac.mm`, `browser_frame_view_mac.mm`, `browser_view_layout_delegate_impl.cc`, `fullscreen_util_mac.cc`, `window_feature_controller.cc` |
-| Sidebar & compact mode | `browser_view_tabbed_layout_impl.cc`, `toolbar_view.cc`, `vertical_tab_strip_region_view.{h,cc}`, `vertical_tab_strip_state.h`, `vertical_tab_strip_state_controller.{h,cc}`, `tab_strip_prefs.cc`, `browser_command_controller.cc`, `vertical_tab_strip_bottom_container.cc`, `download_toolbar_ui_controller.cc` |
+| Sidebar & compact mode | `browser_view_tabbed_layout_impl.cc`, `toolbar_view.cc`, `vertical_tab_strip_region_view.{h,cc}`, `vertical_tab_strip_state.h`, `vertical_tab_strip_state_controller{.h,_impl.cc}`, `tab_strip_prefs.cc`, `browser_command_controller.cc`, `vertical_tab_strip_bottom_container.cc`, `download_toolbar_ui_controller.cc` |
 | Tabs | `tab_style.cc`, `tab_hover_card_controller.cc`, `tab_strip_collection_controller.{h,cc}` |
 | Workspaces | `ui_features.cc`, `browser_commands.cc`, `browser_widget.cc`, `tab_group_header_view.{h,cc}`, `tab_collection_animating_layout_manager.{h,cc}`, `vertical_tab_strip_focus_swipe_controller.cc`, `saved_tab_group_model_listener.cc`, `tab_group_sync_delegate_desktop.cc`, `saved_tab_groups/public/pref_names.cc`, `bookmark_utils.cc` |
 | Containers | `chrome_content_browser_client_navigation_throttles.cc`, `tab_helpers.cc`, `browser_navigator.cc`, `web_contents_impl.cc`, `session_service_base.cc`, `browser_live_tab_context.cc`, `browser_tabrestore.cc`, `render_view_context_menu.{h,cc}`, `new_tab_button.{h,cc}`, `new_tab_button_menu_model.{h,cc}`, `tab_view.cc` |
@@ -152,7 +152,8 @@ or work without) and the Oblada code it calls.
 
 #### `chrome/browser/ui/BUILD.gn`
 `chrome-browser-ui-BUILD.gn.patch`. Imports `//oblada/browser/sources.gni` and adds
-`oblada_ui_sources` and `oblada_ui_deps` to `static_library("ui")`. Oblada's code is then
+`oblada_ui_sources` (to its desktop sources) and `oblada_ui_deps` to
+`static_library("ui")`. Oblada's code is then
 compiled as part of `//chrome/browser/ui`, so it can use that target's headers without a
 dependency cycle.
 - Needs: nothing. Every patch that includes `oblada/browser/` needs it.
@@ -318,37 +319,45 @@ the Zen-like layout, and the largest patch.
 - Smaller button insets.
 - `LayOutLocationBar()` lets the address bar float out of it.
 - Always drops the split-tabs and Battery Saver buttons.
+- Never creates the media button: media is controlled at the bottom of the sidebar
+  (`oblada::media::MediaControls`, added by the `vertical_tab_strip_region_view.cc` patch).
 - Needs: the sidebar layout (which sets `ToolbarInset()`).
 - Oblada code: `oblada/browser/ui/sidebar_layout.h`, `floating_location_bar.h`.
 
 #### `chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h`, `.cc`
 `chrome-browser-ui-views-frame-vertical_tab_strip_region_view.{h,cc}.patch`. The tab
 strip's region in the sidebar.
-- Adds the workspace switcher at the bottom (`oblada_workspaces_`).
+- Adds the workspace switcher at the bottom of the content area (`oblada_workspaces_`),
+  and the media controls above it (`oblada_media_`); both turn compact with the strip.
 - Drops Chromium's swipe controller: workspace swipes are `oblada::workspaces::WorkspaceSlider`'s.
-- In the sidebar, hides the row of buttons above the tabs.
+- In the sidebar, leaves the row of buttons above the tabs out of its layout
+  (`CalculateProposedLayout()`, `IsObladaSidebar()`) and hides the line under it.
 - Tells the state controller whether the strip looks expanded.
 - In compact mode, the toolbar counts as part of the strip for expand-on-hover.
 - The strip collapses while the address bar floats over the page.
 - The address bar's suggestions keep the compact sidebar open.
 - Needs: `vertical_tab_strip_state_controller.h`, `vertical_tab_strip_state.h`.
 - Oblada code: `oblada/browser/workspaces/workspace_switcher.h`,
-  `oblada/browser/ui/sidebar_layout.h`, `floating_location_bar.h`.
+  `oblada/browser/ui/media_controls.h`, `oblada/browser/ui/sidebar_layout.h`,
+  `floating_location_bar.h`.
 
 #### `chrome/browser/ui/tabs/vertical_tab_strip_state.h`
 `chrome-browser-ui-tabs-vertical_tab_strip_state.h.patch`. The default sidebar width goes
 from 240 to 280, and `kVerticalTabStripMinUncollapsedWidth` (170) is the narrowest it gets,
 so the toolbar always fits.
-- Needed by: `vertical_tab_strip_state_controller.cc`, `vertical_tab_strip_region_view.h`,
+- Needed by: `vertical_tab_strip_state_controller_impl.cc`, `vertical_tab_strip_region_view.h`,
   `browser_view_tabbed_layout_impl.cc`.
 
-#### `chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h`, `.cc`
-`chrome-browser-ui-tabs-vertical_tab_strip_state_controller.{h,cc}.patch`.
+#### `chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h`, `_impl.cc`
+`chrome-browser-ui-tabs-vertical_tab_strip_state_controller.h.patch` and
+`chrome-browser-ui-tabs-vertical_tab_strip_state_controller_impl.cc.patch`. Since Chromium
+156 the controller is an interface (`.h`) with its implementation in
+`VerticalTabStripStateControllerImpl`.
 - **`.h`:** adds `IsObladaShownExpanded()`, `SetObladaShownExpanded()` and
-  `RegisterOnObladaShownExpandedChanged()`, which track whether the strip looks expanded
-  (rather than compact).
-- **`.cc`:** forces vertical tabs on, whatever the pref, and clamps the width to the minimum
-  (fixing narrower widths saved before).
+  `RegisterOnObladaShownExpandedChanged()` to the interface, which track whether the strip
+  looks expanded (rather than compact).
+- **`_impl.cc`:** forces vertical tabs on, whatever the pref, and clamps the width to the
+  minimum (fixing narrower widths saved before).
 - Needs: `vertical_tab_strip_state.h`.
 - Needed by: `vertical_tab_strip_region_view.cc`, `tab_group_header_view.cc`.
 

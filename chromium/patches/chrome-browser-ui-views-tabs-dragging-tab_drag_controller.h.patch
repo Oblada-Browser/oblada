@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h b/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h
-index 2c3baaa924..d0be221718 100644
+index a08a5a5b76..953b36d606 100644
 --- a/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h
 +++ b/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h
 @@ -54,7 +54,12 @@ namespace views {
@@ -15,7 +15,7 @@ index 2c3baaa924..d0be221718 100644
  class TabModel;
  }
  class BrowserWindowInterface;
-@@ -227,6 +232,7 @@ class TabDragController : public views::WidgetObserver,
+@@ -234,6 +239,7 @@ class TabDragController : public views::WidgetObserver,
        int drag_idx) override;
    const DragSessionData& GetSessionData() const override;
    const TabDragContext* GetAttachedContext() const override;
@@ -23,7 +23,7 @@ index 2c3baaa924..d0be221718 100644
  
   private:
    friend class TabDragControllerTest;
-@@ -632,6 +638,12 @@ class TabDragController : public views::WidgetObserver,
+@@ -646,6 +652,12 @@ class TabDragController : public views::WidgetObserver,
    // details.
    ui::ListSelectionModel initial_selection_model_;
  

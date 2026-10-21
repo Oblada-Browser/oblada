@@ -372,7 +372,7 @@ class Keeper : public TabStripModelObserver {
         }
       }
       if (group) {
-        model->SetFocusedGroup(group);
+        model->EnterFocusMode(*group);
       }
     }
   }
@@ -743,13 +743,13 @@ void ShowNow(BrowserWindowInterface* browser, std::string_view id) {
     if (keeper) {
       keeper->Adopt(*group, workspace->id);
     }
-    model->SetFocusedGroup(group);
+    model->EnterFocusMode(*group);
     return;
   }
   // Back where it was (known before showing the group activates its first tab).
   tabs::TabInterface* const last_active =
       keeper ? keeper->LastActiveTab(*group) : nullptr;
-  model->SetFocusedGroup(group);
+  model->EnterFocusMode(*group);
   if (last_active && last_active->GetGroup() == group) {
     const int index = model->GetIndexOfTab(last_active);
     if (index != TabStripModel::kNoTab) {

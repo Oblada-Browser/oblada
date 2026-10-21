@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/frame/contents_web_view.h b/chrome/browser/ui/views/frame/contents_web_view.h
-index dba4f324e7..c8894002c3 100644
+index 0dc0d4b8d3..a2b765d971 100644
 --- a/chrome/browser/ui/views/frame/contents_web_view.h
 +++ b/chrome/browser/ui/views/frame/contents_web_view.h
 @@ -64,6 +64,7 @@ class ContentsWebView : public views::WebView,

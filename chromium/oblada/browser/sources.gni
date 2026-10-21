@@ -59,6 +59,8 @@ oblada_ui_sources = [
   "//oblada/browser/ui/floating_location_bar.h",
   "//oblada/browser/ui/icons.cc",
   "//oblada/browser/ui/icons.h",
+  "//oblada/browser/ui/media_controls.cc",
+  "//oblada/browser/ui/media_controls.h",
   "//oblada/browser/ui/sidebar_layout.cc",
   "//oblada/browser/ui/sidebar_layout.h",
   "//oblada/browser/ui/site_panel.cc",
@@ -100,6 +102,8 @@ oblada_ui_deps = [
   "//components/user_data_importer/utility:safari_data_importer",
   "//oblada/browser/extensions/api:api_registration",
   "//oblada/common/extensions/api",
+  "//services/media_session/public/cpp:base_cpp",
+  "//services/media_session/public/mojom",
 ]
 
 if (is_mac) {

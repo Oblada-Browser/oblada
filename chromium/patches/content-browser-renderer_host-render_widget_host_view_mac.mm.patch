@@ -1,5 +1,5 @@
 diff --git a/content/browser/renderer_host/render_widget_host_view_mac.mm b/content/browser/renderer_host/render_widget_host_view_mac.mm
-index 0e5f95d678..de34e53d05 100644
+index f99512647a..638d7807a4 100644
 --- a/content/browser/renderer_host/render_widget_host_view_mac.mm
 +++ b/content/browser/renderer_host/render_widget_host_view_mac.mm
 @@ -56,7 +56,9 @@
@@ -12,9 +12,9 @@ index 0e5f95d678..de34e53d05 100644
  #include "content/public/common/page_visibility_state.h"
  #include "media/base/media_switches.h"
  #include "skia/ext/platform_canvas.h"
-@@ -2310,6 +2312,15 @@ void CombineTextNodesAndMakeCallback(SpeechCallback callback,
-       !host()->delegate()->GetInputEventRouter())
+@@ -2329,6 +2331,15 @@ void CombineTextNodesAndMakeCallback(SpeechCallback callback,
      return;
+   }
  
 +  // Oblada: unless the page's delegate does something else with it (e.g. peeks
 +  // at the link there).

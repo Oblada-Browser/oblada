@@ -1,0 +1,15 @@
+{
+  "added": [
+    "Media playing in other tabs has controls at the bottom of the sidebar: hover over them for what's playing, how far along, picture in picture and closing them."
+  ],
+  "changed": [
+    "Oblada is now based on Chromium 156, with its 353 security fixes.",
+    "oblada://version shows Oblada's logo and authors, and no longer calls every build a \"Developer Build\".",
+    "The media button in the toolbar is gone: its controls are at the bottom of the sidebar."
+  ],
+  "obladaVersion": "0.2.0",
+  "releaseId": 4,
+  "chromiumVersion": "156.0.8078.48",
+  "releaseDate": "",
+  "released": false
+}

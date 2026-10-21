@@ -1,16 +1,18 @@
 diff --git a/chrome/browser/ui/views/app_menu/action_app_menu_manager.cc b/chrome/browser/ui/views/app_menu/action_app_menu_manager.cc
-index eb00016d40..3f80e8f903 100644
+index 439e795ec5..9344a282bb 100644
 --- a/chrome/browser/ui/views/app_menu/action_app_menu_manager.cc
 +++ b/chrome/browser/ui/views/app_menu/action_app_menu_manager.cc
-@@ -661,8 +661,10 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
+@@ -942,9 +942,12 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
  
-           sub.AddAction(kActionNameWindow);
+               sub.AddAction(kActionNameWindow);
  
-+          // Oblada: tabs are always vertical, so there is nothing to switch to.
-           if (auto* controller = tabs::VerticalTabStripStateController::From(
--                  browser_window_interface_.get())) {
-+                  browser_window_interface_.get());
-+              controller && !controller->ShouldDisplayVerticalTabs()) {
-             if (controller->ShouldDisplayVerticalTabs()) {
-               sub.AddAction(
-                   kActionToggleVerticalTabs, /*type=*/std::nullopt,
++              // Oblada: tabs are always vertical, so there is nothing to
++              // switch to.
+               if (auto* controller =
+                       tabs::VerticalTabStripStateController::From(
+-                          browser_window_interface_.get())) {
++                          browser_window_interface_.get());
++                  controller && !controller->ShouldDisplayVerticalTabs()) {
+                 if (controller->ShouldDisplayVerticalTabs()) {
+                   sub.AddAction(
+                       kActionToggleVerticalTabs,

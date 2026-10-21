@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/webui/settings/settings_ui.cc b/chrome/browser/ui/webui/settings/settings_ui.cc
-index 781744f9cf..d84213f85c 100644
+index c1bb5d445e..67d240cd9f 100644
 --- a/chrome/browser/ui/webui/settings/settings_ui.cc
 +++ b/chrome/browser/ui/webui/settings/settings_ui.cc
 @@ -4,6 +4,8 @@
@@ -11,7 +11,7 @@ index 781744f9cf..d84213f85c 100644
  #include <stddef.h>
  
  #include <memory>
-@@ -485,6 +487,7 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
+@@ -482,6 +484,7 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
  #endif
  
    AddLocalizedStrings(html_source, profile, web_ui->GetWebContents());
@@ -20,18 +20,17 @@ index 781744f9cf..d84213f85c 100644
  
    ManagedUIHandler::Initialize(web_ui, html_source);
 @@ -658,9 +661,12 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
-   // Within the AI subpage are separate sections for Glic and for all other AI
-   // features, the visibility of these are separately controlled but we want to
-   // show the subpage if any of the AI features or Glic are enabled.
--  html_source->AddBoolean("showAiPage", show_glic_section ||
--                                            show_ai_features_section ||
--                                            enable_ai_mode_search);
+   // Within the AI subpage are separate sections for Glic, for GEIC, and for all
+   // other AI features. The visibility of these is separately controlled, but
+   // we want to show the subpage if any of them are enabled.
 +  // Oblada: no AI page: its features are Google's (Gemini, AI Mode, Skills).
 +  const bool oblada_ai_page = false;
-+  html_source->AddBoolean("showAiPage", oblada_ai_page &&
-+                                            (show_glic_section ||
-+                                             show_ai_features_section ||
-+                                             enable_ai_mode_search));
+   html_source->AddBoolean("showAiPage",
+-                          show_glic_section || show_ai_features_section ||
+-                              enable_ai_mode_search || show_geic_section);
++                          oblada_ai_page &&
++                              (show_glic_section || show_ai_features_section ||
++                               enable_ai_mode_search || show_geic_section));
    html_source->AddBoolean("showAiPageAiFeatureSection",
                            show_ai_features_section);
  

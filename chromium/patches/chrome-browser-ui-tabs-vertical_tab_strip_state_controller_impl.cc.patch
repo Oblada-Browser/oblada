@@ -1,18 +1,18 @@
-diff --git a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
-index 22ece00a8c..db68704912 100644
---- a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
-+++ b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
+diff --git a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller_impl.cc b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller_impl.cc
+index 76487de5df..1fdcc743a3 100644
+--- a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller_impl.cc
++++ b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller_impl.cc
 @@ -4,6 +4,8 @@
  
- #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+ #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller_impl.h"
  
 +#include <algorithm>  // Oblada
 +
  #include <optional>
  
  #include "base/i18n/rtl.h"
-@@ -60,8 +62,8 @@ VerticalTabStripStateController::VerticalTabStripStateController(
-                                 *this) {
+@@ -58,8 +60,8 @@ VerticalTabStripStateControllerImpl::VerticalTabStripStateControllerImpl(
+       browser_window_(browser_window) {
    pref_change_registrar_.Init(pref_service_);
  
 -  is_vertical_tabs_enabled_ =
@@ -22,29 +22,29 @@ index 22ece00a8c..db68704912 100644
  
    pref_change_registrar_.Add(
        prefs::kVerticalTabsEnabled,
-@@ -183,6 +185,9 @@ bool VerticalTabStripStateController::ShouldDisplayVerticalTabs() const {
+@@ -168,6 +170,9 @@ bool VerticalTabStripStateControllerImpl::ShouldDisplayVerticalTabs() const {
  }
  
- void VerticalTabStripStateController::SetVerticalTabsEnabled(bool enabled) {
+ void VerticalTabStripStateControllerImpl::SetVerticalTabsEnabled(bool enabled) {
 +  if (!enabled) {
 +    return;  // Oblada: tabs are always vertical.
 +  }
    // If the user already has a pending mode switch, but tries to change tab
    // strip mode again, ensure the toast is displayed.
    if (enable_state_lock_count_ > 0 && enabled != is_vertical_tabs_enabled_ &&
-@@ -236,6 +241,8 @@ int VerticalTabStripStateController::GetUncollapsedWidth() const {
+@@ -221,6 +226,8 @@ int VerticalTabStripStateControllerImpl::GetUncollapsedWidth() const {
  }
  
- void VerticalTabStripStateController::SetUncollapsedWidth(int width) {
+ void VerticalTabStripStateControllerImpl::SetUncollapsedWidth(int width) {
 +  // Oblada: a narrower one saved before there was a minimum.
 +  width = std::max(width, kVerticalTabStripMinUncollapsedWidth);
    if (state_.uncollapsed_width != width) {
      state_.uncollapsed_width = width;
      NotifyCollapseChanged();
-@@ -310,8 +317,7 @@ void VerticalTabStripStateController::NotifyModeChanged() {
+@@ -261,8 +268,7 @@ void VerticalTabStripStateControllerImpl::NotifyCollapseChanged() {
  }
  
- void VerticalTabStripStateController::OnModeChanged() {
+ void VerticalTabStripStateControllerImpl::OnModeChanged() {
 -  const bool new_enabled =
 -      pref_service_->GetBoolean(prefs::kVerticalTabsEnabled);
 +  const bool new_enabled = true;  // Oblada: tabs are always vertical.

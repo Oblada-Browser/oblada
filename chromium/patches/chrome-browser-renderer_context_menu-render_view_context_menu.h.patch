@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/renderer_context_menu/render_view_context_menu.h b/chrome/browser/renderer_context_menu/render_view_context_menu.h
-index cbf156d81c..2871279725 100644
+index 08f5dd9888..f3e7510ed8 100644
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.h
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.h
-@@ -630,6 +630,8 @@ class RenderViewContextMenu
+@@ -653,6 +653,8 @@ class RenderViewContextMenu
        send_tab_to_self_submenu_delegate_;
  
    std::unique_ptr<ui::SimpleMenuModel> split_layout_submenu_;

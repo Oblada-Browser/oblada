@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.h b/chrome/browser/ui/views/location_bar/location_bar_view.h
-index dc2ea8c236..8b051ed85d 100644
+index 05979cd142..70fadfb119 100644
 --- a/chrome/browser/ui/views/location_bar/location_bar_view.h
 +++ b/chrome/browser/ui/views/location_bar/location_bar_view.h
-@@ -288,6 +288,16 @@ class LocationBarView
+@@ -289,6 +289,16 @@ class LocationBarView
    // |is_hovering| should be true when mouse is in omnibox; false when exited.
    void OnOmniboxHovered(bool is_hovering);
  
@@ -19,7 +19,7 @@ index dc2ea8c236..8b051ed85d 100644
    // LocationBar:
    void SetPermissionPromptShowing(bool showing) override;
    void UpdateFocusBehavior(bool toolbar_visible) override;
-@@ -591,6 +601,9 @@ class LocationBarView
+@@ -592,6 +602,9 @@ class LocationBarView
    raw_ptr<page_actions::PageActionContainerView> page_action_container_ =
        nullptr;
  

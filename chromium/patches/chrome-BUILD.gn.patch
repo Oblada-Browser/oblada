@@ -1,9 +1,9 @@
 diff --git a/chrome/BUILD.gn b/chrome/BUILD.gn
-index 8a60d7061b..2d66247cde 100644
+index d98c86e5da..ea581d0592 100644
 --- a/chrome/BUILD.gn
 +++ b/chrome/BUILD.gn
-@@ -564,6 +564,9 @@ if (is_win) {
-       deps += [ ":chromium_updater_privileged_helper" ]
+@@ -572,6 +572,9 @@ if (is_win) {
+       bundle_deps += [ ":chromium_updater_privileged_helper" ]
      }
  
 +    # Oblada: Sparkle, which Oblada updates itself with, in Contents/Frameworks.

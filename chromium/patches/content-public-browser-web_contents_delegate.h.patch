@@ -1,8 +1,8 @@
 diff --git a/content/public/browser/web_contents_delegate.h b/content/public/browser/web_contents_delegate.h
-index 5c742e16bc..7c11ab70e1 100644
+index cd03383472..5da1fde1ed 100644
 --- a/content/public/browser/web_contents_delegate.h
 +++ b/content/public/browser/web_contents_delegate.h
-@@ -343,6 +343,11 @@ class CONTENT_EXPORT WebContentsDelegate {
+@@ -344,6 +344,11 @@ class CONTENT_EXPORT WebContentsDelegate {
        WebContents* source,
        const input::NativeWebKeyboardEvent& event);
  

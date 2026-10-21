@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.cc b/chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.cc
-index 42f6047a11..cc6864da55 100644
+index fafe939a64..1a42f5c6d4 100644
 --- a/chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.cc
 +++ b/chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.cc
 @@ -4,6 +4,8 @@
@@ -11,7 +11,7 @@ index 42f6047a11..cc6864da55 100644
  #include <string_view>
  
  #include "base/functional/bind.h"
-@@ -162,8 +164,9 @@ void OmniboxPopupWebUIBaseContent::OnLocationBarBoundsChanged() {
+@@ -168,8 +170,9 @@ void OmniboxPopupWebUIBaseContent::OnLocationBarBoundsChanged() {
    is_window_resizing_ = (location_bar_width != last_location_bar_width_);
    last_location_bar_width_ = location_bar_width;
  
@@ -19,6 +19,6 @@ index 42f6047a11..cc6864da55 100644
    int width =
 -      location_bar_width +
 +      oblada::sidebar::SuggestionsWidth(location_bar_->BoundsInScreen()) +
-       RoundedOmniboxResultsFrame::GetLocationBarAlignmentInsets().width();
- 
-   if (popup_presenter_) {
+       (is_full_webui_omnibox()
+            ? FullWebUIOmniboxFrame::GetLocationBarAlignmentInsets().width()
+            : RoundedOmniboxResultsFrame::GetLocationBarAlignmentInsets()

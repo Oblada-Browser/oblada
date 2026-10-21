@@ -3,10 +3,11 @@
 // headless Oblada with a throwaway profile, a few tabs open (some in containers).
 //
 //   node chromium/scripts/screenshot.mjs [out.png] [--width=1400] [--height=900]
-//       [--compact] [--sidebar-width=280] [--do="<command ids, click:<view class>>"]
+//       [--compact] [--sidebar-width=280] [--media=2] [--do="<command ids, click:<view class>>"]
 //
 // --compact collapses the sidebar (compact mode); --sidebar-width sets the width the
-// sidebar was left at; --do runs browser commands (e.g. 39001, focus the address bar),
+// sidebar was left at; --media opens that many tabs playing (silent) music, behind the
+// others, for the media controls at the bottom of the sidebar; --do runs browser commands (e.g. 39001, focus the address bar),
 // clicks views, "split"s the active tab or "drag:<n>:<x>,<y>"s a tab over the page
 // before the screenshot (see oblada/browser/debug/window_snapshots.cc); "film:<count>:<ms>"
 // also saves frames of what they do, <ms> apart, as <out>.film-<i>.png.
@@ -14,7 +15,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import { launch, sleep, snapshot, until, watchFocus } from './lib/oblada.mjs';
+import { launch, silentWav, sleep, snapshot, until, watchFocus } from './lib/oblada.mjs';
 
 const args = process.argv.slice(2);
 const out = path.resolve(args.find((a) => !a.startsWith('--')) ?? 'oblada.png');
@@ -24,6 +25,7 @@ const width = option('width', 1400);
 const height = option('height', 900);
 const compact = args.includes('--compact');
 const sidebarWidth = option('sidebar-width', 0);
+const media = option('media', 0);
 const actions = args.find((a) => a.startsWith('--do='))?.slice(5) ?? '';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'oblada-screenshot-'));
@@ -36,7 +38,38 @@ const pages = {
   news: ['Morning news', '#fef7e0'],
   bank: ['Accounts – Bank', '#fce8e6'],
 };
+// Music for --media (silence, see silentWav()), with what's playing and how far along.
+const tracks = [
+  ['Funiculì funiculà', 'Coro di Capri', 213, 37],
+  ['Notte a Procida', 'Orchestra di Marechiaro', 1873, 114],
+  ['Tarantella del Vomero', 'I Pescatori di Ischia', 158, 12],
+];
+const silence = silentWav();
 const server = http.createServer((req, res) => {
+  if (req.url === '/silence.wav') {
+    res.setHeader('Content-Type', 'audio/wav');
+    res.end(silence);
+    return;
+  }
+  const track = req.url.match(/^\/\?track(\d)$/);
+  if (track) {
+    const [title, artist, duration, position] = tracks[track[1]];
+    res.setHeader('Content-Type', 'text/html');
+    res.end(`<!doctype html><meta charset="utf-8"><title>${title} – ${artist}</title>
+      <body style="margin:0;background:#202124;color:#fff;font:32px system-ui;padding:48px">${title}
+      <audio src="/silence.wav" loop></audio>
+      <script>
+        const audio = document.querySelector('audio');
+        navigator.mediaSession.metadata = new MediaMetadata(
+          { title: ${JSON.stringify(title)}, artist: ${JSON.stringify(artist)} });
+        for (const action of ['previoustrack', 'nexttrack', 'seekto']) {
+          navigator.mediaSession.setActionHandler(action, () => {});
+        }
+        audio.play().then(() => navigator.mediaSession.setPositionState(
+          { duration: ${duration}, position: ${position}, playbackRate: 1 }));
+      </script>`);
+    return;
+  }
   const [title, color] = pages[req.url.slice(2)] ?? ['Oblada', '#fff'];
   res.setHeader('Content-Type', 'text/html');
   res.end(`<!doctype html><meta charset="utf-8"><title>${title}</title>
@@ -67,11 +100,16 @@ const focus = watchFocus();
 const oblada = await launch({
   profile: path.join(tmp, 'profile'),
   args: [`--oblada-snapshot-dir=${snapshots}`, `--window-size=${width},${height}`,
-         `--load-extension=${extension}`],
+         `--load-extension=${extension}`,
+         ...(media ? ['--autoplay-policy=no-user-gesture-required'] : [])],
 });
 try {
   const manager = await oblada.open('chrome://containers');
   await until('containers page', () => oblada.containers(manager, 'getState'));
+  for (let i = 0; i < Math.min(media, tracks.length); i++) {
+    await oblada.open(`${site}?track${i}`);
+    await sleep(500);
+  }
   await oblada.open(`${site}?news`);
   await oblada.containers(manager, 'openContainer', 'personal', `${site}?mail`);
   await oblada.containers(manager, 'openContainer', 'banking', `${site}?bank`);

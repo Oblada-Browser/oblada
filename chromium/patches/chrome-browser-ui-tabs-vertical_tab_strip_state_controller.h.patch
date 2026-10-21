@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h
-index f6ed0cbec3..5ed29d84a6 100644
+index 4fcb26f9e6..bd93755811 100644
 --- a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h
 +++ b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h
-@@ -116,6 +116,21 @@ class VerticalTabStripStateController : public SessionServiceBaseObserver,
+@@ -89,6 +89,21 @@ class VerticalTabStripStateController {
  
    using CollapseChangeCallback =
        base::RepeatingCallback<void(VerticalTabStripCollapseState)>;
@@ -21,11 +21,11 @@ index f6ed0cbec3..5ed29d84a6 100644
 +    return oblada_shown_expanded_callback_list_.Add(std::move(callback));
 +  }
 +
-   base::CallbackListSubscription RegisterOnCollapseChanged(
+   virtual base::CallbackListSubscription RegisterOnCollapseChanged(
        CollapseChangeCallback callback);
  
-@@ -188,6 +203,8 @@ class VerticalTabStripStateController : public SessionServiceBaseObserver,
- 
+@@ -118,6 +133,8 @@ class VerticalTabStripStateController {
+  private:
    base::RepeatingCallbackList<void(VerticalTabStripCollapseState)>
        on_collapse_changed_callback_list_;
 +  bool oblada_shown_expanded_ = true;  // Oblada

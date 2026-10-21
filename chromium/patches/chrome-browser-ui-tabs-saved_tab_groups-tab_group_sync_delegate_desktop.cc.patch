@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc b/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc
-index 9190f16df0..08f2cfc2d1 100644
+index 629d76ab24..aaa63bc42f 100644
 --- a/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc
 +++ b/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc
-@@ -226,6 +226,15 @@ void TabGroupSyncDelegateDesktop::ConnectLocalTabGroup(
+@@ -227,6 +227,15 @@ void TabGroupSyncDelegateDesktop::ConnectLocalTabGroup(
      return;
    }
  
@@ -18,7 +18,7 @@ index 9190f16df0..08f2cfc2d1 100644
    // Before tracking, the local group needs to close tabs if there are more tabs
    // than in the saved group. This is needed because ConnectToLocalTabGroup()
    // expects that there exists a corresponding saved tab for each local tab.
-@@ -261,6 +270,12 @@ void TabGroupSyncDelegateDesktop::DisconnectLocalTabGroup(
+@@ -262,6 +271,12 @@ void TabGroupSyncDelegateDesktop::DisconnectLocalTabGroup(
  
  void TabGroupSyncDelegateDesktop::UpdateLocalTabGroup(
      const SavedTabGroup& group) {

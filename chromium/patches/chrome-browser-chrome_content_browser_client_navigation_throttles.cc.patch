@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/chrome_content_browser_client_navigation_throttles.cc b/chrome/browser/chrome_content_browser_client_navigation_throttles.cc
-index cba0d32176..6af0e4678a 100644
+index dfa341dccc..11723d5404 100644
 --- a/chrome/browser/chrome_content_browser_client_navigation_throttles.cc
 +++ b/chrome/browser/chrome_content_browser_client_navigation_throttles.cc
 @@ -4,6 +4,8 @@
@@ -11,7 +11,7 @@ index cba0d32176..6af0e4678a 100644
  #include "base/command_line.h"
  #include "base/feature_list.h"
  #include "build/build_config.h"
-@@ -286,6 +288,8 @@ void MaybeCreateAndAddVisitedLinkNavigationThrottle(
+@@ -287,6 +289,8 @@ void MaybeCreateAndAddVisitedLinkNavigationThrottle(
  void CreateAndAddChromeThrottlesForNavigation(
      content::NavigationThrottleRegistry& registry) {
    content::NavigationHandle& handle = registry.GetNavigationHandle();

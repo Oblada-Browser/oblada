@@ -1,5 +1,5 @@
 diff --git a/ui/base/ui_base_features.cc b/ui/base/ui_base_features.cc
-index 6b9944fb71..8d77e9891d 100644
+index 75d95b11bb..1e640fa545 100644
 --- a/ui/base/ui_base_features.cc
 +++ b/ui/base/ui_base_features.cc
 @@ -500,7 +500,8 @@ BASE_FEATURE_PARAM(int,

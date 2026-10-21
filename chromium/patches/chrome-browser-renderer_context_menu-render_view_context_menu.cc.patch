@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/renderer_context_menu/render_view_context_menu.cc b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-index 1a4de31b32..c917084580 100644
+index abdfdada9b..8af0e8cd0e 100644
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 @@ -4,6 +4,10 @@
@@ -13,7 +13,7 @@ index 1a4de31b32..c917084580 100644
  #include <stddef.h>
  
  #include <algorithm>
-@@ -1980,6 +1984,15 @@ void RenderViewContextMenu::AppendLinkItems() {
+@@ -1992,6 +1996,15 @@ void RenderViewContextMenu::AppendLinkItems() {
            IDC_CONTENT_CONTEXT_OPENLINKNEWTAB,
            in_app ? IDS_CONTENT_CONTEXT_OPENLINKNEWTAB_INAPP
                   : IDS_CONTENT_CONTEXT_OPENLINKNEWTAB);
@@ -29,7 +29,7 @@ index 1a4de31b32..c917084580 100644
      }
  
      if (show_open_in_new_window) {
-@@ -3335,6 +3348,9 @@ void RenderViewContextMenu::AppendLiveCaptionItem() {
+@@ -3369,6 +3382,9 @@ void RenderViewContextMenu::AppendLiveCaptionItem() {
  // Menu delegate functions -----------------------------------------------------
  
  bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {

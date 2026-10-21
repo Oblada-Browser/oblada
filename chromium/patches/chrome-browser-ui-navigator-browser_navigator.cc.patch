@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/navigator/browser_navigator.cc b/chrome/browser/ui/navigator/browser_navigator.cc
-index 5029e26405..d25f9884e2 100644
+index b95a279fab..7e322113de 100644
 --- a/chrome/browser/ui/navigator/browser_navigator.cc
 +++ b/chrome/browser/ui/navigator/browser_navigator.cc
 @@ -4,6 +4,8 @@
@@ -11,7 +11,7 @@ index 5029e26405..d25f9884e2 100644
  #include <algorithm>
  #include <memory>
  #include <optional>
-@@ -506,6 +508,13 @@ std::unique_ptr<content::WebContents> CreateTargetContents(
+@@ -507,6 +509,13 @@ std::unique_ptr<content::WebContents> CreateTargetContents(
        params.opener ? params.opener->GetSiteInstance()
                      : tab_util::GetSiteInstanceForNewTab(
                            params.browser->GetProfile(), url);

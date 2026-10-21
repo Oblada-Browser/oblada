@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.cc b/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.cc
-index 63ca8403e9..24435886b1 100644
+index 8966c0a6e1..efa9b2b5df 100644
 --- a/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.cc
 +++ b/chrome/browser/ui/views/tabs/dragging/tab_drag_controller.cc
-@@ -59,6 +59,8 @@
+@@ -62,6 +62,8 @@
  #include "components/tabs/public/split_tab_data.h"
  #include "components/tabs/public/tab_group.h"
  #include "components/tabs/public/tab_interface.h"
@@ -11,7 +11,7 @@ index 63ca8403e9..24435886b1 100644
  #include "components/viz/common/frame_sinks/copy_output_result.h"
  #include "content/public/browser/render_widget_host_view.h"
  #include "content/public/browser/web_contents.h"
-@@ -534,6 +536,12 @@ TabDragController::Liveness TabDragController::Init(
+@@ -577,6 +579,12 @@ TabDragController::Liveness TabDragController::Init(
          source_view->height());
    }
    ref->initial_selection_model_ = std::move(initial_selection_model);
@@ -24,7 +24,7 @@ index 63ca8403e9..24435886b1 100644
  
    ref->window_finder_ = std::make_unique<WindowFinder>();
  
-@@ -774,6 +782,7 @@ TabDragController::Liveness TabDragController::Drag(
+@@ -845,6 +853,7 @@ TabDragController::Liveness TabDragController::Drag(
  
  void TabDragController::EndDrag(EndDragReason reason) {
    TRACE_EVENT0("views", "TabDragController::EndDrag");
@@ -32,7 +32,7 @@ index 63ca8403e9..24435886b1 100644
    presentation_time_recorder_.reset();
  
    if (!active()) {
-@@ -876,6 +885,15 @@ const TabDragContext* TabDragController::GetAttachedContext() const {
+@@ -947,6 +956,15 @@ const TabDragContext* TabDragController::GetAttachedContext() const {
    return attached_context();
  }
  
@@ -48,7 +48,7 @@ index 63ca8403e9..24435886b1 100644
  ///////////////////////////////////////////////////////////////////////////////
  // TabDragController, private:
  
-@@ -1017,6 +1035,33 @@ TabDragController::Liveness TabDragController::ContinueDragging(
+@@ -1088,6 +1106,33 @@ TabDragController::Liveness TabDragController::ContinueDragging(
      }
    }
  
@@ -82,7 +82,7 @@ index 63ca8403e9..24435886b1 100644
    if (target_context != attached_context_) {
      is_dragging_new_browser_ = false;
      did_restore_window_ = false;
-@@ -1347,6 +1392,16 @@ TabDragController::GetDragTargetForPoint(gfx::Point point_in_screen) {
+@@ -1418,6 +1463,16 @@ TabDragController::GetDragTargetForPoint(gfx::Point point_in_screen) {
    if (state == Liveness::kDeleted) {
      return std::tuple(Liveness::kDeleted, nullptr, nullptr);
    }
@@ -99,7 +99,7 @@ index 63ca8403e9..24435886b1 100644
  
    if (local_window && CanAttachTo(local_window)) {
      BrowserView* browser_view =
-@@ -2846,6 +2901,11 @@ BrowserWindowInterface* TabDragController::CreateBrowserForDrag(
+@@ -2940,6 +2995,11 @@ BrowserWindowInterface* TabDragController::CreateBrowserForDrag(
  }
  
  gfx::Point TabDragController::GetCursorScreenPoint() {
@@ -111,7 +111,7 @@ index 63ca8403e9..24435886b1 100644
  #if BUILDFLAG(IS_CHROMEOS)
    views::Widget* widget = GetAttachedBrowserWidget();
    DCHECK(widget);
-@@ -2882,6 +2942,10 @@ TabDragController::Liveness TabDragController::GetLocalProcessWindow(
+@@ -2976,6 +3036,10 @@ TabDragController::Liveness TabDragController::GetLocalProcessWindow(
      bool exclude_dragged_view,
      gfx::NativeWindow* window) {
    std::set<gfx::NativeWindow> exclude;

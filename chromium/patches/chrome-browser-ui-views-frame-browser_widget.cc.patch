@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/frame/browser_widget.cc b/chrome/browser/ui/views/frame/browser_widget.cc
-index a335e2d5cc..8b47dd091a 100644
+index 6a221594b0..0c56f747db 100644
 --- a/chrome/browser/ui/views/frame/browser_widget.cc
 +++ b/chrome/browser/ui/views/frame/browser_widget.cc
 @@ -502,6 +502,15 @@ ui::ColorProviderKey BrowserWidget::GetColorProviderKey() const {

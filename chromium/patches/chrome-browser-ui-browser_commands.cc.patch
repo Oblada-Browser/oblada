@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/browser_commands.cc b/chrome/browser/ui/browser_commands.cc
-index 19b58e1126..5123ff73f2 100644
+index 14f5a7598d..999141066d 100644
 --- a/chrome/browser/ui/browser_commands.cc
 +++ b/chrome/browser/ui/browser_commands.cc
 @@ -4,6 +4,8 @@
@@ -11,7 +11,7 @@ index 19b58e1126..5123ff73f2 100644
  #include <algorithm>
  #include <memory>
  #include <numeric>
-@@ -1465,6 +1467,21 @@ void CloseTab(BrowserWindowInterface* browser) {
+@@ -1473,6 +1475,21 @@ void CloseTab(BrowserWindowInterface* browser) {
        active_tab->IsSplit() &&
        browser->GetTabStripModel()->selection_model().size() == 2;
  
@@ -33,7 +33,7 @@ index 19b58e1126..5123ff73f2 100644
    if (only_active_split_tab_selected) {
      RecordTabCloseCount(1);
      active_tab->GetContents()->Close();
-@@ -1859,6 +1876,11 @@ void FocusNextTabGroup(BrowserWindowInterface* browser) {
+@@ -1869,6 +1886,11 @@ void FocusNextTabGroup(BrowserWindowInterface* browser) {
    if (!tab_strip_model->SupportsTabGroups()) {
      return;
    }
@@ -43,9 +43,9 @@ index 19b58e1126..5123ff73f2 100644
 +    return;
 +  }
  
-   if (FocusAdjacentTabGroupInFocusMode(tab_strip_model, /*next=*/true)) {
-     return;
-@@ -1889,6 +1911,12 @@ void FocusPreviousTabGroup(BrowserWindowInterface* browser) {
+   if (tab_strip_model->GetFocusedGroup().has_value()) {
+     FocusAdjacentTabGroupInFocusMode(tab_strip_model, /*next=*/true);
+@@ -1900,6 +1922,12 @@ void FocusPreviousTabGroup(BrowserWindowInterface* browser) {
      return;
    }
  
@@ -55,6 +55,6 @@ index 19b58e1126..5123ff73f2 100644
 +    return;
 +  }
 +
-   if (FocusAdjacentTabGroupInFocusMode(tab_strip_model, /*next=*/false)) {
+   if (tab_strip_model->GetFocusedGroup().has_value()) {
+     FocusAdjacentTabGroupInFocusMode(tab_strip_model, /*next=*/false);
      return;
-   }

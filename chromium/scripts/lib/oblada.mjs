@@ -15,6 +15,27 @@ export const defaultApp = [path.join(src, 'out/Oblada'), ...outDirs]
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// A WAV file of silence, `seconds` long, for pages that play music in tests: nothing to
+// hear, and long enough (over 5 s) for Chromium to take it for music, which gets media
+// controls, rather than a short sound.
+export function silentWav(seconds = 240) {
+  const rate = 8000;
+  const wav = Buffer.alloc(44 + rate * seconds, 0x80);
+  wav.write('RIFF', 0);
+  wav.writeUInt32LE(36 + rate * seconds, 4);
+  wav.write('WAVEfmt ', 8);
+  wav.writeUInt32LE(16, 16);    // format chunk size
+  wav.writeUInt16LE(1, 20);     // PCM
+  wav.writeUInt16LE(1, 22);     // mono
+  wav.writeUInt32LE(rate, 24);  // samples a second
+  wav.writeUInt32LE(rate, 28);  // bytes a second
+  wav.writeUInt16LE(1, 32);     // bytes a sample
+  wav.writeUInt16LE(8, 34);     // bits a sample
+  wav.write('data', 36);
+  wav.writeUInt32LE(rate * seconds, 40);
+  return wav;
+}
+
 // Retries `fn` until it returns something truthy; errors count as "not yet" (a page
 // that is still loading can't be evaluated).
 export const until = async (what, fn, ms = 20000) => {
