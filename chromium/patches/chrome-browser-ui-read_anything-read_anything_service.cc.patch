@@ -1,0 +1,16 @@
+diff --git a/chrome/browser/ui/read_anything/read_anything_service.cc b/chrome/browser/ui/read_anything/read_anything_service.cc
+index 98f4873d29..6c77a975f7 100644
+--- a/chrome/browser/ui/read_anything/read_anything_service.cc
++++ b/chrome/browser/ui/read_anything/read_anything_service.cc
+@@ -68,8 +68,10 @@ void ReadAnythingService::SetupDesktopEngine() {
+   if (!features::IsWasmTtsEngineAutoInstallDisabled()) {
+     // Trigger an on-demand update of the engine to ensure the TTS extension
+     // is available to provide natural voices as soon as reading mode is opened.
++    // Oblada: registering it first, which Oblada doesn't do at startup until
++    // reading mode has been opened.
+     component_updater::WasmTtsEngineComponentInstallerPolicy::
+-        UpdateWasmComponentOnDemand();
++        RegisterAndUpdateOnDemand();
+ 
+     // Signal that the reading mode panel is opened and it's now safe to
+     // install the WasmTtsEngineComponent.

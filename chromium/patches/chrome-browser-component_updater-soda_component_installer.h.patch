@@ -1,0 +1,14 @@
+diff --git a/chrome/browser/component_updater/soda_component_installer.h b/chrome/browser/component_updater/soda_component_installer.h
+index f0ed136a6b..8f539ed106 100644
+--- a/chrome/browser/component_updater/soda_component_installer.h
++++ b/chrome/browser/component_updater/soda_component_installer.h
+@@ -63,6 +63,9 @@ class SodaComponentInstallerPolicy : public ComponentInstallerPolicy {
+   void GetHash(std::vector<uint8_t>* hash) const override;
+   std::string GetName() const override;
+   update_client::InstallerAttributes GetInstallerAttributes() const override;
++  // Oblada: no copy kept in component_crx_cache (some 25 MB), which would
++  // double the space it takes, for smaller updates.
++  bool AllowCachedCopies() const override { return false; }
+ 
+   OnSodaComponentInstalledCallback on_installed_callback_;
+   OnSodaComponentReadyCallback on_ready_callback_;

@@ -1,0 +1,33 @@
+diff --git a/chrome/browser/component_updater/wasm_tts_engine_component_installer.h b/chrome/browser/component_updater/wasm_tts_engine_component_installer.h
+index 8f69d70423..89ba8dc2e3 100644
+--- a/chrome/browser/component_updater/wasm_tts_engine_component_installer.h
++++ b/chrome/browser/component_updater/wasm_tts_engine_component_installer.h
+@@ -37,6 +37,9 @@ class WasmTtsEngineComponentInstallerPolicy : public ComponentInstallerPolicy {
+   static bool IsWasmTTSEngineDirectorySet();
+   static const std::string GetExtensionId();
+   static void UpdateWasmComponentOnDemand();
++  // Oblada: registers the component if it isn't yet, then updates it right
++  // away (Reading mode, when it opens).
++  static void RegisterAndUpdateOnDemand();
+ 
+  private:
+   // The following methods override ComponentInstallerPolicy.
+@@ -57,6 +60,9 @@ class WasmTtsEngineComponentInstallerPolicy : public ComponentInstallerPolicy {
+   base::Time GetTimeSinceLastOpened(char pref);
+   std::string GetName() const override;
+   update_client::InstallerAttributes GetInstallerAttributes() const override;
++  // Oblada: no copy kept in component_crx_cache (some 25 MB), which would
++  // double the space it takes, for smaller updates.
++  bool AllowCachedCopies() const override { return false; }
+ 
+   // Thresholds used to keep track of how long it has been since reading mode
+   // was last opened. The TTS engine should be reinstalled to remove never
+@@ -71,6 +77,8 @@ class WasmTtsEngineComponentInstallerPolicy : public ComponentInstallerPolicy {
+ 
+ // Call once during startup to make the component update service aware of
+ // the WASM TTS Engine component.
++// Oblada: only once Reading mode has been opened; otherwise it removes an
++// engine installed earlier.
+ void RegisterWasmTtsEngineComponent(ComponentUpdateService* cus,
+                                     PrefService* pref);
+ 

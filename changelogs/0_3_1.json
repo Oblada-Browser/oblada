@@ -1,0 +1,20 @@
+{
+  "changed": [
+    "When Oblada reopens your last session, tabs load when you open them, so it starts faster. Pinned tabs, and tabs that work in the background such as chats and mail, still load right away.",
+    "Memory Saver is on: tabs left alone for a while are unloaded to free memory, and reload when you open them. Settings > Performance can turn it off.",
+    "Large downloads come over several connections at once, where the site allows it, so they finish sooner.",
+    "Live Caption's speech recognition and Read aloud's voices are downloaded only when you use them, and large components no longer keep a second copy of themselves, which could take hundreds of MB."
+  ],
+  "removed": [
+    "History no longer groups your visits by topic, which worked in the background as pages loaded.",
+    "Oblada no longer measures every page's CPU and memory every two minutes, for statistics it never sent."
+  ],
+  "fixed": [
+    "A container tab unloaded to free memory, or by an extension, reloads in its container, and a temporary container's data is no longer erased when its last tab is unloaded."
+  ],
+  "obladaVersion": "0.3.1",
+  "releaseId": 6,
+  "chromiumVersion": "156.0.8078.48",
+  "releaseDate": "",
+  "released": false
+}

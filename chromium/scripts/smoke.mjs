@@ -780,6 +780,12 @@ async function amoChecks(o) {
   check('Multi-Account Containers opens tabs in Oblada\'s containers', work === 'who=work|work', `${opened} ${work}`);
 }
 
+// The tabs as oblada://discards (`page`) sees them: {id, url, loading, state}, with
+// `loading` 0 for unloaded, 2 for loaded, and `state` 5 for discarded.
+const tabStates = (o, page) => o.evaluate(`import('chrome://discards/discards.js')
+  .then((m) => m.getOrCreateDetailsProvider().getTabDiscardsInfo())
+  .then(({ infos }) => infos.map((i) => ({ id: i.id, url: i.tabUrl, loading: i.loadingState, state: i.state })))`, page);
+
 async function restoreChecks(o) {
   // After a restart with the last session restored, the work tab is still in its container.
   const restored = await until('restored tab', async () =>
@@ -789,12 +795,44 @@ async function restoreChecks(o) {
       `not restored: ${(await o.pages()).filter((p) => p.type === 'page').map((p) => p.url).join(', ')}`);
     return;
   }
-  // Restored tabs load a few at a time; bring this one forward (inside headless Oblada).
+  // Restored tabs in the background wait to be opened before loading.
+  const discards = await o.open('chrome://discards');
+  await until('oblada://discards', () => tabStates(o, discards).catch(() => null));
+  // (Time for Chromium to load the ones it would.)
+  await sleep(3000);
+  const sites = (await tabStates(o, discards)).filter((t) => t.url.startsWith(site));
+  const unloaded = sites.filter((t) => t.loading === 0);
+  check('restored tabs in the background load only once opened',
+    unloaded.some((t) => t.url === `${site}?work`) && unloaded.length >= sites.length - 1,
+    `${unloaded.length} of ${sites.length} not loaded`);
+
   await o.send('Target.activateTarget', { targetId: restored.targetId });
   const s = await o.attach(restored.targetId);
   await until('restored page', () => o.evaluate('document.readyState === "complete"', s), 30000);
   const value = await o.evaluate(SEEN, s);
   check('container tabs are restored into their container', value === 'who=work|work', value);
+
+  // A container tab Chromium discards (to free memory, or for an extension's
+  // tabs.discard()) reloads in its container.
+  await o.send('Target.activateTarget', { targetId: (await o.pages()).find((p) => p.url.startsWith('chrome://discards')).targetId });
+  const work = (await tabStates(o, discards)).find((t) => t.url === `${site}?work`);
+  await o.evaluate(`import('chrome://discards/discards.js')
+    .then((m) => m.getOrCreateDetailsProvider().discardById(${work.id}, 0))`, discards);
+  // (Discarding gives it a new id.)
+  const discarded = await until('the tab discarded', async () =>
+    (await tabStates(o, discards)).find((t) => t.url === `${site}?work` && t.state === 5), 10000)
+    .catch(() => null);
+  const reopened = discarded && await until('the discarded tab', async () =>
+    (await o.pages()).find((p) => p.type === 'page' && p.url === `${site}?work`), 10000).catch(() => null);
+  let after = discarded ? 'not found after discarding' : 'not discarded';
+  if (reopened) {
+    await o.send('Target.activateTarget', { targetId: reopened.targetId });
+    const reloaded = await o.attach(reopened.targetId);
+    after = await until('the discarded tab reloaded', () => o.evaluate(
+      'location.protocol === "http:" && document.readyState === "complete"', reloaded), 20000)
+      .then(() => o.evaluate(SEEN, reloaded), (e) => e.message);
+  }
+  check('a discarded container tab reloads in its container', after === 'who=work|work', after);
 }
 
 async function closeChecks(o) {

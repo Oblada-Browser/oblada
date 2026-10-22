@@ -166,6 +166,12 @@ scoped_refptr<content::SiteInstance> SiteInstanceForRestoredTab(
     const GURL& url,
     const std::map<std::string, std::string>& extra_data);
 
+// tab_lifecycle_unit.cc: the SiteInstance for the contents that replace a
+// discarded tab's `contents`, so it reloads in its container; null when it has
+// none.
+scoped_refptr<content::SiteInstance> SiteInstanceForDiscardedTab(
+    content::WebContents* contents);
+
 // tab_helpers.cc
 void AttachTabHelpers(content::WebContents* contents);
 

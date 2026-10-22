@@ -1,0 +1,22 @@
+diff --git a/chrome/browser/resource_coordinator/tab_lifecycle_unit.cc b/chrome/browser/resource_coordinator/tab_lifecycle_unit.cc
+index 6f872ee5a8..6bf264bbb6 100644
+--- a/chrome/browser/resource_coordinator/tab_lifecycle_unit.cc
++++ b/chrome/browser/resource_coordinator/tab_lifecycle_unit.cc
+@@ -43,6 +43,7 @@
+ #include "content/public/browser/navigation_entry.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/common/content_features.h"
++#include "oblada/browser/containers/containers.h"  // Oblada
+ #include "third_party/abseil-cpp/absl/cleanup/cleanup.h"
+ #include "url/gurl.h"
+ 
+@@ -281,6 +282,9 @@ void TabLifecycleUnitSource::TabLifecycleUnit::FinishDiscard(
+       content::WebContents::CreateParams::kNoRendererProcess;
+   create_params.last_active_time = old_contents->GetLastActiveTime();
+   create_params.last_active_time_ticks = old_contents->GetLastActiveTimeTicks();
++  // Oblada: in the tab's container, if it's in one.
++  create_params.site_instance =
++      oblada::containers::SiteInstanceForDiscardedTab(old_contents);
+   std::unique_ptr<content::WebContents> null_contents =
+       content::WebContents::Create(create_params);
+   content::WebContents* raw_null_contents = null_contents.get();

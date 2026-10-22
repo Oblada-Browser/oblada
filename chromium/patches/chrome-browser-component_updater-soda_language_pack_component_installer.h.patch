@@ -1,0 +1,14 @@
+diff --git a/chrome/browser/component_updater/soda_language_pack_component_installer.h b/chrome/browser/component_updater/soda_language_pack_component_installer.h
+index ae326aa1b7..a225ae5084 100644
+--- a/chrome/browser/component_updater/soda_language_pack_component_installer.h
++++ b/chrome/browser/component_updater/soda_language_pack_component_installer.h
+@@ -63,6 +63,9 @@ class SodaLanguagePackComponentInstallerPolicy
+   void GetHash(std::vector<uint8_t>* hash) const override;
+   std::string GetName() const override;
+   update_client::InstallerAttributes GetInstallerAttributes() const override;
++  // Oblada: no copy kept in component_crx_cache (some 200 MB each), which would
++  // double the space it takes, for smaller updates.
++  bool AllowCachedCopies() const override { return false; }
+ 
+   speech::SodaLanguagePackComponentConfig language_config_;
+ 

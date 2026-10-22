@@ -1,0 +1,16 @@
+diff --git a/chrome/browser/performance_manager/chrome_browser_main_extra_parts_performance_manager.cc b/chrome/browser/performance_manager/chrome_browser_main_extra_parts_performance_manager.cc
+index 9ad05c166b..eb80705d48 100644
+--- a/chrome/browser/performance_manager/chrome_browser_main_extra_parts_performance_manager.cc
++++ b/chrome/browser/performance_manager/chrome_browser_main_extra_parts_performance_manager.cc
+@@ -267,8 +267,9 @@ void ChromeBrowserMainExtraPartsPerformanceManager::CreatePoliciesAndDecorators(
+             performance_manager::policies::BestEffortTaskInhibitingPolicy>());
+   }
+ 
+-  graph->PassToGraph(
+-      std::make_unique<performance_manager::metrics::PageResourceMonitor>());
++  // Oblada: no PageResourceMonitor, which measures every page's CPU and memory
++  // every two minutes only for Chrome's metrics (UKM), which Oblada doesn't
++  // send.
+ 
+   if (base::FeatureList::IsEnabled(
+           performance_manager::features::kThrottleUnimportantFrameRate)) {

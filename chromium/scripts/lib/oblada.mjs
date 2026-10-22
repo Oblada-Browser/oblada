@@ -127,6 +127,10 @@ export async function launch({ app = defaultApp, profile, args = [], firstRun = 
     '--no-default-browser-check',
     // Never the user's keychain (a new build would have to be allowed to it first).
     '--use-mock-keychain',
+    // No clone of the app in /var/folders/…/X, which Chromium removes only when it
+    // quits normally (not when a test kills it) and macOS only at boot: each kept
+    // the blocks of a build since rebuilt, and they filled the disk.
+    '--disable-features=MacAppCodeSignClone',
     ...args,
   ], { stdio: ['ignore', 'ignore', 'pipe'] });
   launched.add(proc.pid);

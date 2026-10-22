@@ -21,7 +21,7 @@ Two kinds of changes are not patches:
 - **Logo images:** they are copied over Chromium's from `chromium/overrides/`, which
   `branding/export.sh` makes.
 
-There are 146 patches for Chromium 156 (`chromium/CHROMIUM_VERSION`). This file describes
+There are 159 patches for Chromium 156 (`chromium/CHROMIUM_VERSION`). This file describes
 each one, and how they depend on each other and on Oblada's code. Update it when a patch
 is added, removed or changes purpose.
 
@@ -152,11 +152,12 @@ source adds. Each pair is listed in the entries.
 | Sidebar & compact mode | `browser_view_tabbed_layout_impl.cc`, `browser_view.cc`, `tabs/features.cc`, `vertical_tab_strip_background_blur_backdrop.cc`, `toolbar_view.cc`, `vertical_tab_strip_region_view.{h,cc}`, `vertical_tab_strip_state.h`, `vertical_tab_strip_state_controller{.h,_impl.cc}`, `tab_strip_prefs.cc`, `browser_command_controller.cc`, `vertical_tab_strip_bottom_container.cc`, `download_toolbar_ui_controller.cc` |
 | Tabs | `tab_style.cc`, `tab_hover_card_controller.cc`, `tab_strip_collection_controller.{h,cc}` |
 | Workspaces | `ui_features.cc`, `browser_commands.cc`, `browser_widget.cc`, `tab_group_header_view.{h,cc}`, `tab_group_view_layout.cc`, `tab_collection_animating_layout_manager.{h,cc}`, `vertical_tab_strip_focus_swipe_controller.cc`, `saved_tab_group_model_listener.cc`, `tab_group_sync_delegate_desktop.cc`, `saved_tab_groups/public/pref_names.cc`, `bookmark_utils.cc` |
-| Containers | `chrome_content_browser_client_navigation_throttles.cc`, `tab_helpers.cc`, `browser_navigator.cc`, `web_contents_impl.cc`, `session_service_base.cc`, `browser_live_tab_context.cc`, `browser_tabrestore.cc`, `render_view_context_menu.{h,cc}`, `new_tab_button.{h,cc}`, `new_tab_button_menu_model.{h,cc}`, `tab_view.cc` |
+| Containers | `chrome_content_browser_client_navigation_throttles.cc`, `tab_helpers.cc`, `browser_navigator.cc`, `web_contents_impl.cc`, `session_service_base.cc`, `browser_live_tab_context.cc`, `browser_tabrestore.cc`, `tab_lifecycle_unit.cc`, `render_view_context_menu.{h,cc}`, `new_tab_button.{h,cc}`, `new_tab_button_menu_model.{h,cc}`, `tab_view.cc` |
 | Address bar | `location_bar_view.{h,cc}`, `top_container_view.cc`, `browser_view_layout_impl.cc`, `omnibox_view_views.cc`, `omnibox_popup_presenter_base.cc`, `omnibox_popup_webui_base_content.cc`, `rounded_omnibox_results_frame.cc`, `location_bar_model_delegate.cc`, `aim_eligibility_service_features.cc` |
 | Split view | `multi_contents_view.{h,cc}`, `multi_contents_drop_target_view.cc`, `multi_contents_view_drop_target_controller.{h,cc}`, `multi_contents_resize_area.h`, `contents_container_view.cc`, `contents_container_outline.{h,cc}`, `split_tab_view.{h,cc}`, `tab_view_vertical_layout.cc`, `tab_drag_controller.{h,cc}`, `tab_drag_target.h` |
 | Peek | `web_contents_delegate.{h,cc}` (content), `render_widget_host_view_mac.mm`, `browser_web_contents_delegate.{h,cc}`, `tab_helpers.h` |
 | Clean links | `omnibox_context_menu_mixin.cc`, `link_to_text_menu_observer.cc`, `render_view_context_menu.cc`, `browser_commands.cc` |
+| Performance | `background_tab_loading_policy.cc`, `user_tuning/prefs.cc`, `download_features.cc`, `history_clusters/core/features.cc`, `chrome_browser_main_extra_parts_performance_manager.cc`, `soda_installer.cc`, `wasm_tts_engine_component_installer.{h,cc}`, `read_anything_service.cc`, `soda_component_installer.h`, `soda_language_pack_component_installer.h`, `screen_ai_component_installer.h` |
 | New Tab & welcome | `search.cc`, `contents_web_view.{h,cc}`, `startup_browser_creator_impl.cc` |
 | Extensions & Firefox add-ons | `chrome_download_manager_delegate.cc`, `cookies_api.cc`, `tabs_api.{h,cc}`, `tabs.json`, `extension_tab_util.cc`, `chrome_extensions_browser_api_provider.cc`, `chrome_extensions_api_provider.cc`, `manifest_v2_handler.cc`, `extensions_toolbar_desktop.cc` |
 | Menus | `app_menu_model.cc`, `action_app_menu_manager.cc`, `app_menu.cc`, `browser_app_menu_button.cc`, `tab_menu_model.{h,cc}`, `main_menu_builder.mm`, `system_menu_model_builder.cc`, `system_menu_model_delegate.cc` |
@@ -578,6 +579,14 @@ from a container tab stays in its container's storage partition.
 - `browser_tabrestore.cc` creates the restored tab in it (`SiteInstanceForRestoredTab()`).
 - Oblada code: `oblada/browser/containers/containers.h`.
 
+#### `chrome/browser/resource_coordinator/tab_lifecycle_unit.cc`
+`chrome-browser-resource_coordinator-tab_lifecycle_unit.cc.patch`. A discarded tab (to free
+memory, by Memory Saver or an extension) stays in its container: Chromium replaces its
+WebContents with empty ones, which are now created in the container
+(`SiteInstanceForDiscardedTab()`). Without it the tab reloaded outside the container, and a
+temporary container whose last tab was discarded was removed with its data.
+- Oblada code: `oblada/browser/containers/containers.h`.
+
 #### `chrome/browser/renderer_context_menu/render_view_context_menu.h`, `.cc`
 `chrome-browser-renderer_context_menu-render_view_context_menu.{h,cc}.patch`.
 - "Open link in new container tab ▸" in a link's context menu, in normal windows.
@@ -761,6 +770,57 @@ same link, made as Chromium makes it, without the page's tracking parameters (it
 selector, in the fragment, kept). Enabled once the link is made, if the page's address has
 tracking parameters, as in Firefox.
 - Oblada code: `oblada/browser/clean_links/clean_links.h`, `oblada/browser/l10n.h`.
+
+### Performance
+
+Chromium defaults that other Chromium browsers change too, to start faster and work less in
+the background.
+
+#### `chrome/browser/performance_manager/policies/background_tab_loading_policy.cc`
+`chrome-browser-performance_manager-policies-background_tab_loading_policy.cc.patch`. Tabs
+restored at startup load once opened, as in Firefox and Zen: `ShouldLoad()` only lets the
+policy load those showing, pinned tabs (the Essentials) and those that work in the background
+(notifications, or a title or icon changing while hidden). The others load when activated.
+
+#### `components/performance_manager/user_tuning/prefs.cc`
+`components-performance_manager-user_tuning-prefs.cc.patch`. Memory Saver is on by default.
+- Needs: `tab_lifecycle_unit.cc`, so that the tabs it discards stay in their container.
+
+#### `components/download/public/common/download_features.cc`
+`components-download-public-common-download_features.cc.patch`. Parallel downloading on
+everywhere, as on Android.
+
+#### `components/history_clusters/core/features.cc`
+`components-history_clusters-core-features.cc.patch`. Journeys off: no clustering of visits as
+pages load, and no "By group" in History.
+
+#### `chrome/browser/performance_manager/chrome_browser_main_extra_parts_performance_manager.cc`
+`chrome-browser-performance_manager-chrome_browser_main_extra_parts_performance_manager.cc.patch`.
+No `PageResourceMonitor`, which measured every page's CPU and memory every two minutes only
+for Chrome's UKM metrics.
+
+#### `components/soda/soda_installer.cc`
+`components-soda-soda_installer.cc.patch`. Live Caption's speech recognition (SODA, some 220 MB
+with a language) is installed at startup only while a feature using it is on, not because it
+was used in the last 30 days: registering it again pushed its removal 30 days on at every
+start, so after one use it never went away. Sites using on-device speech recognition install it
+again when they need it.
+
+#### `chrome/browser/component_updater/wasm_tts_engine_component_installer.h`, `.cc`, `chrome/browser/ui/read_anything/read_anything_service.cc`
+`chrome-browser-component_updater-wasm_tts_engine_component_installer.{h,cc}.patch`,
+`chrome-browser-ui-read_anything-read_anything_service.cc.patch`. Read aloud's voice engine
+(some 25 MB) is registered, so downloaded, only once Reading mode has been opened, rather than
+for everyone at startup: `RegisterWasmTtsEngineComponent()` skips it, and removes an engine
+installed earlier, until then, and Reading mode registers it when it opens
+(`RegisterAndUpdateOnDemand()`). Chromium forgets Reading mode's last opening after 90 days.
+The header also has the `AllowCachedCopies()` below.
+
+#### `chrome/browser/component_updater/soda_component_installer.h`, `soda_language_pack_component_installer.h`, `screen_ai_component_installer.h`
+`chrome-browser-component_updater-{soda_component_installer,soda_language_pack_component_installer,screen_ai_component_installer}.h.patch`.
+`AllowCachedCopies()` false, as Chromium does for its AI models: the component updater keeps a
+copy of each component's package in `component_crx_cache` for smaller updates, which doubled
+the space these large ones take (Screen AI, for text recognition in PDFs and Reading mode, is
+some 130 MB).
 
 ### New Tab page and welcome
 

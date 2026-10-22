@@ -1,0 +1,21 @@
+diff --git a/components/download/public/common/download_features.cc b/components/download/public/common/download_features.cc
+index c3d158eab2..8629d9d527 100644
+--- a/components/download/public/common/download_features.cc
++++ b/components/download/public/common/download_features.cc
+@@ -10,13 +10,9 @@
+ namespace download {
+ namespace features {
+ 
+-BASE_FEATURE(kParallelDownloading,
+-#if BUILDFLAG(IS_ANDROID)
+-             base::FEATURE_ENABLED_BY_DEFAULT
+-#else
+-             base::FEATURE_DISABLED_BY_DEFAULT
+-#endif
+-);
++// Oblada: on everywhere, as on Android: a large file comes over several
++// connections at once, where the server allows it.
++BASE_FEATURE(kParallelDownloading, base::FEATURE_ENABLED_BY_DEFAULT);
+ 
+ #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+ BASE_FEATURE(kBackoffInDownloading, base::FEATURE_DISABLED_BY_DEFAULT);

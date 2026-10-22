@@ -676,6 +676,17 @@ scoped_refptr<content::SiteInstance> SiteInstanceForRestoredTab(
   return CreateSiteInstance(profile, it->second, url);
 }
 
+scoped_refptr<content::SiteInstance> SiteInstanceForDiscardedTab(
+    content::WebContents* contents) {
+  const std::string id = GetContainerId(contents);
+  if (id.empty()) {
+    return nullptr;
+  }
+  return CreateSiteInstance(
+      Profile::FromBrowserContext(contents->GetBrowserContext()), id,
+      contents->GetLastCommittedURL());
+}
+
 namespace {
 
 // Forgets a temporary container, and its data, once its last tab is gone.

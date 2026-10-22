@@ -1,0 +1,18 @@
+diff --git a/components/soda/soda_installer.cc b/components/soda/soda_installer.cc
+index de40e5c882..2ff9b12506 100644
+--- a/components/soda/soda_installer.cc
++++ b/components/soda/soda_installer.cc
+@@ -118,8 +118,12 @@ void SodaInstaller::Init(PrefService* profile_prefs,
+   }
+ 
+   // Register SODA if a feature is actively using SODA or used it recently.
++  // Oblada: not because it was used recently: registering it again pushes its
++  // removal 30 days on, so after one use it stayed installed (some 220 MB, with
++  // a language) as long as the browser was started once a month. Sites that
++  // use on-device speech recognition install it again when they need it.
+   if (IsAnyFeatureUsingSodaEnabled(profile_prefs) ||
+-      WasSodaUsedRecently(global_prefs) || preemptive_download_enabled) {
++      preemptive_download_enabled) {
+     soda_installer_initialized_ = true;
+     SodaInstaller::GetInstance()->InstallSoda(global_prefs);
+     InitLanguages(profile_prefs, global_prefs);
