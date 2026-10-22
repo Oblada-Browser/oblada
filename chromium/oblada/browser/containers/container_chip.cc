@@ -8,6 +8,7 @@
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "cc/paint/paint_flags.h"
@@ -28,11 +29,14 @@
 #include "ui/color/color_provider.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/color_utils.h"
+#include "ui/gfx/font.h"
+#include "ui/gfx/font_list.h"
 #include "ui/gfx/geometry/rect_f.h"
 #include "ui/menus/simple_menu_model.h"
 #include "ui/views/border.h"
 #include "ui/views/controls/button/label_button.h"
 #include "ui/views/controls/menu/menu_runner.h"
+#include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/view.h"
 
 namespace oblada::containers {
@@ -44,6 +48,10 @@ constexpr int kChipViewId = 55620;
 
 constexpr int kAlwaysOpenId = 55621;
 constexpr int kManageId = 55622;
+
+constexpr int kIconSize = 14;
+// On either side of the icon: the chip is a circle in the address bar.
+constexpr int kHorizontalPadding = 6;
 
 class ChipMenuModel : public ui::SimpleMenuModel,
                       public ui::SimpleMenuModel::Delegate {
@@ -103,9 +111,11 @@ class ContainerChip : public views::LabelButton {
     SetID(kChipViewId);
     SetVisible(false);
     SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
-    SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(0, 8)));
-    SetMaxSize(gfx::Size(120, 0));
-    label()->SetElideBehavior(gfx::ELIDE_TAIL);
+    // Just the icon: the address needs the room. Its name is in the tooltip.
+    SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(0, kHorizontalPadding)));
+    SetHorizontalAlignment(gfx::ALIGN_CENTER);
+    label()->SetFontList(
+        gfx::FontList().DeriveWithWeight(gfx::Font::Weight::SEMIBOLD));
     containers_changed_ = ObserveContainers(
         browser->GetProfile(),
         base::BindRepeating(&ContainerChip::Refresh, base::Unretained(this)));
@@ -121,9 +131,18 @@ class ContainerChip : public views::LabelButton {
     cc::PaintFlags flags;
     flags.setAntiAlias(true);
     flags.setColor(SkColorSetA(color_, IsMouseHovered() ? 0x55 : 0x33));
+    // A circle, or a pill if the bar is low.
     gfx::RectF bounds(GetLocalBounds());
     bounds.Inset(gfx::InsetsF::VH(3, 0));
+    if (bounds.height() < bounds.width()) {
+      bounds.Inset(gfx::InsetsF::VH(0, (bounds.width() - bounds.height()) / 2));
+    }
     canvas->DrawRoundRect(bounds, bounds.height() / 2, flags);
+    // A container without an icon has a dot.
+    if (GetImage(views::Button::STATE_NORMAL).isNull() && GetText().empty()) {
+      flags.setColor(text_color_);
+      canvas->DrawCircle(bounds.CenterPoint(), 4, flags);
+    }
   }
 
   void OnThemeChanged() override {
@@ -140,8 +159,9 @@ class ContainerChip : public views::LabelButton {
     if (container) {
       color_ = ColorFor(container->color);
       icon_ = container->icon;
-      SetText(base::UTF8ToUTF16(container->name));
+      temporary_number_ = TemporaryNumber(*container);
       SetTooltipText(base::UTF8ToUTF16(container->name));
+      GetViewAccessibility().SetName(base::UTF8ToUTF16(container->name));
       UpdateTextColor();
     }
     if (GetVisible() != container.has_value()) {
@@ -157,11 +177,19 @@ class ContainerChip : public views::LabelButton {
     }
     const SkColor background =
         GetColorProvider()->GetColor(kColorLocationBarBackground);
-    const SkColor text = color_utils::BlendForMinContrast(color_, background).color;
-    SetEnabledTextColors(text);
-    // Its icon, in the same color.
-    SetImageModel(views::Button::STATE_NORMAL, icons::Image(icon_, text, 14));
-    SetImageLabelSpacing(4);
+    text_color_ = color_utils::BlendForMinContrast(color_, background).color;
+    // A temporary container has its number, which tells it from the others,
+    // rather than their common icon.
+    if (temporary_number_) {
+      SetImageModel(views::Button::STATE_NORMAL, ui::ImageModel());
+      SetText(base::NumberToString16(temporary_number_));
+      SetEnabledTextColors(text_color_);
+    } else {
+      SetText(std::u16string());
+      SetImageModel(views::Button::STATE_NORMAL,
+                    icons::Image(icon_, text_color_, kIconSize));
+    }
+    SetMinSize(gfx::Size(kIconSize + 2 * kHorizontalPadding, 0));
   }
 
   void ShowMenu() {
@@ -182,7 +210,11 @@ class ContainerChip : public views::LabelButton {
   base::WeakPtr<content::WebContents> contents_;
   std::string container_id_;
   SkColor color_ = SK_ColorGRAY;
+  // The icon's, readable on the address bar.
+  SkColor text_color_ = SK_ColorGRAY;
   std::string icon_;
+  // For a temporary container, else 0.
+  int temporary_number_ = 0;
   base::CallbackListSubscription containers_changed_;
   std::unique_ptr<ChipMenuModel> menu_model_;
   std::unique_ptr<views::MenuRunner> menu_runner_;

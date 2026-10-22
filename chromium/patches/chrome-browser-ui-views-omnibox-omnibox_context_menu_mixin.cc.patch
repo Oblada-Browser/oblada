@@ -1,0 +1,80 @@
+diff --git a/chrome/browser/ui/views/omnibox/omnibox_context_menu_mixin.cc b/chrome/browser/ui/views/omnibox/omnibox_context_menu_mixin.cc
+index a73085e246..6155889651 100644
+--- a/chrome/browser/ui/views/omnibox/omnibox_context_menu_mixin.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_context_menu_mixin.cc
+@@ -35,6 +35,9 @@
+ #include "components/url_formatter/elide_url.h"
+ #include "content/public/browser/context_menu_params.h"
+ #include "content/public/browser/render_widget_host_view.h"
++#include "content/public/browser/web_contents.h"  // Oblada
++#include "oblada/browser/clean_links/clean_links.h"  // Oblada
++#include "oblada/browser/l10n.h"  // Oblada
+ #include "third_party/blink/public/common/context_menu_data/edit_flags.h"
+ #include "ui/base/clipboard/clipboard.h"
+ #include "ui/base/l10n/l10n_util.h"
+@@ -45,6 +48,7 @@
+ #include "ui/touch_selection/touch_editing_controller.h"
+ #include "ui/views/controls/textfield/textfield.h"
+ #include "ui/views/controls/views_text_services_context_menu.h"
++#include "url/gurl.h"  // Oblada
+ 
+ #if BUILDFLAG(IS_MAC)
+ #include "ui/base/cocoa/appkit_utils.h"
+@@ -52,6 +56,15 @@
+ 
+ namespace {
+ 
++// Oblada: the page's link, while the address bar shows it (not what the user
++// types), for "Copy Clean Link".
++GURL ObladaPageLink(LocationBar* location_bar, OmniboxController* controller) {
++  return location_bar && controller && location_bar->GetWebContents() &&
++                 !controller->edit_model()->user_input_in_progress()
++             ? location_bar->GetWebContents()->GetVisibleURL()
++             : GURL();
++}
++
+ bool IsClipboardDataMarkedAsConfidential() {
+   return ui::Clipboard::GetForCurrentThread()
+       ->IsMarkedByOriginatorAsConfidential();
+@@ -191,6 +204,10 @@ std::u16string OmniboxContextMenuMixinBase::HandleGetLabelForCommandId(
+ 
+ bool OmniboxContextMenuMixinBase::HandleIsCommandIdEnabled(
+     int command_id) const {
++  if (command_id == oblada::clean_links::kCopyCleanLinkMenuId) {  // Oblada
++    return oblada::clean_links::HasTracking(
++        ObladaPageLink(location_bar_, controller_));
++  }
+   if (text_services_context_menu_ &&
+       text_services_context_menu_->SupportsCommand(command_id)) {
+     return text_services_context_menu_->IsCommandIdEnabled(command_id);
+@@ -288,6 +305,12 @@ bool OmniboxContextMenuMixinBase::HandleExecuteCommand(int command_id,
+       }
+       return true;
+ 
++    case oblada::clean_links::kCopyCleanLinkMenuId:  // Oblada
++      oblada::clean_links::CopyClean(
++          ObladaPageLink(location_bar_, controller_),
++          location_bar_ ? location_bar_->GetProfile() : nullptr);
++      return true;
++
+     case IDC_SEND_TAB_TO_SELF:
+       if (location_bar_ && location_bar_->GetWebContents()) {
+         send_tab_to_self::SendTabToSelfBubbleController::
+@@ -413,6 +436,17 @@ void OmniboxContextMenuMixinBase::AddOmniboxSpecificItems(
+   menu_contents->InsertItemWithStringIdAt(paste_position.value() + 1,
+                                           IDC_PASTE_AND_GO, IDS_PASTE_AND_GO);
+ 
++  // Oblada: "Copy Clean Link" after "Copy", for the page's link.
++  const std::optional<size_t> copy_position =
++      menu_contents->GetIndexOfCommandId(
++          std::to_underlying(ui::TouchEditable::MenuCommands::kCopy));
++  if (copy_position && oblada::clean_links::IsCleanable(
++                           ObladaPageLink(location_bar_, controller_))) {
++    menu_contents->InsertItemAt(*copy_position + 1,
++                                oblada::clean_links::kCopyCleanLinkMenuId,
++                                oblada::L10n("clean_links.copy"));
++  }
++
+   menu_contents->AddSeparator(ui::NORMAL_SEPARATOR);
+ 
+   menu_contents->AddItemWithStringId(

@@ -1,0 +1,33 @@
+diff --git a/chrome/browser/ui/tabs/features.cc b/chrome/browser/ui/tabs/features.cc
+index 6aac05299c..dd7a32d7b6 100644
+--- a/chrome/browser/ui/tabs/features.cc
++++ b/chrome/browser/ui/tabs/features.cc
+@@ -41,22 +41,26 @@ BASE_FEATURE_PARAM(bool,
+                    "expand_on_hover_default_enabled",
+                    true);
+ 
++// Oblada: the compact sidebar opens soon after the pointer stops on it, though
++// not as it only passes over it (oblada/browser/ui/sidebar_layout.h).
+ BASE_FEATURE_PARAM(base::TimeDelta,
+                    kVerticalTabsExpandOnHoverDelay,
+                    &kVerticalTabsExpandOnHover,
+                    "expand_on_hover_delay",
+-                   base::Milliseconds(350));
++                   base::Milliseconds(80));
+ BASE_FEATURE_PARAM(base::TimeDelta,
+                    kVerticalTabsExpandOnHoverClickDelay,
+                    &kVerticalTabsExpandOnHover,
+                    "expand_on_hover_click_delay",
+                    base::Milliseconds(0));
+ 
++// Oblada: rather than when the pointer has slowed down enough (a few hundred
++// milliseconds, often), after the delay above.
+ BASE_FEATURE_PARAM(bool,
+                    kVerticalTabsExpandOnHoverUseVelocityHeuristic,
+                    &kVerticalTabsExpandOnHover,
+                    "expand_on_hover_use_velocity_heuristic",
+-                   true);
++                   false);
+ BASE_FEATURE_PARAM(base::TimeDelta,
+                    kVerticalTabsExpandOnHoverVelocityHeuristicDelay,
+                    &kVerticalTabsExpandOnHover,

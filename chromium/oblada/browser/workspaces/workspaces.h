@@ -8,6 +8,7 @@
 
 #include "base/callback_list.h"
 #include "base/functional/callback.h"
+#include "oblada/browser/workspaces/workspace_theme.h"
 
 class BrowserWindowInterface;
 class Profile;
@@ -35,7 +36,8 @@ struct Workspace {
   std::string icon;       // an emoji, or empty
   std::string container;  // the container its new tabs open in, or empty
   int color = 0;          // tab_groups::TabGroupColorId of its groups
-  bool tints_window = true;  // the window takes its colors from `color`
+  // The window's look while it's shown: its own, or, unset, the default theme.
+  std::optional<Theme> theme;
 };
 
 void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
@@ -49,8 +51,25 @@ Workspace AddWorkspace(Profile* profile, std::string name = std::string());
 void UpdateWorkspace(Profile* profile, const Workspace& workspace);
 // Closes the workspace's tabs in every window, then forgets it (not the last one).
 void RemoveWorkspace(Profile* profile, std::string_view id);
+// Notifies of any change to the workspaces, the default theme included.
 base::CallbackListSubscription ObserveWorkspaces(Profile* profile,
                                                  base::RepeatingClosure changed);
+
+// The theme of the workspaces without their own; to begin with, one without colors,
+// with a little grain.
+Theme DefaultTheme(Profile* profile);
+void SetDefaultTheme(Profile* profile, const Theme& theme);
+// Back to how it began.
+void ResetDefaultTheme(Profile* profile);
+bool IsDefaultThemeReset(Profile* profile);
+// A workspace's theme: its own, else the default one.
+Theme ThemeOf(Profile* profile, const Workspace& workspace);
+
+// Whether the sidebar shows the workspace's header, its icon and name above its
+// tabs (Settings > Appearance > Oblada): off by default, as the workspaces at the
+// bottom of the sidebar tell which one is shown.
+inline constexpr char kShowHeaderPref[] = "oblada.workspaces.show_header";
+bool ShowsHeader(Profile* profile);
 
 // The workspace a window shows.
 std::optional<Workspace> CurrentWorkspace(BrowserWindowInterface* browser);

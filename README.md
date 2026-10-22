@@ -21,4 +21,5 @@ make release NOTES=/tmp/notes.md   # publish the commit on GitHub as chromium/ob
 
 ## License
 
-GPL-3.0 (see `LICENSE`). Chromium's own code keeps its licenses.
+GPL-3.0 (see `LICENSE`). Chromium's own code keeps its licenses. Firefox's lists of tracking parameters, in
+`chromium/oblada/browser/clean_links/lists/`, keep theirs (MPL 2.0 and LGPL 3.0).

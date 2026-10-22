@@ -1,0 +1,19 @@
+diff --git a/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc b/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc
+index e504628f10..f45b5c0d3e 100644
+--- a/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc
+@@ -94,8 +94,12 @@ views::ProposedLayout TabGroupViewLayout::CalculateVerticalLayout(
+       tab_group_view->group_header_.get(),
+       tab_group_view->group_header_->GetVisible(), header_bounds);
+ 
+-  height +=
+-      header_bounds.height() + kGroupHeaderVerticalMargin + kTabVerticalPadding;
++  // Oblada: in the sidebar a group is a workspace (oblada/browser/workspaces/),
++  // whose header shows only if the user wants it: hidden, it leaves no room.
++  if (tab_group_view->group_header_->GetVisible()) {
++    height += header_bounds.height() + kGroupHeaderVerticalMargin +
++              kTabVerticalPadding;
++  }
+   width = std::max(width, header_bounds.width());
+ 
+   // If the tab strip is not collapsed then the group line is below and left

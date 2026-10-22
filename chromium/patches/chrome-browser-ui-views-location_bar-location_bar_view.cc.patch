@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.cc b/chrome/browser/ui/views/location_bar/location_bar_view.cc
-index bac174d0b2..1d763a0c2f 100644
+index bac174d0b2..5cef3bc14f 100644
 --- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
 +++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
 @@ -4,6 +4,16 @@
@@ -124,7 +124,7 @@ index bac174d0b2..1d763a0c2f 100644
    const int trailing_decorations_edge_padding = GetLayoutConstant(
        LayoutConstant::kLocationBarTrailingDecorationEdgePadding);
  
-@@ -864,12 +933,23 @@ void LocationBarView::Layout(PassKey) {
+@@ -864,12 +933,25 @@ void LocationBarView::Layout(PassKey) {
      }
    }
  
@@ -141,14 +141,16 @@ index bac174d0b2..1d763a0c2f 100644
          vertical_padding, location_height, false, kLeadingDecorationMaxFraction,
          /*intra_item_padding=*/0, icon_left, selected_keyword_view_);
      selected_keyword_view_->SetKeyword(keyword);
-+  } else if (oblada_quiet_ && (oblada_security == security_state::SECURE ||
-+                                oblada_security == security_state::NONE)) {
-+    // Oblada: quiet, no icon for a site without warnings.
++  } else if ((oblada_quiet_ || IsObladaSiteInfoInPanel()) &&
++             (oblada_security == security_state::SECURE ||
++              oblada_security == security_state::NONE)) {
++    // Oblada: no icon for a site without warnings while the bar is quiet, nor in
++    // the sidebar, whose site panel has the site's information.
 +    HideObladaQuietView(location_icon_view_);
    } else if (location_icon_view_->GetShowText() &&
               !ShouldChipOverrideLocationIcon()) {
      location_icon_view_->SetVisible(true);
-@@ -894,7 +974,28 @@ void LocationBarView::Layout(PassKey) {
+@@ -894,7 +976,28 @@ void LocationBarView::Layout(PassKey) {
      }
    };
  
@@ -178,7 +180,7 @@ index bac174d0b2..1d763a0c2f 100644
      if (page_action_container_ && page_action_container_->GetVisible()) {
        const bool is_capsule_active = page_action_container_->IsCapsuleActive();
        const int capsule_height =
-@@ -1065,6 +1166,7 @@ void LocationBarView::Update(WebContents* contents) {
+@@ -1065,6 +1168,7 @@ void LocationBarView::Update(WebContents* contents) {
  
    RefreshContentSettingViews();
    RefreshPageActionIconViews();
@@ -186,7 +188,7 @@ index bac174d0b2..1d763a0c2f 100644
    location_icon_view_->Update(
        /*suppress_animations=*/contents, GetOmniboxController()->IsPopupOpen());
  
-@@ -1403,6 +1505,14 @@ void LocationBarView::RefreshBackground() {
+@@ -1403,6 +1507,14 @@ void LocationBarView::RefreshBackground() {
    SkColor hovered =
        color_provider->GetColor(kColorLocationBarBackgroundHovered);
  
@@ -201,7 +203,7 @@ index bac174d0b2..1d763a0c2f 100644
    background_color_ = gfx::Tween::ColorValueBetween(opacity, normal, hovered);
    if (is_caret_visible) {
      // Match the background color to the popup if the Omnibox is visibly
-@@ -1434,6 +1544,25 @@ void LocationBarView::RefreshBackground() {
+@@ -1434,6 +1546,25 @@ void LocationBarView::RefreshBackground() {
  
    if (is_popup_mode_) {
      SetBackground(views::CreateSolidBackground(background_color_));
@@ -227,7 +229,7 @@ index bac174d0b2..1d763a0c2f 100644
    } else {
      SetBackground(CreateRoundRectBackground(
          background_color_, border_color, size(),
-@@ -1443,7 +1572,11 @@ void LocationBarView::RefreshBackground() {
+@@ -1443,7 +1574,11 @@ void LocationBarView::RefreshBackground() {
  
    // Keep the views::Textfield in sync. It needs an opaque background to
    // correctly enable subpixel AA.
@@ -240,7 +242,7 @@ index bac174d0b2..1d763a0c2f 100644
  
    // The divider between indicators and request chips should have the same color
    // as the omnibox.
-@@ -2065,7 +2198,9 @@ void LocationBarView::OnOmniboxFocused() {
+@@ -2065,7 +2200,9 @@ void LocationBarView::OnOmniboxFocused() {
    // Only show hover animation in unfocused steady state.  Since focusing
    // the omnibox is intentional, snapping is better than transitioning here.
    hover_animation_.Reset();
@@ -250,7 +252,7 @@ index bac174d0b2..1d763a0c2f 100644
  
    // The AI mode page action should only be visible when the omnibox
    // is focused, so if there is a change in focus, refresh the icon.
-@@ -2084,7 +2219,18 @@ void LocationBarView::OnOmniboxBlurred() {
+@@ -2084,7 +2221,18 @@ void LocationBarView::OnOmniboxBlurred() {
    if (views::FocusRing::Get(this)) {
      views::FocusRing::Get(this)->Refresh();
    }
@@ -269,7 +271,7 @@ index bac174d0b2..1d763a0c2f 100644
  
    // The AI mode page action should only be visible when the omnibox
    // is focused, so if there is a change in focus, refresh the icon.
-@@ -2107,6 +2253,86 @@ void LocationBarView::OnOmniboxHovered(bool is_hovering) {
+@@ -2107,6 +2255,96 @@ void LocationBarView::OnOmniboxHovered(bool is_hovering) {
    } else {
      hover_animation_.Hide();
    }
@@ -287,6 +289,16 @@ index bac174d0b2..1d763a0c2f 100644
 +    return false;
 +  }
 +  return !IsMouseHovered() && !omnibox_view_->HasFocus() &&
++         !GetOmniboxController()->edit_model()->user_input_in_progress();
++}
++
++bool LocationBarView::IsObladaSiteInfoInPanel() {
++  // Oblada: but while it's edited, when the icon is the suggestion's.
++  return !is_popup_mode_ && parent() &&
++         oblada::sidebar::ToolbarInset(parent()) >= 0 &&
++         oblada::site_panel::SitePanelButtonOf(this) &&
++         !oblada::sidebar::IsLocationBarFloating(this) &&
++         !omnibox_view_->HasFocus() &&
 +         !GetOmniboxController()->edit_model()->user_input_in_progress();
 +}
 +

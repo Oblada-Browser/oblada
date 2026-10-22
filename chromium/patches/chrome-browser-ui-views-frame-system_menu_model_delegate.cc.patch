@@ -1,0 +1,37 @@
+diff --git a/chrome/browser/ui/views/frame/system_menu_model_delegate.cc b/chrome/browser/ui/views/frame/system_menu_model_delegate.cc
+index 9cc9337183..f722f026d7 100644
+--- a/chrome/browser/ui/views/frame/system_menu_model_delegate.cc
++++ b/chrome/browser/ui/views/frame/system_menu_model_delegate.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/frame/system_menu_model_delegate.h"
+ 
++#include "oblada/browser/workspaces/theme_picker.h"  // Oblada
++
+ #include "base/metrics/user_metrics.h"
+ #include "build/build_config.h"
+ #include "chrome/app/chrome_command_ids.h"
+@@ -62,6 +64,11 @@ bool SystemMenuModelDelegate::IsCommandIdChecked(int command_id) const {
+ }
+ 
+ bool SystemMenuModelDelegate::IsCommandIdEnabled(int command_id) const {
++  // Oblada: the default theme's items (see system_menu_model_builder.cc).
++  if (oblada::workspaces::IsDefaultThemeCommand(command_id)) {
++    return oblada::workspaces::IsDefaultThemeCommandEnabled(browser_,
++                                                            command_id);
++  }
+ #if BUILDFLAG(IS_CHROMEOS)
+   if (command_id == chromeos::MoveToDesksMenuModel::kMenuCommandId) {
+     return chromeos::MoveToDesksMenuDelegate::ShouldShowMoveToDesksMenu();
+@@ -250,6 +257,11 @@ std::u16string SystemMenuModelDelegate::GetLabelForCommandId(
+ }
+ 
+ void SystemMenuModelDelegate::ExecuteCommand(int command_id, int event_flags) {
++  // Oblada: the default theme's items (see system_menu_model_builder.cc).
++  if (oblada::workspaces::IsDefaultThemeCommand(command_id)) {
++    oblada::workspaces::ExecuteDefaultThemeCommand(browser_, command_id);
++    return;
++  }
+   switch (command_id) {
+     case IDC_BOOKMARK_ALL_TABS:
+       base::RecordAction(

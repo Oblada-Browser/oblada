@@ -1,11 +1,12 @@
 diff --git a/chrome/browser/renderer_context_menu/render_view_context_menu.cc b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-index abdfdada9b..8af0e8cd0e 100644
+index abdfdada9b..164767fe3c 100644
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-@@ -4,6 +4,10 @@
+@@ -4,6 +4,11 @@
  
  #include "chrome/browser/renderer_context_menu/render_view_context_menu.h"
  
++#include "oblada/browser/clean_links/clean_links.h"  // Oblada
 +#include "oblada/browser/containers/containers.h"  // Oblada
 +#include "oblada/browser/containers/containers_menu_model.h"  // Oblada
 +#include "oblada/browser/l10n.h"  // Oblada
@@ -13,7 +14,22 @@ index abdfdada9b..8af0e8cd0e 100644
  #include <stddef.h>
  
  #include <algorithm>
-@@ -1992,6 +1996,15 @@ void RenderViewContextMenu::AppendLinkItems() {
+@@ -746,6 +751,14 @@ int CollapseCommandsForUMA(int id) {
+   DCHECK(!RenderViewContextMenu::IsContentCustomCommandId(id));
+   DCHECK(!ContextMenuMatcher::IsExtensionsCustomCommandId(id));
+ 
++  // Oblada: counted as the links they copy clean.
++  if (id == oblada::clean_links::kCopyCleanLinkMenuId) {
++    return IDC_CONTENT_CONTEXT_COPYLINKLOCATION;
++  }
++  if (id == oblada::clean_links::kCopyCleanLinkToHighlightMenuId) {
++    return IDC_CONTENT_CONTEXT_COPYLINKTOTEXT;
++  }
++
+   if (id >= IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_FIRST &&
+       id <= IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_LAST) {
+     return IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_FIRST;
+@@ -1992,6 +2005,15 @@ void RenderViewContextMenu::AppendLinkItems() {
            IDC_CONTENT_CONTEXT_OPENLINKNEWTAB,
            in_app ? IDS_CONTENT_CONTEXT_OPENLINKNEWTAB_INAPP
                   : IDS_CONTENT_CONTEXT_OPENLINKNEWTAB);
@@ -29,13 +45,41 @@ index abdfdada9b..8af0e8cd0e 100644
      }
  
      if (show_open_in_new_window) {
-@@ -3369,6 +3382,9 @@ void RenderViewContextMenu::AppendLiveCaptionItem() {
+@@ -2191,6 +2213,11 @@ void RenderViewContextMenu::AppendCopyLinkLocationItem() {
+                                   params_.link_url.SchemeIs(url::kMailToScheme)
+                                       ? IDS_CONTENT_CONTEXT_COPYEMAILADDRESS
+                                       : IDS_CONTENT_CONTEXT_COPYLINKLOCATION);
++  // Oblada: the link without its tracking parameters, as Firefox has it.
++  if (oblada::clean_links::IsCleanable(params_.unfiltered_link_url)) {
++    menu_model_.AddItem(oblada::clean_links::kCopyCleanLinkMenuId,
++                        oblada::L10n("clean_links.copy"));
++  }
+   if (features::IsMenuSimplificationEnabled() && !params_.has_image_contents) {
+     menu_model_.AddItemWithStringIdAndIcon(
+         IDC_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST,
+@@ -3369,6 +3396,12 @@ void RenderViewContextMenu::AppendLiveCaptionItem() {
  // Menu delegate functions -----------------------------------------------------
  
  bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
 +  if (id == oblada::containers::kOpenLinkInContainerMenuId) {  // Oblada
 +    return true;
 +  }
++  if (id == oblada::clean_links::kCopyCleanLinkMenuId) {  // Oblada
++    return oblada::clean_links::HasTracking(params_.unfiltered_link_url);
++  }
  #if BUILDFLAG(IS_CHROMEOS)
    // Disable context menu in locked fullscreen mode to prevent users from
    // exiting this mode (the menu is not really disabled as the user can still
+@@ -3908,6 +3941,12 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
+       WriteURLToClipboard(params_.unfiltered_link_url, id);
+       break;
+ 
++    case oblada::clean_links::kCopyCleanLinkMenuId:  // Oblada
++      WriteURLToClipboard(
++          oblada::clean_links::Clean(params_.unfiltered_link_url),
++          IDC_CONTENT_CONTEXT_COPYLINKLOCATION);
++      break;
++
+     case IDC_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST: {
+       ReadingListModel* model =
+           ReadingListModelFactory::GetForBrowserContext(browser_context_);

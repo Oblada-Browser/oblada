@@ -3,9 +3,9 @@
 // headless Oblada with a throwaway profile, a few tabs open (some in containers).
 //
 //   node chromium/scripts/screenshot.mjs [out.png] [--width=1400] [--height=900]
-//       [--compact] [--sidebar-width=280] [--media=2] [--do="<command ids, click:<view class>>"]
+//       [--mode=scaffold|compact] [--sidebar-width=280] [--media=2] [--do="<command ids, click:<view class>>"]
 //
-// --compact collapses the sidebar (compact mode); --sidebar-width sets the width the
+// --mode sets the window's layout (--compact is --mode=compact); --sidebar-width sets the width the
 // sidebar was left at; --media opens that many tabs playing (silent) music, behind the
 // others, for the media controls at the bottom of the sidebar; --do runs browser commands (e.g. 39001, focus the address bar),
 // clicks views, "split"s the active tab or "drag:<n>:<x>,<y>"s a tab over the page
@@ -23,7 +23,10 @@ const option = (name, fallback) =>
   Number(args.find((a) => a.startsWith(`--${name}=`))?.split('=')[1] ?? fallback);
 const width = option('width', 1400);
 const height = option('height', 900);
-const compact = args.includes('--compact');
+// The window's layout (oblada/browser/ui/sidebar_mode.h): --mode=scaffold or
+// --mode=compact (or --compact).
+const mode = args.find((a) => a.startsWith('--mode='))?.slice(7) ??
+  (args.includes('--compact') ? 'compact' : 'sidebar');
 const sidebarWidth = option('sidebar-width', 0);
 const media = option('media', 0);
 const actions = args.find((a) => a.startsWith('--do='))?.slice(5) ?? '';
@@ -87,13 +90,12 @@ fs.writeFileSync(path.join(extension, 'popup.html'),
   '<!doctype html><body style="font:16px system-ui;padding:16px;width:180px">Example popup</body>');
 
 const verticalTabs = {
-  ...(compact && { collapsed_state: true }),
   ...(sidebarWidth && { uncollapsed_width: sidebarWidth }),
 };
-if (Object.keys(verticalTabs).length) {
+if (Object.keys(verticalTabs).length || mode !== 'sidebar') {
   fs.mkdirSync(path.join(tmp, 'profile', 'Default'), { recursive: true });
   fs.writeFileSync(path.join(tmp, 'profile', 'Default', 'Preferences'),
-    JSON.stringify({ vertical_tabs: verticalTabs }));
+    JSON.stringify({ vertical_tabs: verticalTabs, oblada: { sidebar: { mode } } }));
 }
 
 const focus = watchFocus();

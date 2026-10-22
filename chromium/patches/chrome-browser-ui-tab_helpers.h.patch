@@ -1,0 +1,27 @@
+diff --git a/chrome/browser/ui/tab_helpers.h b/chrome/browser/ui/tab_helpers.h
+index c6e05eb620..ad065e1827 100644
+--- a/chrome/browser/ui/tab_helpers.h
++++ b/chrome/browser/ui/tab_helpers.h
+@@ -33,6 +33,11 @@ namespace content {
+ class WebContents;
+ }
+ 
++// Oblada
++namespace oblada::peek {
++class PeekTabHelpers;
++}  // namespace oblada::peek
++
+ namespace prerender {
+ class ChromeNoStatePrefetchContentsDelegate;
+ }
+@@ -79,6 +84,10 @@ class TabHelpers {
+   // Link Preview shows a preview of a page, then promote it as a new tab.
+   friend class PreviewTab;
+ 
++  // Oblada: as Link Preview, a peek (oblada/browser/peek) shows a page, which
++  // then may become a tab.
++  friend class oblada::peek::PeekTabHelpers;
++
+   // FYI: Do NOT add any more friends here. The functions above are the ONLY
+   // ones that need to call AttachTabHelpers; if you think you do, re-read the
+   // design document linked above, especially the section "Reusing tab helpers".

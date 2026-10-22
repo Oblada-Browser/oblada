@@ -4,8 +4,9 @@
 // Zen's site panel: a button at the end of the address bar opens quick actions for
 // the page (bookmark, screenshot, reading mode, copy link, install as an app), the
 // extensions (as a grid of their icons, with their badges; their popups show from
-// the button) and the page's security. In the sidebar, the address bar leaves the
-// bookmark star and the app's install to it.
+// the button) and the page's security, which opens the site's information. In the
+// sidebar, the address bar leaves the bookmark star, the app's install and the site's
+// information (but for a site with warnings) to it.
 //
 // The location bar (location_bar_view.cc) creates the button and lays it out with its
 // other trailing decorations; with the toolbar in the sidebar, it is where extension
@@ -28,6 +29,9 @@ void AddSitePanelButton(views::View* location_bar, BrowserWindowInterface* brows
 
 // The button in `location_bar`; null if it has none.
 views::View* SitePanelButtonOf(views::View* location_bar);
+
+// Opens the panel of `location_bar` (or closes it), as its button does.
+void ShowPanel(views::View* location_bar);
 
 // Leaves the page actions that the panel has (the bookmark star, installing the
 // site) out of `container`, the page actions of `location_bar`, while it's in the

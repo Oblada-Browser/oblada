@@ -1,0 +1,14 @@
+diff --git a/chrome/browser/resources/settings/settings_main/settings_main.ts b/chrome/browser/resources/settings/settings_main/settings_main.ts
+index 4b6a86f0d9..53b305956e 100644
+--- a/chrome/browser/resources/settings/settings_main/settings_main.ts
++++ b/chrome/browser/resources/settings/settings_main/settings_main.ts
+@@ -20,6 +20,9 @@ import '../performance_page/performance_page_index.js';
+ import '../privacy_page/privacy_page_index.js';
+ import '../reset_page/reset_profile_banner.js';
+ import '../search_page/search_page_index.js';
++// Oblada: Settings > Oblada, served by Oblada (oblada/browser/settings/
++// oblada_page.h) rather than built with Settings.
++import '/oblada/oblada_page.js';
+ // <if expr="not is_chromeos">
+ import '../default_browser_page/default_browser_page.js';
+ 

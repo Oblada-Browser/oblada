@@ -10,6 +10,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+#include "components/prefs/pref_change_registrar.h"
 #include "ui/menus/simple_menu_model.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/models/image_model.h"
@@ -33,11 +34,13 @@ std::unique_ptr<ui::SimpleMenuModel> CreateMoveToWorkspaceMenu(
 
 class WorkspaceMenu;
 class WorkspaceSlider;
+struct Theme;
 
 // The bottom of the sidebar as in Zen: the downloads button (downloads_button.h),
 // then the workspaces, a button each (its icon, else a dot of its color; the one
 // shown stands out), and "+" to add one. A workspace's menu (right click) renames
-// it, changes its icon or the container its new tabs open in, or deletes it.
+// it, changes its icon, its theme or the container its new tabs open in, or deletes
+// it. The window takes the theme of the workspace it shows.
 class WorkspaceSwitcher : public views::View, public TabStripModelObserver {
   METADATA_HEADER(WorkspaceSwitcher, views::View)
 
@@ -47,13 +50,18 @@ class WorkspaceSwitcher : public views::View, public TabStripModelObserver {
   WorkspaceSwitcher& operator=(const WorkspaceSwitcher&) = delete;
   ~WorkspaceSwitcher() override;
 
-  // In the compact sidebar, one above the other.
-  void SetCompact(bool compact);
+  // In the narrow tab strip (0), one above the other; in the full sidebar (1), in
+  // a row; in between, on their way from one to the other
+  // (oblada::sidebar::Expansion()).
+  void SetExpansion(float expansion);
 
   // views::View:
+  gfx::Size CalculatePreferredSize(
+      const views::SizeBounds& available_size) const override;
   void Layout(PassKey) override;
   void AddedToWidget() override;
   void RemovedFromWidget() override;
+  void OnThemeChanged() override;
 
   // TabStripModelObserver:
   void OnTabGroupFocusChanged(
@@ -64,17 +72,28 @@ class WorkspaceSwitcher : public views::View, public TabStripModelObserver {
   // Soon: not while one of the buttons it replaces is being pressed.
   void Update();
   void Rebuild();
+  // Gives the window the look of the workspace it shows (its Theme).
+  void ApplyTheme();
   void ShowMenu(const std::string& id, views::View* anchor);
 
   raw_ptr<BrowserWindowInterface> browser_;
   raw_ptr<views::View> downloads_ = nullptr;
-  bool compact_ = false;
+  float expansion_ = 1;
+  // The column's width, the narrow sidebar's.
+  int column_width_ = 0;
   bool update_pending_ = false;
   std::unique_ptr<WorkspaceMenu> menu_;
   std::unique_ptr<WorkspaceSlider> slider_;
   base::CallbackListSubscription subscription_;
+  // Whether the sidebar shows the workspace's header (kShowHeaderPref), which
+  // the sidebar's layout tells its headers.
+  PrefChangeRegistrar header_pref_;
   base::WeakPtrFactory<WorkspaceSwitcher> weak_factory_{this};
 };
+
+// Whether a window of `browser` with `theme` is dark: as the theme says, else as
+// the browser's light or dark mode (the system's, by default).
+bool IsThemeDark(BrowserWindowInterface* browser, const Theme& theme);
 
 // A workspace's icon, `size` wide: its emoji, else a dot of its color (that of
 // `group_title`, a window's group).

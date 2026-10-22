@@ -1,0 +1,32 @@
+diff --git a/chrome/browser/resources/settings/BUILD.gn b/chrome/browser/resources/settings/BUILD.gn
+index 1795e894fc..05654ad4f4 100644
+--- a/chrome/browser/resources/settings/BUILD.gn
++++ b/chrome/browser/resources/settings/BUILD.gn
+@@ -722,6 +722,14 @@ build_webui("build") {
+             "$root_gen_dir/chrome/browser/resources/settings_shared/tsc/*",
+             target_gen_dir) ]
+ 
++  # Oblada: Settings > Oblada, served by Oblada (oblada/browser/settings/
++  # oblada_page.h), which the compiler knows by a declaration and the bundle
++  # leaves out.
++  ts_path_mappings += [ "/oblada/oblada_page.js|" + rebase_path(
++                            "//oblada/browser/settings/oblada_page.d.ts",
++                            target_gen_dir) ]
++  ts_definitions += [ "//oblada/browser/settings/oblada_page.d.ts" ]
++
+   if (is_chromeos) {
+     # TODO(crbug.com/1013466): Browser Settings should not depend on ash/webui/
+     # code. The codepath needing this (in people_page.ts) should be removed when
+@@ -738,8 +746,10 @@ build_webui("build") {
+       "settings.js",
+       "lazy_load.js",
+     ]
+-    optimize_webui_excludes =
+-        [ "chrome://resources/mojo/skia/public/mojom/skcolor.mojom-webui.js" ]
++    optimize_webui_excludes = [
++      "chrome://resources/mojo/skia/public/mojom/skcolor.mojom-webui.js",
++      "oblada/oblada_page.js",  # Oblada
++    ]
+     optimize_webui_external_paths =
+         [ "/shared/settings|" + rebase_path(
+               "$root_gen_dir/chrome/browser/resources/settings_shared/tsc",

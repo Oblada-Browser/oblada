@@ -53,7 +53,9 @@ namespace {
 
 DEFINE_UI_CLASS_PROPERTY_KEY(int, kToolbarInsetKey, -1)
 DEFINE_UI_CLASS_PROPERTY_KEY(bool, kCompactKey, false)
+DEFINE_UI_CLASS_PROPERTY_KEY(bool, kScaffoldKey, false)
 DEFINE_UI_CLASS_PROPERTY_KEY(bool, kHiddenInSidebarKey, false)
+DEFINE_UI_CLASS_PROPERTY_KEY(float, kExpansionKey, 1.0f)
 
 DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(ToolbarHoverWatcher, kHoverWatcherKey)
 
@@ -86,6 +88,17 @@ void SetToolbarInSidebar(views::View* toolbar, int leading_inset, bool compact) 
 
 int ToolbarInset(const views::View* toolbar) {
   return toolbar->GetProperty(kToolbarInsetKey);
+}
+
+void SetScaffoldToolbar(views::View* toolbar, bool scaffold) {
+  if (toolbar->GetProperty(kScaffoldKey) != scaffold) {
+    toolbar->SetProperty(kScaffoldKey, scaffold);
+    toolbar->InvalidateLayout();
+  }
+}
+
+bool IsScaffoldToolbar(const views::View* toolbar) {
+  return toolbar && toolbar->GetProperty(kScaffoldKey);
 }
 
 bool IsCompact(const views::View* toolbar) {
@@ -211,6 +224,17 @@ void ArrangeButtonRow(views::View* toolbar, const views::View* location_bar) {
   for (views::View* view : leading) {
     view->SetX(view->x() - shift);
   }
+}
+
+void SetExpansion(views::View* tab_strip_region, float expansion) {
+  if (tab_strip_region->GetProperty(kExpansionKey) != expansion) {
+    tab_strip_region->SetProperty(kExpansionKey, expansion);
+    tab_strip_region->InvalidateLayout();
+  }
+}
+
+float Expansion(const views::View* tab_strip_region) {
+  return tab_strip_region->GetProperty(kExpansionKey);
 }
 
 gfx::Insets ContentInsets() {

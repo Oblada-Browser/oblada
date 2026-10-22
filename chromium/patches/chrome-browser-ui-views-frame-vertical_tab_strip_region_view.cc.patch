@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index fdfdd93f07..ebbae97b21 100644
+index fdfdd93f07..a170071a00 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-@@ -4,6 +4,12 @@
+@@ -4,6 +4,14 @@
  
  #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
  
@@ -10,12 +10,14 @@ index fdfdd93f07..ebbae97b21 100644
 +#include "oblada/browser/ui/floating_location_bar.h"  // Oblada
 +#include "oblada/browser/ui/media_controls.h"  // Oblada
 +#include "oblada/browser/ui/sidebar_layout.h"  // Oblada
++#include "oblada/browser/ui/sidebar_mode.h"  // Oblada
 +#include "oblada/browser/workspaces/workspace_switcher.h"  // Oblada
++#include "oblada/browser/workspaces/workspaces.h"  // Oblada
 +
  #include <algorithm>
  #include <optional>
  #include <utility>
-@@ -171,6 +177,20 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -171,6 +179,20 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
                LayoutConstant::kVerticalTabStripCollapsedVerticalPadding),
            region_horizontal_padding, 0, region_horizontal_padding));
  
@@ -36,7 +38,17 @@ index fdfdd93f07..ebbae97b21 100644
    gemini_button_ =
        content_area_view_->AddChildView(std::make_unique<views::View>());
  
-@@ -206,10 +226,8 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -192,6 +214,9 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+       state_controller_->RegisterOnCollapseChanged(base::BindRepeating(
+           &VerticalTabStripRegionView::OnCollapseStateChanged,
+           base::Unretained(this)));
++  // Oblada: collapsed or not as the window's layout says, from the start.
++  oblada_mode_ = std::make_unique<oblada::sidebar::ModeKeeper>(
++      browser_view->browser()->GetProfile(), state_controller_, this);
+ 
+   SetProperty(views::kElementIdentifierKey, kTabStripRegionElementId);
+ 
+@@ -206,10 +231,8 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
        kExpandOnHoverShadowElevation, kExpandOnHoverShadowAlpha));
    shadow_frame_->SetProperty(views::kViewIgnoredByLayoutKey, true);
  
@@ -49,7 +61,7 @@ index fdfdd93f07..ebbae97b21 100644
  
    SetNotifyEnterExitOnChild(true);
  }
-@@ -400,8 +418,12 @@ views::ProposedLayout VerticalTabStripRegionView::CalculateProposedLayout(
+@@ -400,8 +423,12 @@ views::ProposedLayout VerticalTabStripRegionView::CalculateProposedLayout(
      button_available_size.set_width(button_available_size.width() -
                                      2 * horizontal_padding);
    }
@@ -63,7 +75,7 @@ index fdfdd93f07..ebbae97b21 100644
    const gfx::Size tab_strip_size =
        tab_strip_view() ? tab_strip_view()->GetPreferredSize() : gfx::Size();
    const gfx::Size organizer_panel_size =
-@@ -426,7 +448,7 @@ views::ProposedLayout VerticalTabStripRegionView::CalculateProposedLayout(
+@@ -426,7 +453,7 @@ views::ProposedLayout VerticalTabStripRegionView::CalculateProposedLayout(
    // Lay out the top button container.
    layout.child_layouts.push_back(
        {.child_view = top_button_container_.get(),
@@ -72,13 +84,14 @@ index fdfdd93f07..ebbae97b21 100644
         .bounds =
             gfx::Rect(horizontal_padding, 0,
                       std::max(0, available.width() - 2 * horizontal_padding),
-@@ -456,7 +478,27 @@ views::ProposedLayout VerticalTabStripRegionView::CalculateProposedLayout(
+@@ -456,7 +483,33 @@ views::ProposedLayout VerticalTabStripRegionView::CalculateProposedLayout(
    return layout;
  }
  
 +bool VerticalTabStripRegionView::IsObladaSidebar() const {
-+  return browser_view()->toolbar() &&
-+         oblada::sidebar::ToolbarInset(browser_view()->toolbar()) >= 0;
++  return (browser_view()->toolbar() &&
++          oblada::sidebar::ToolbarInset(browser_view()->toolbar()) >= 0) ||
++         oblada::sidebar::ModeOf(this) == oblada::sidebar::Mode::kScaffold;
 +}
 +
  void VerticalTabStripRegionView::Layout(PassKey) {
@@ -87,11 +100,16 @@ index fdfdd93f07..ebbae97b21 100644
 +  // CalculateProposedLayout() leaves out).
 +  top_button_separator_->SetVisible(!IsObladaSidebar());
 +  // Oblada: wide enough (not collapsed, or expanded on hover), it looks like the
-+  // full sidebar: workspace headers, and the workspaces in a row at the bottom.
++  // full sidebar: the workspace's header if the user wants it, and the media
++  // playing as cards.
 +  const bool oblada_shown_expanded = width() > 2 * kCollapsedWidth;
-+  state_controller_->SetObladaShownExpanded(oblada_shown_expanded);
++  state_controller_->SetObladaShowingHeaders(
++      oblada_shown_expanded &&
++      oblada::workspaces::ShowsHeader(browser_view()->browser()->GetProfile()));
 +  if (oblada_workspaces_) {
-+    oblada_workspaces_->SetCompact(!oblada_shown_expanded);
++    // Oblada: one above the other narrow, in a row wide, and on their way from
++    // one to the other as the compact sidebar expands.
++    oblada_workspaces_->SetExpansion(oblada::sidebar::Expansion(this));
 +  }
 +  if (oblada_media_) {
 +    oblada_media_->SetCompact(!oblada_shown_expanded);
@@ -100,7 +118,7 @@ index fdfdd93f07..ebbae97b21 100644
    LayoutSuperclass<BaseTabStripRegionView>(this);
  
    // When animating the organizer panel in, as soon as it is visible, focus it.
-@@ -817,8 +859,14 @@ VerticalTabStripRegionView::RegionViewFocusListener::RegionViewFocusListener(
+@@ -817,8 +870,14 @@ VerticalTabStripRegionView::RegionViewFocusListener::RegionViewFocusListener(
  void VerticalTabStripRegionView::RegionViewFocusListener::OnDidChangeFocus(
      views::View* focused_before,
      views::View* focused_now) {
@@ -116,7 +134,7 @@ index fdfdd93f07..ebbae97b21 100644
      region_view_->UpdateExpandOnHoverState();
    }
  }
-@@ -974,7 +1022,9 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -974,7 +1033,9 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
    }
  
    // If the force collapse lock is held, collapse the tab strip.
@@ -127,9 +145,12 @@ index fdfdd93f07..ebbae97b21 100644
      if (is_expanded_on_hover_) {
        AnimateExpandOnHover(/*expand=*/false);
      }
-@@ -1010,7 +1060,9 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -1009,8 +1070,12 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+   const bool should_expand =
        !suppress_expand_on_hover_ &&
        state_controller_->IsExpandOnHoverEnabled() &&
++      // Oblada: in scaffold mode the tabs stay icons.
++      oblada::sidebar::ModeOf(this) != oblada::sidebar::Mode::kScaffold &&
        (hovered.value_or(IsMouseHovered()) ||
 -       (GetFocusManager() && Contains(GetFocusManager()->GetFocusedView())));
 +       (GetFocusManager() && Contains(GetFocusManager()->GetFocusedView())) ||
@@ -138,11 +159,12 @@ index fdfdd93f07..ebbae97b21 100644
  
    if (!should_expand) {
      if (is_expanded_on_hover_ && keep_current_state_lock_count_ == 0) {
-@@ -1063,8 +1115,10 @@ void VerticalTabStripRegionView::RestartExpandOnHoverTimer(
+@@ -1063,8 +1128,11 @@ void VerticalTabStripRegionView::RestartExpandOnHoverTimer(
  void VerticalTabStripRegionView::OnMouseVelocityHeuristicInterval() {
    const bool should_expand =
        state_controller_->IsExpandOnHoverEnabled() &&
 +      !oblada::sidebar::HasFloatingLocationBar(browser_view()->toolbar()) &&  // Oblada
++      oblada::sidebar::ModeOf(this) != oblada::sidebar::Mode::kScaffold &&  // Oblada
        (IsMouseHovered() ||
 -       (GetFocusManager() && Contains(GetFocusManager()->GetFocusedView())));
 +       (GetFocusManager() && Contains(GetFocusManager()->GetFocusedView())) ||
@@ -150,7 +172,7 @@ index fdfdd93f07..ebbae97b21 100644
  
    if (!should_expand || is_expanded_on_hover_) {
      ResetExpandOnHoverTimers();
-@@ -1229,8 +1283,14 @@ void VerticalTabStripRegionView::UnregisterExpandOnHoverLock(
+@@ -1229,8 +1297,14 @@ void VerticalTabStripRegionView::UnregisterExpandOnHoverLock(
  void VerticalTabStripRegionView::OnOmniboxPopupVisibilityChanged(bool is_open) {
    if (is_open) {
      if (!omnibox_open_lock_) {

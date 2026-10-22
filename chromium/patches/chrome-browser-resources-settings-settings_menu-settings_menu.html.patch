@@ -1,0 +1,17 @@
+diff --git a/chrome/browser/resources/settings/settings_menu/settings_menu.html b/chrome/browser/resources/settings/settings_menu/settings_menu.html
+index 0d30190f42..7582325fc2 100644
+--- a/chrome/browser/resources/settings/settings_menu/settings_menu.html
++++ b/chrome/browser/resources/settings/settings_menu/settings_menu.html
+@@ -86,6 +86,12 @@
+       <cr-menu-selector id="menu" selectable="a:not(#extensionsLink)"
+           attr-for-selected="href" on-iron-activate="onSelectorActivate_"
+           on-click="onLinkClick_" selected-attribute="selected">
++        <!-- Oblada: its own settings (oblada/browser/settings/oblada_page.h). -->
++        <a role="menuitem" id="oblada" href="/oblada" class="cr-nav-menu-item">
++          <cr-icon icon="cr:chrome-product"></cr-icon>
++          <span class="menu-label">$i18n{obladaPageTitle}</span>
++          <cr-ripple></cr-ripple>
++        </a>
+         <a role="menuitem"
+             id="people" href="/people" hidden="[[!pageVisibility_.people]]"
+             class="cr-nav-menu-item">

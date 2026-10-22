@@ -21,7 +21,7 @@ Two kinds of changes are not patches:
 - **Logo images:** they are copied over Chromium's from `chromium/overrides/`, which
   `branding/export.sh` makes.
 
-There are 130 patches for Chromium 156 (`chromium/CHROMIUM_VERSION`). This file describes
+There are 146 patches for Chromium 156 (`chromium/CHROMIUM_VERSION`). This file describes
 each one, and how they depend on each other and on Oblada's code. Update it when a patch
 is added, removed or changes purpose.
 
@@ -48,8 +48,10 @@ source adds. Each pair is listed in the entries.
 | `chrome/browser/extensions/extension_tab_util.cc` | `chrome/common/extensions/api/tabs.json` | `Tab.cookieStoreId` |
 | `chrome/browser/extensions/chrome_extensions_browser_api_provider.cc` | `chrome/browser/extensions/BUILD.gn` | the generated function registry |
 | `chrome/common/extensions/chrome_extensions_api_provider.cc` | `chrome/common/extensions/BUILD.gn` | the generated schemas and features |
-| `chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc` | `chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h` | `SetObladaShownExpanded()` |
-| `chrome/browser/ui/views/tabs/common/tab_group_header_view.cc` | `chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h` | `IsObladaShownExpanded()`, `RegisterOnObladaShownExpandedChanged()` |
+| `chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc` | `chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h` | `SetObladaShowingHeaders()` |
+| `chrome/browser/ui/views/tabs/common/tab_group_header_view.cc` | `chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h` | `IsObladaShowingHeaders()`, `RegisterOnObladaShowingHeadersChanged()` |
+| `chrome/browser/resources/settings/settings_main/settings_main.html` | `chrome/browser/resources/settings/route.ts`, `router.ts` | `routes.OBLADA` |
+| `chrome/browser/resources/settings/settings_main/settings_main.ts` | `chrome/browser/resources/settings/BUILD.gn` | the `/oblada/oblada_page.js` import, known to the compiler, left out of the bundle |
 | `chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h` | `chrome/browser/ui/tabs/vertical_tab_strip_state.h` | `kVerticalTabStripMinUncollapsedWidth` |
 | `chrome/browser/ui/tabs/vertical_tab_strip_state_controller_impl.cc` | `chrome/browser/ui/tabs/vertical_tab_strip_state.h` | `kVerticalTabStripMinUncollapsedWidth` |
 | `chrome/browser/ui/views/tabs/common/tab_view.cc` | `chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h` (and `.cc`) | `CloseTabOrSelection()` |
@@ -82,6 +84,23 @@ source adds. Each pair is listed in the entries.
 - **The sidebar layout:** `browser_view_tabbed_layout_impl.cc` puts the toolbar in the
   sidebar (through `oblada::sidebar::SetToolbarInSidebar()`). That is what `toolbar_view.cc`,
   `vertical_tab_strip_region_view.cc` and `browser_native_widget_mac.mm` react to.
+- **The window's layouts** (sidebar, scaffold, compact: `oblada/browser/ui/sidebar_mode.h`):
+  `vertical_tab_strip_state_controller_impl.cc` starts each window collapsed or not as the
+  layout says, `vertical_tab_strip_region_view.cc` keeps the two in step
+  (`oblada::sidebar::ModeKeeper`), `browser_view_tabbed_layout_impl.cc` lays each out,
+  `toolbar_view.cc` drops its extra buttons in scaffold mode, and `app_menu_model.cc` and
+  Settings > Oblada pick one.
+- **The compact sidebar's card:** `browser_view.cc` makes Chromium's blur backdrop also
+  without glass, `browser_view_tabbed_layout_impl.cc` lays it out and sets it up as the card
+  (`oblada::sidebar::SetCard()`), and `vertical_tab_strip_background_blur_backdrop.cc` draws
+  it.
+- **The workspace's header, on demand:** `vertical_tab_strip_region_view.cc` tells whether
+  the sidebar shows it, `tab_group_header_view.cc` follows, and `tab_group_view_layout.cc`
+  leaves no room for it when hidden. Settings > Oblada turns it on.
+- **Settings > Oblada:** `settings_ui.cc` serves the page (`oblada/browser/settings/
+  oblada_page.h`), `settings_main.ts` imports it (which `BUILD.gn` lets compile and leaves
+  out of the bundle), `route.ts` and `router.ts` route to it, `settings_main.html` shows it,
+  `settings_menu.html` lists it, and `prefs_util.cc` lets it change its preferences.
 - **The floating address bar:** `location_bar_view.cc` makes the bar float. These patches
   adapt to it:
   - `top_container_view.cc`;
@@ -130,18 +149,19 @@ source adds. Each pair is listed in the entries.
 | Startup, prefs, stability | `chrome_browser_main.cc`, `browser_prefs.cc`, `session_startup_pref.cc`, `base/check.cc`, `web_ui_main_frame_observer.cc`, `startup/infobar_utils.cc` |
 | Branding | `BRANDING`, `chrome_paths_mac.mm`, `keychain_password_mac.mm`, three `icons.html.ts` |
 | Window & frame | `ui_base_features.cc`, `browser_native_widget_mac.mm`, `browser_frame_view_mac.mm`, `browser_view_layout_delegate_impl.cc`, `fullscreen_util_mac.cc`, `window_feature_controller.cc` |
-| Sidebar & compact mode | `browser_view_tabbed_layout_impl.cc`, `toolbar_view.cc`, `vertical_tab_strip_region_view.{h,cc}`, `vertical_tab_strip_state.h`, `vertical_tab_strip_state_controller{.h,_impl.cc}`, `tab_strip_prefs.cc`, `browser_command_controller.cc`, `vertical_tab_strip_bottom_container.cc`, `download_toolbar_ui_controller.cc` |
+| Sidebar & compact mode | `browser_view_tabbed_layout_impl.cc`, `browser_view.cc`, `tabs/features.cc`, `vertical_tab_strip_background_blur_backdrop.cc`, `toolbar_view.cc`, `vertical_tab_strip_region_view.{h,cc}`, `vertical_tab_strip_state.h`, `vertical_tab_strip_state_controller{.h,_impl.cc}`, `tab_strip_prefs.cc`, `browser_command_controller.cc`, `vertical_tab_strip_bottom_container.cc`, `download_toolbar_ui_controller.cc` |
 | Tabs | `tab_style.cc`, `tab_hover_card_controller.cc`, `tab_strip_collection_controller.{h,cc}` |
-| Workspaces | `ui_features.cc`, `browser_commands.cc`, `browser_widget.cc`, `tab_group_header_view.{h,cc}`, `tab_collection_animating_layout_manager.{h,cc}`, `vertical_tab_strip_focus_swipe_controller.cc`, `saved_tab_group_model_listener.cc`, `tab_group_sync_delegate_desktop.cc`, `saved_tab_groups/public/pref_names.cc`, `bookmark_utils.cc` |
+| Workspaces | `ui_features.cc`, `browser_commands.cc`, `browser_widget.cc`, `tab_group_header_view.{h,cc}`, `tab_group_view_layout.cc`, `tab_collection_animating_layout_manager.{h,cc}`, `vertical_tab_strip_focus_swipe_controller.cc`, `saved_tab_group_model_listener.cc`, `tab_group_sync_delegate_desktop.cc`, `saved_tab_groups/public/pref_names.cc`, `bookmark_utils.cc` |
 | Containers | `chrome_content_browser_client_navigation_throttles.cc`, `tab_helpers.cc`, `browser_navigator.cc`, `web_contents_impl.cc`, `session_service_base.cc`, `browser_live_tab_context.cc`, `browser_tabrestore.cc`, `render_view_context_menu.{h,cc}`, `new_tab_button.{h,cc}`, `new_tab_button_menu_model.{h,cc}`, `tab_view.cc` |
 | Address bar | `location_bar_view.{h,cc}`, `top_container_view.cc`, `browser_view_layout_impl.cc`, `omnibox_view_views.cc`, `omnibox_popup_presenter_base.cc`, `omnibox_popup_webui_base_content.cc`, `rounded_omnibox_results_frame.cc`, `location_bar_model_delegate.cc`, `aim_eligibility_service_features.cc` |
 | Split view | `multi_contents_view.{h,cc}`, `multi_contents_drop_target_view.cc`, `multi_contents_view_drop_target_controller.{h,cc}`, `multi_contents_resize_area.h`, `contents_container_view.cc`, `contents_container_outline.{h,cc}`, `split_tab_view.{h,cc}`, `tab_view_vertical_layout.cc`, `tab_drag_controller.{h,cc}`, `tab_drag_target.h` |
-| Peek | `web_contents_delegate.{h,cc}` (content), `render_widget_host_view_mac.mm`, `browser_web_contents_delegate.{h,cc}` |
+| Peek | `web_contents_delegate.{h,cc}` (content), `render_widget_host_view_mac.mm`, `browser_web_contents_delegate.{h,cc}`, `tab_helpers.h` |
+| Clean links | `omnibox_context_menu_mixin.cc`, `link_to_text_menu_observer.cc`, `render_view_context_menu.cc`, `browser_commands.cc` |
 | New Tab & welcome | `search.cc`, `contents_web_view.{h,cc}`, `startup_browser_creator_impl.cc` |
 | Extensions & Firefox add-ons | `chrome_download_manager_delegate.cc`, `cookies_api.cc`, `tabs_api.{h,cc}`, `tabs.json`, `extension_tab_util.cc`, `chrome_extensions_browser_api_provider.cc`, `chrome_extensions_api_provider.cc`, `manifest_v2_handler.cc`, `extensions_toolbar_desktop.cc` |
-| Menus | `app_menu_model.cc`, `action_app_menu_manager.cc`, `app_menu.cc`, `browser_app_menu_button.cc`, `tab_menu_model.{h,cc}`, `main_menu_builder.mm`, `system_menu_model_builder.cc` |
+| Menus | `app_menu_model.cc`, `action_app_menu_manager.cc`, `app_menu.cc`, `browser_app_menu_button.cc`, `tab_menu_model.{h,cc}`, `main_menu_builder.mm`, `system_menu_model_builder.cc`, `system_menu_model_delegate.cc` |
 | URLs & search | `url_fixer.cc`, `url_formatter.cc`, `chrome_autocomplete_scheme_classifier.cc`, `builtin_provider.cc`, `template_url_prepopulate_data.cc` |
-| Internal pages | `chrome_web_ui_configs.cc`, `settings_ui.cc`, `page_visibility.ts`, `about_handler.cc`, `chrome_pages.cc`, `version_ui.cc`, `about_version.html`, `chrome_urls/resources/app.{ts,html.ts}` |
+| Internal pages | `chrome_web_ui_configs.cc`, `settings_ui.cc`, `page_visibility.ts`, `appearance_page.html.ts`, `settings_main.{html,ts}`, `settings_menu.html`, settings' `BUILD.gn`, `route.ts`, `router.ts`, `prefs_util.cc`, `about_handler.cc`, `chrome_pages.cc`, `version_ui.cc`, `about_version.html`, `chrome_urls/resources/app.{ts,html.ts}` |
 
 ## The patches
 
@@ -262,16 +282,21 @@ sidebar is drawn on.
 #### `chrome/browser/ui/views/frame/browser_native_widget_mac.mm`
 `chrome-browser-ui-views-frame-browser_native_widget_mac.mm.patch`. macOS only.
 - Lowers the glass's tint (0.22 light, 0.30 dark) so the workspace colors show.
-- Makes the glass span the whole window, with the page floating on it.
+- Has Oblada paint the tint view over the glass (`oblada::window_background::Paint()`): the
+  workspace's theme, a gradient of its colors with its opacity and grain, else the frame
+  color at that opacity.
+- Makes the glass span the whole window, with the page floating on it, with nothing under
+  it (Chromium's opaque view under the glass would cover the whole window then).
 - Centers the window controls on the sidebar's row of buttons.
 - Hides "Always show toolbar in full screen", which tabbed windows don't need.
 - Needs: the sidebar layout (`ToolbarInset()`).
-- Oblada code: `oblada/browser/ui/sidebar_layout.h`.
+- Oblada code: `oblada/browser/ui/sidebar_layout.h`, `window_background.h`.
 
 #### `chrome/browser/ui/views/frame/browser_frame_view_mac.mm`
 `chrome-browser-ui-views-frame-browser_frame_view_mac.mm.patch`. macOS only. In full screen,
-the window's content starts below the menu bar that slides in at the top, as in Safari,
-instead of under it.
+the window's content starts below the menu bar that slides in at the top, instead of under
+it; the window controls' bar below the menu bar shows over the content (Chromium's
+`TopUIFullscreenYOffset()` has room for both).
 - Works with: `browser_view_layout_delegate_impl.cc`.
 
 #### `chrome/browser/ui/views/frame/layout/browser_view_layout_delegate_impl.cc`
@@ -295,25 +320,63 @@ instead of moving the toolbar into a pane at the top.
 #### `chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc`
 `chrome-browser-ui-views-frame-layout-browser_view_tabbed_layout_impl.cc.patch`. The core of
 the Zen-like layout, and the largest patch.
-- **Sidebar mode** (vertical tabs expanded): the toolbar is laid out at the top of the tab
-  column.
-- **Compact mode** (collapsed): the toolbar slides in at the top of the column as the strip
-  expands on hover, and the tabs move down.
+- The window's layout (`oblada/browser/ui/sidebar_mode.h`, which the tab strip's region
+  view carries, `oblada::sidebar::ModeOf()`):
+  - **Sidebar** (vertical tabs expanded): the toolbar is laid out at the top of the tab
+    column.
+  - **Scaffold** (collapsed): the toolbar is a row at the top of the window, next to the
+    window controls (`oblada::sidebar::SetScaffoldToolbar()`), and the narrow tab strip a
+    column of the tabs' icons below it, left of the page, with the page's margins around
+    it.
+  - **Compact** (collapsed): only the page. The narrow tab strip is out of the window but
+    for the margin at its left edge, where the pointer expands it on hover: a card widens
+    over the page from there into a panel (Chromium's expand-on-hover width), what's in it
+    laid out at its full width from the start, clipped to the card (`ClipToCard()`): the
+    toolbar comes down at its top, fading in (Chromium's expand-on-hover opacity), the tabs
+    below it. Hidden, the toolbar is laid out just out of the window, for its address bar
+    to float over the page from there. Chromium's blur backdrop is the card (`SetCard()`,
+    see `vertical_tab_strip_background_blur_backdrop.cc`), opaque; the strip and the
+    toolbar are see-through over it, without their outline, shadow or blur.
 - **Page:** inset by `ContentInsets()` and rounded by `ContentCornerRadius()`, floating next
   to the sidebar.
 - **Split view:** the panes get a top band for their grips.
-- **Colors:** the toolbar gets the sidebar's color, opaque over the page in compact mode.
+- **Colors:** the toolbar gets the sidebar's color; in compact mode both are see-through
+  over the card.
 - **Removed:** Chromium's tab-strip corners, caption exclusion and separators.
-- **Window controls:** in compact mode they show only once the strip has expanded.
-- Needs: `vertical_tab_strip_state.h` (default width).
-- Oblada code: `oblada/browser/ui/sidebar_layout.h`, `floating_location_bar.h`,
-  `split_handle.h`, `traffic_lights.h`.
+- **Window controls:** in compact mode they show in the panel's corner once its toolbar
+  has come down (`oblada::sidebar::SetWindowControls()`).
+- Needs: `vertical_tab_strip_state.h` (default width); `browser_view.cc` and
+  `vertical_tab_strip_background_blur_backdrop.cc` for the card;
+  `vertical_tab_strip_region_view.cc` for the layout (its `ModeKeeper`).
+- Oblada code: `oblada/browser/ui/sidebar_layout.h`, `sidebar_mode.h`, `sidebar_card.h`,
+  `floating_location_bar.h`, `split_handle.h`, `traffic_lights.h`.
 - When rebasing, expect conflicts here first: there are many hunks across
   `CalculateProposedLayout()`, `ConfigureTopContainerBackground()`,
   `DoPreLayoutComputations()` and `DoPostLayoutVisualAdjustments()`.
 
+#### `chrome/browser/ui/views/frame/browser_view.cc`
+`chrome-browser-ui-views-frame-browser_view.cc.patch`. Makes the view behind the vertical
+tab strip (`VerticalTabStripBackgroundBlurBackdrop`) also without glass (macOS 26's, the only
+one Chromium makes it for): it draws the compact sidebar's card.
+- Needed by: `browser_view_tabbed_layout_impl.cc` (compact mode on every system).
+
+#### `chrome/browser/ui/views/frame/vertical_tab_strip_background_blur_backdrop.cc`
+`chrome-browser-ui-views-frame-vertical_tab_strip_background_blur_backdrop.cc.patch`. Draws
+the compact sidebar's card when the layout has set one (`oblada::sidebar::PaintCard()`),
+the panel widening over the page, opaque with the window's theme.
+- Oblada code: `oblada/browser/ui/sidebar_card.h`.
+
+#### `chrome/browser/ui/tabs/features.cc`
+`chrome-browser-ui-tabs-features.cc.patch`. The compact sidebar opens 80 ms after the
+pointer stops on it (`kVerticalTabsExpandOnHoverDelay`), rather than once Chromium's
+velocity heuristic finds the pointer has slowed down enough
+(`kVerticalTabsExpandOnHoverUseVelocityHeuristic` off), which often took a few hundred
+milliseconds.
+
 #### `chrome/browser/ui/views/toolbar/toolbar_view.cc`
-`chrome-browser-ui-views-toolbar-toolbar_view.cc.patch`. The toolbar in the sidebar.
+`chrome-browser-ui-views-toolbar-toolbar_view.cc.patch`. The toolbar in the sidebar, and
+at the top of the window in scaffold mode, without the profile and extensions buttons
+there too (`oblada::sidebar::IsScaffoldToolbar()`).
 - Two rows: the buttons next to the window controls, then the address bar's own row.
 - Hidden: avatar, reload (moved to the menu), overflow and extensions buttons.
 - Smaller button insets.
@@ -328,18 +391,23 @@ the Zen-like layout, and the largest patch.
 `chrome-browser-ui-views-frame-vertical_tab_strip_region_view.{h,cc}.patch`. The tab
 strip's region in the sidebar.
 - Adds the workspace switcher at the bottom of the content area (`oblada_workspaces_`),
-  and the media controls above it (`oblada_media_`); both turn compact with the strip.
+  and the media controls above it (`oblada_media_`); the media controls turn compact with
+  the strip, the switcher a column in scaffold mode (`oblada::sidebar::Expansion()`).
+- Keeps the strip collapsed as the window's layout says, and the layout as the strip is
+  collapsed or expanded (`oblada_mode_`, `oblada::sidebar::ModeKeeper`).
+- In scaffold mode, no expanding on hover.
 - Drops Chromium's swipe controller: workspace swipes are `oblada::workspaces::WorkspaceSlider`'s.
-- In the sidebar, leaves the row of buttons above the tabs out of its layout
-  (`CalculateProposedLayout()`, `IsObladaSidebar()`) and hides the line under it.
-- Tells the state controller whether the strip looks expanded.
+- In the sidebar and in scaffold mode, leaves the row of buttons above the tabs out of its
+  layout (`CalculateProposedLayout()`, `IsObladaSidebar()`) and hides the line under it.
+- Tells the state controller whether the strip shows the workspace's header: when the
+  user wants it (`oblada::workspaces::ShowsHeader()`) and the strip looks expanded.
 - In compact mode, the toolbar counts as part of the strip for expand-on-hover.
 - The strip collapses while the address bar floats over the page.
 - The address bar's suggestions keep the compact sidebar open.
 - Needs: `vertical_tab_strip_state_controller.h`, `vertical_tab_strip_state.h`.
-- Oblada code: `oblada/browser/workspaces/workspace_switcher.h`,
+- Oblada code: `oblada/browser/workspaces/workspace_switcher.h`, `workspaces.h`,
   `oblada/browser/ui/media_controls.h`, `oblada/browser/ui/sidebar_layout.h`,
-  `floating_location_bar.h`.
+  `sidebar_mode.h`, `floating_location_bar.h`.
 
 #### `chrome/browser/ui/tabs/vertical_tab_strip_state.h`
 `chrome-browser-ui-tabs-vertical_tab_strip_state.h.patch`. The default sidebar width goes
@@ -353,11 +421,13 @@ so the toolbar always fits.
 `chrome-browser-ui-tabs-vertical_tab_strip_state_controller_impl.cc.patch`. Since Chromium
 156 the controller is an interface (`.h`) with its implementation in
 `VerticalTabStripStateControllerImpl`.
-- **`.h`:** adds `IsObladaShownExpanded()`, `SetObladaShownExpanded()` and
-  `RegisterOnObladaShownExpandedChanged()` to the interface, which track whether the strip
-  looks expanded (rather than compact).
+- **`.h`:** adds `IsObladaShowingHeaders()`, `SetObladaShowingHeaders()` and
+  `RegisterOnObladaShowingHeadersChanged()` to the interface, which track whether the strip
+  shows the workspace's header.
 - **`_impl.cc`:** forces vertical tabs on, whatever the pref, and clamps the width to the
-  minimum (fixing narrower widths saved before).
+  minimum (fixing narrower widths saved before). A window starts collapsed or not as its
+  layout says (`oblada::sidebar::CollapsesTabStrip()`), whatever the session saved: the
+  layout is the same in every window.
 - Needs: `vertical_tab_strip_state.h`.
 - Needed by: `vertical_tab_strip_region_view.cc`, `tab_group_header_view.cc`.
 
@@ -366,7 +436,8 @@ so the toolbar always fits.
 
 #### `chrome/browser/ui/browser_command_controller.cc`
 `chrome-browser-ui-browser_command_controller.cc.patch`. Disables the command that switches
-to horizontal tabs.
+to horizontal tabs, and the vertical tabs' "Send feedback", which opens Google's feedback
+form.
 
 #### `chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc`
 `chrome-browser-ui-views-tabs-vertical-vertical_tab_strip_bottom_container.cc.patch`. The
@@ -421,7 +492,9 @@ Workspaces are tab groups shown with Chromium's group "focus" mode, one at a tim
 - Closing the last tabs of the workspace shown keeps a New Tab page there, or closes the
   window if they already were one (`CloseLastTabs()`).
 - "Next/previous tab group" switches workspace.
-- Oblada code: `oblada/browser/workspaces/workspaces.h`.
+- "Copy link" (`CopyURL()`) copies the page's link without its tracking parameters.
+- Oblada code: `oblada/browser/workspaces/workspaces.h`,
+  `oblada/browser/clean_links/clean_links.h`.
 
 #### `chrome/browser/ui/views/frame/browser_widget.cc`
 `chrome-browser-ui-views-frame-browser_widget.cc.patch`. A gray workspace color gives a
@@ -432,12 +505,20 @@ hueless (grayscale) theme instead of a bluish one.
 #### `chrome/browser/ui/views/tabs/common/tab_group_header_view.h`, `.cc`
 `chrome-browser-ui-views-tabs-common-tab_group_header_view.{h,cc}.patch`. A group's header
 in the sidebar is its workspace's header.
-- It shows the workspace's icon and name, only while the sidebar looks expanded.
+- It shows the workspace's icon and name as a heading: smaller and fainter than a tab's
+  title, with a line under it. Only while the sidebar shows headers: the user turned them
+  on (Settings > Oblada) and the sidebar looks expanded.
 - A "…" button appears on hover.
 - Its menu is the workspace's (`ShowObladaWorkspaceMenu()`), instead of Chromium's group
   editor.
 - Needs: `vertical_tab_strip_state_controller.h`.
 - Oblada code: `oblada/browser/workspaces/workspace_switcher.h`, `workspaces.h`.
+
+#### `chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc`
+`chrome-browser-ui-views-tabs-common-tab_group_view_layout.cc.patch`. In the sidebar, a
+group whose header is hidden leaves no room for it above its tabs: the workspace's header
+shows only if the user wants it.
+- Works with: `tab_group_header_view.cc`.
 
 #### `chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.h`, `.cc`
 `chrome-browser-ui-views-tabs-common-tab_collection_animating_layout_manager.{h,cc}.patch`.
@@ -498,10 +579,13 @@ from a container tab stays in its container's storage partition.
 - Oblada code: `oblada/browser/containers/containers.h`.
 
 #### `chrome/browser/renderer_context_menu/render_view_context_menu.h`, `.cc`
-`chrome-browser-renderer_context_menu-render_view_context_menu.{h,cc}.patch`. "Open link in
-new container tab ▸" in a link's context menu, in normal windows.
+`chrome-browser-renderer_context_menu-render_view_context_menu.{h,cc}.patch`.
+- "Open link in new container tab ▸" in a link's context menu, in normal windows.
+- "Copy Clean Link" after "Copy link address", for web links, enabled when the link has
+  tracking parameters; counted in Chromium's metrics as the link copied. "Copy Clean Link
+  to Highlight" (`link_to_text_menu_observer.cc`) is counted as "Copy link to highlight".
 - Oblada code: `oblada/browser/containers/containers.h`, `containers_menu_model.h`,
-  `oblada/browser/l10n.h`.
+  `oblada/browser/clean_links/clean_links.h`, `oblada/browser/l10n.h`.
 
 #### `chrome/browser/ui/views/tabs/shared/new_tab_button.h`, `.cc`
 `chrome-browser-ui-views-tabs-shared-new_tab_button.{h,cc}.patch`. A long press on the New
@@ -529,7 +613,8 @@ the sidebar.
 - **Look:** a translucent rounded rectangle without a focus ring.
 - **Additions:** the container chip and the site panel's button.
 - **The site panel** has the bookmark star and the app's install instead
-  (`HidePageActionsInPanel()`).
+  (`HidePageActionsInPanel()`), and the site's information: no location icon for a site
+  without warnings while the bar isn't edited (`IsObladaSiteInfoInPanel()`).
 - **Quiet** (`IsObladaQuiet()`): only the site, until it is hovered, focused or showing one
   of its bubbles. What it hides is clipped to nothing, layers included (a button's icon
   goes on a layer of its own while its hover highlight fades, and would stay above the
@@ -649,6 +734,34 @@ lookup if it handled it.
 - Needs: `content/public/browser/web_contents_delegate.h`.
 - Oblada code: `oblada/browser/peek/peek.h`, `oblada/browser/new_tab/new_tab_ui.h`.
 
+#### `chrome/browser/ui/tab_helpers.h`
+`chrome-browser-ui-tab_helpers.h.patch`. Makes `oblada::peek::PeekTabHelpers` a friend, as
+Chromium's Link Preview is: a peek's page gets a tab's helpers as it's created, so that it
+loads as a tab's would (extensions see its requests and scripts as a tab's), which it may
+become. `extension_tab_util.cc` and `tabs_api.cc` treat it as a tab of no window.
+- Oblada code: `oblada/browser/peek/peek.h`.
+
+### Clean links
+
+Links copied without their tracking parameters, as Firefox's "Copy Clean Link", from
+Firefox's lists (`chromium/oblada/browser/clean_links/`). The link context menu's item is in
+`render_view_context_menu.cc` and "Copy link"'s in `browser_commands.cc` (their entries
+above).
+
+#### `chrome/browser/ui/views/omnibox/omnibox_context_menu_mixin.cc`
+`chrome-browser-ui-views-omnibox-omnibox_context_menu_mixin.cc.patch`. "Copy Clean Link"
+after "Copy" in the address bar's context menu, for the page's link while the bar shows it
+(not while the user types), enabled when it has tracking parameters.
+- Oblada code: `oblada/browser/clean_links/clean_links.h`, `oblada/browser/l10n.h`.
+
+#### `chrome/browser/renderer_context_menu/link_to_text_menu_observer.cc`
+`chrome-browser-renderer_context_menu-link_to_text_menu_observer.cc.patch`. "Copy Clean
+Link to Highlight" after "Copy link to highlight", for selected text on a web page: the
+same link, made as Chromium makes it, without the page's tracking parameters (its text
+selector, in the fragment, kept). Enabled once the link is made, if the page's address has
+tracking parameters, as in Firefox.
+- Oblada code: `oblada/browser/clean_links/clean_links.h`, `oblada/browser/l10n.h`.
+
 ### New Tab page and welcome
 
 #### `chrome/browser/search/search.cc`
@@ -693,15 +806,20 @@ tab's container) to:
 - `tabs.query()` filters by `cookieStoreId`.
 - `tabs.create()` opens the tab in the container its `cookieStoreId` names
   (`OpenTabInContainer()`).
-- Needs: `tabs.json`.
+- `tabs.executeScript()` and `insertCSS()` also run in a peek's page, which has no window
+  (`peek::FindPeekByTabId()`).
+- Needs: `tabs.json`, `extension_tab_util.cc`.
 - Oblada code: `oblada/browser/containers/containers.h`,
-  `oblada/browser/firefox_addons/cookie_store_ids.h`.
+  `oblada/browser/firefox_addons/cookie_store_ids.h`, `oblada/browser/peek/peek.h`.
 
 #### `chrome/browser/extensions/extension_tab_util.cc`
-`chrome-browser-extensions-extension_tab_util.cc.patch`. Tabs given to Firefox add-ons
-carry their container's `cookieStoreId`.
+`chrome-browser-extensions-extension_tab_util.cc.patch`.
+- Tabs given to Firefox add-ons carry their container's `cookieStoreId`.
+- `GetTabById()` finds a peek's page as it finds a prerendered one: a tab in no window, at
+  no index.
 - Needs: `tabs.json`.
-- Oblada code: `oblada/browser/firefox_addons/cookie_store_ids.h`.
+- Oblada code: `oblada/browser/firefox_addons/cookie_store_ids.h`,
+  `oblada/browser/peek/peek.h`.
 
 #### `chrome/browser/extensions/api/cookies/cookies_api.cc`
 `chrome-browser-extensions-api-cookies-cookies_api.cc.patch`.
@@ -735,12 +853,12 @@ sidebar).
 #### `chrome/browser/ui/toolbar/app_menu_model.cc`, `chrome/browser/ui/views/app_menu/action_app_menu_manager.cc`
 `chrome-browser-ui-toolbar-app_menu_model.cc.patch`,
 `chrome-browser-ui-views-app_menu-action_app_menu_manager.cc.patch`.
-- The menu starts with "Reload" (no longer next to back and forward) and a "Compact mode"
-  check item.
+- The menu starts with "Reload" (no longer next to back and forward) and "Window layout ▸"
+  (sidebar, scaffold, compact: `oblada::sidebar::ModeMenuModel`).
 - "New container tab ▸" follows the new tab and window items.
 - Neither menu offers horizontal tabs.
 - Oblada code: `oblada/browser/containers/containers.h`, `containers_menu_model.h`,
-  `oblada/browser/l10n.h`.
+  `oblada/browser/l10n.h`, `oblada/browser/ui/sidebar_mode.h`.
 
 #### `chrome/browser/ui/views/toolbar/app_menu.cc`, `browser_app_menu_button.cc`
 `chrome-browser-ui-views-toolbar-app_menu.cc.patch`,
@@ -760,7 +878,17 @@ sidebar unfolds over the page (to the right). Its button is Zen's horizontal "�
 `chrome-browser-ui-cocoa-main_menu_builder.mm.patch`,
 `chrome-browser-ui-views-frame-system_menu_model_builder.cc.patch`. No "Switch to
 horizontal/vertical tabs" in macOS's View menu and in the window's system menu. Collapsing
-the sidebar stays.
+the sidebar stays. The system menu (a right click on the sidebar) has no "Send feedback"
+either: it opened Google's feedback form. It has "Edit default theme…" and "Reset default
+theme" instead (`oblada::workspaces::AddDefaultThemeItems()`).
+- Oblada code: `oblada/browser/workspaces/theme_picker.h`.
+
+#### `chrome/browser/ui/views/frame/system_menu_model_delegate.cc`
+`chrome-browser-ui-views-frame-system_menu_model_delegate.cc.patch`. Enables and runs the
+system menu's default theme items (`IsDefaultThemeCommandEnabled()`,
+`ExecuteDefaultThemeCommand()`), which aren't browser commands.
+- Works with: `system_menu_model_builder.cc`.
+- Oblada code: `oblada/browser/workspaces/theme_picker.h`.
 
 ### URLs and search
 
@@ -803,7 +931,9 @@ Their hosts must not clash with Chrome's.
 - Hides the Settings page about Google's AI features.
 - The About page has Oblada's version (with Chromium's), its copyright and a link to its
   source code.
-- Oblada code: `oblada/browser/about/about_page.h`.
+- Serves Settings > Oblada, its module and its strings (`AddObladaPage()`).
+- Oblada code: `oblada/browser/about/about_page.h`,
+  `oblada/browser/settings/oblada_page.h`.
 
 #### `chrome/browser/ui/webui/settings/about_handler.cc`
 `chrome-browser-ui-webui-settings-about_handler.cc.patch`. The About page's update status
@@ -817,7 +947,36 @@ shows no status.
 #### `chrome/browser/resources/settings/page_visibility.ts`
 `chrome-browser-resources-settings-page_visibility.ts.patch`. Settings has no "You and
 Google" page (a Google account, sync), which Oblada has no use for. Its routes go with it,
-Settings' import dialog included: importing is Oblada's own (see `chrome_pages.cc`).
+Settings' import dialog included: importing is Oblada's own (see `chrome_pages.cc`). The
+Appearance page has no "Theme" row: a window takes its colors from its workspace's theme.
+
+#### `chrome/browser/resources/settings/appearance_page/appearance_page.html.ts`
+`chrome-browser-resources-settings-appearance_page-appearance_page.html.ts.patch`. The
+Appearance page has no "Customize your toolbar" row: Oblada's toolbar is the sidebar's row
+of buttons.
+
+#### `chrome/browser/resources/settings/settings_main/settings_main.html`, `.ts`, `settings_menu/settings_menu.html`, `BUILD.gn`
+`chrome-browser-resources-settings-settings_main-settings_main.{html,ts}.patch`,
+`chrome-browser-resources-settings-settings_menu-settings_menu.html.patch` and
+`chrome-browser-resources-settings-BUILD.gn.patch`. Settings > Oblada
+(`oblada://settings/oblada`), Oblada's own settings, first in the menu with Oblada's logo.
+Its element, `settings-oblada-page`, is served by Oblada (`oblada/browser/settings/
+oblada_page.h`) as a module rather than built with Settings, as Oblada adds no files to
+Chromium's tree: `settings_main.ts` imports `/oblada/oblada_page.js`, which `BUILD.gn` maps
+to a declaration for the compiler (`oblada/browser/settings/oblada_page.d.ts`, as Chromium
+does for `/strings.m.js`) and leaves out of the bundle (`optimize_webui_excludes`), and
+`settings_main.html` shows it, as a view of its own.
+- Needs: `route.ts`, `router.ts`, `prefs_util.cc` (its preferences), `settings_ui.cc` (the
+  module and its strings).
+
+#### `chrome/browser/resources/settings/route.ts`, `router.ts`
+`chrome-browser-resources-settings-{route,router}.ts.patch`. The route of Settings > Oblada,
+`routes.OBLADA`.
+
+#### `chrome/browser/extensions/api/settings_private/prefs_util.cc`
+`chrome-browser-extensions-api-settings_private-prefs_util.cc.patch`. Lets Settings change
+Oblada's preferences (`oblada.sidebar.mode`, `oblada.workspaces.show_header`), named as
+strings: the file's target can't include Oblada's code.
 
 #### `chrome/browser/ui/chrome_pages.cc`
 `chrome-browser-ui-chrome_pages.cc.patch`.

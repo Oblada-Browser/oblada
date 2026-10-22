@@ -1,0 +1,12 @@
+diff --git a/chrome/browser/resources/settings/router.ts b/chrome/browser/resources/settings/router.ts
+index 5c07af7bf6..b87b8089ac 100644
+--- a/chrome/browser/resources/settings/router.ts
++++ b/chrome/browser/resources/settings/router.ts
+@@ -34,6 +34,7 @@ export interface SettingsRoutes {
+   DOWNLOADS: Route;
+   EDIT_DICTIONARY: Route;
+   FONTS: Route;
++  OBLADA: Route;  // Oblada
+   GEMINI: Route;
+   GEMINI_LOGIN: Route;
+   GEMINI_ENTERPRISE: Route;

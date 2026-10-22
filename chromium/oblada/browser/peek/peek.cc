@@ -21,12 +21,14 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+#include "chrome/browser/ui/tab_helpers.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/multi_contents_view.h"
 #include "components/input/native_web_keyboard_event.h"
+#include "components/sessions/content/session_tab_helper.h"
 #include "components/split_tabs/split_tab_id.h"
 #include "components/split_tabs/split_tab_visual_data.h"
 #include "components/tabs/public/tab_interface.h"
@@ -48,6 +50,7 @@
 #include "services/network/public/mojom/referrer_policy.mojom-shared.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
 #include "third_party/blink/public/common/input/web_mouse_event.h"
+#include "third_party/blink/public/mojom/frame/fullscreen.mojom.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
@@ -77,6 +80,14 @@
 #include "url/gurl.h"
 
 namespace oblada::peek {
+
+// Gives a peek's page a tab's helpers (TabHelpers lets only its friends do it).
+class PeekTabHelpers {
+ public:
+  static void Attach(content::WebContents* contents) {
+    TabHelpers::AttachTabHelpers(contents);
+  }
+};
 
 namespace {
 
@@ -407,6 +418,11 @@ class PeekController : public TabStripModelObserver,
     return view_ && source_ == contents;
   }
 
+  // The page in the peek, while it's open.
+  content::WebContents* contents() const {
+    return view_ ? contents_.get() : nullptr;
+  }
+
   void Open(content::WebContents* source,
             const GURL& url,
             const gfx::Point& origin) {
@@ -428,6 +444,10 @@ class PeekController : public TabStripModelObserver,
                            profile, url,
                            containers::PartitionFor(profile, container)));
     contents_ = content::WebContents::Create(params);
+    // A tab's helpers from the start, as for a page prerendered for a new tab:
+    // the page loads as it would in a tab (e.g. extensions see its requests and
+    // its scripts as a tab's), which it becomes if the user makes it one.
+    PeekTabHelpers::Attach(contents_.get());
     contents_->SetDelegate(this);
     content::NavigationController::LoadURLParams load(url);
     load.transition_type = ui::PAGE_TRANSITION_LINK;
@@ -572,6 +592,34 @@ class PeekController : public TabStripModelObserver,
            source_->GetDelegate()->HandleKeyboardEvent(source_, event);
   }
 
+  // Fullscreen is for the window's tabs: the page asking for it (a video's
+  // button) becomes a tab at once, which the window then shows fullscreen.
+  // Left unanswered, the request would keep the page from ever going fullscreen.
+  bool CanEnterFullscreenModeForTab(
+      content::RenderFrameHost* requesting_frame) override {
+    tabs::TabInterface* tab =
+        source_ ? tabs::TabInterface::MaybeGetFromContents(source_) : nullptr;
+    return view_ && tab && tab->IsActivated();
+  }
+
+  void EnterFullscreenModeForTab(
+      content::RenderFrameHost* requesting_frame,
+      const blink::mojom::FullscreenOptions& options) override {
+    CloseNow(/*keep_page=*/true);
+    content::WebContents* page =
+        MakeTab(std::move(contents_), /*side_by_side=*/false);
+    if (!page) {
+      return;
+    }
+    if (content::WebContentsDelegate* tab = page->GetDelegate();
+        tab && tab->CanEnterFullscreenModeForTab(requesting_frame)) {
+      tab->EnterFullscreenModeForTab(requesting_frame, options);
+    } else {
+      // Refused after all: the page is told, rather than left waiting.
+      page->ExitFullscreen(/*will_cause_resize=*/false);
+    }
+  }
+
   // views::ViewObserver:
   void OnViewIsDeleting(views::View* observed_view) override {
     // Gone with its window.
@@ -614,22 +662,27 @@ class PeekController : public TabStripModelObserver,
     }
   }
 
-  void CloseNow() {
+  // Removes the peek's card at once, and its page unless `keep_page`.
+  void CloseNow(bool keep_page = false) {
     view_observation_.Reset();
     if (PeekView* view = std::exchange(view_, nullptr)) {
       view->web_view()->SetWebContents(nullptr);
       view->parent()->RemoveChildViewT(view);
     }
-    contents_.reset();
+    if (!keep_page) {
+      contents_.reset();
+    }
   }
 
-  void MakeTab(std::unique_ptr<content::WebContents> contents,
-               bool side_by_side) {
+  // Returns the page, now a tab, or none if its page's tab is gone (and the
+  // page with it).
+  content::WebContents* MakeTab(std::unique_ptr<content::WebContents> contents,
+                                bool side_by_side) {
     TabStripModel* model = browser_->GetTabStripModel();
     const int index =
         source_ ? model->GetIndexOfWebContents(source_) : TabStripModel::kNoTab;
     if (index == TabStripModel::kNoTab) {
-      return;
+      return nullptr;
     }
     source_ = nullptr;
     contents->SetDelegate(nullptr);
@@ -644,6 +697,7 @@ class PeekController : public TabStripModelObserver,
       // The page the user was on.
       page->Focus();
     }
+    return page;
   }
 
   raw_ptr<BrowserWindowInterface> browser_;
@@ -679,6 +733,18 @@ class Controllers : public BrowserCollectionObserver {
   PeekController* For(BrowserWindowInterface* browser) {
     auto it = controllers_.find(browser);
     return it != controllers_.end() ? it->second.get() : nullptr;
+  }
+
+  // The page in a peek whose tab id is `tab_id`, if one's open.
+  content::WebContents* FindPage(int tab_id) {
+    for (const auto& [browser, controller] : controllers_) {
+      content::WebContents* contents = controller->contents();
+      if (contents &&
+          sessions::SessionTabHelper::IdForTab(contents).id() == tab_id) {
+        return contents;
+      }
+    }
+    return nullptr;
   }
 
   // BrowserCollectionObserver:
@@ -721,6 +787,12 @@ void Init() {
   Controllers::Get().Start();
 }
 
+void OpenPeekAsTab(BrowserWindowInterface* browser) {
+  if (PeekController* controller = Controllers::Get().For(browser)) {
+    controller->OpenAsTab(/*side_by_side=*/false);
+  }
+}
+
 void SetHoveredLink(content::WebContents* source, const GURL& url) {
   if (PeekTrigger* trigger = PeekTrigger::FromWebContents(source)) {
     trigger->set_hovered_link(url);
@@ -742,6 +814,10 @@ bool PeekAtHoveredLink(content::WebContents* source) {
 bool IsPeekedFrom(content::WebContents* source) {
   PeekController* controller = ControllerFor(source);
   return controller && controller->IsPeekedFrom(source);
+}
+
+content::WebContents* FindPeekByTabId(int tab_id) {
+  return Controllers::Get().FindPage(tab_id);
 }
 
 }  // namespace oblada::peek

@@ -1,0 +1,15 @@
+diff --git a/chrome/browser/resources/settings/route.ts b/chrome/browser/resources/settings/route.ts
+index d733ae8b32..0430c5a3ad 100644
+--- a/chrome/browser/resources/settings/route.ts
++++ b/chrome/browser/resources/settings/route.ts
+@@ -146,6 +146,10 @@ function createRoutes(): SettingsRoutes {
+   r.ABOUT = r.BASIC.createSection(
+       '/help', 'about', loadTimeData.getString('aboutPageTitle'));
+ 
++  // Oblada: its own settings (oblada/browser/settings/oblada_page.h).
++  r.OBLADA = r.BASIC.createSection(
++      '/oblada', 'oblada', loadTimeData.getString('obladaPageTitle'));
++
+   // Search page.
+   r.SEARCH = r.BASIC.createSection(
+       '/search', 'search', loadTimeData.getString('searchPageTitle'));

@@ -1,0 +1,24 @@
+diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_background_blur_backdrop.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_background_blur_backdrop.cc
+index c8ecd225df..b0e91a9201 100644
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_background_blur_backdrop.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_background_blur_backdrop.cc
+@@ -8,6 +8,7 @@
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+ #include "chrome/browser/ui/views/frame/custom_corners_background.h"
+ #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
++#include "oblada/browser/ui/sidebar_card.h"  // Oblada
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/color/color_id.h"
+ #include "ui/compositor/layer.h"
+@@ -38,6 +39,11 @@ void VerticalTabStripBackgroundBlurBackdrop::UpdateGeometry(
+ void VerticalTabStripBackgroundBlurBackdrop::OnPaint(gfx::Canvas* canvas) {
+   View::OnPaint(canvas);
+ 
++  // Oblada: the compact sidebar's card (oblada/browser/ui/sidebar_card.h).
++  if (oblada::sidebar::PaintCard(canvas, this)) {
++    return;
++  }
++
+   if (alpha_ <= 0.0f || border_path_.isEmpty()) {
+     return;
+   }

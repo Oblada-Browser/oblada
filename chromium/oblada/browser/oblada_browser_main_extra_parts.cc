@@ -4,6 +4,7 @@
 #include "chrome/browser/chrome_browser_main_extra_parts.h"
 #include "chrome/common/pref_names.h"
 #include "components/prefs/pref_service.h"
+#include "oblada/browser/clean_links/mozilla_list.h"
 #include "oblada/browser/debug/window_snapshots.h"
 #include "oblada/browser/firefox_addons/firefox_addons.h"
 #include "oblada/browser/peek/peek.h"
@@ -30,6 +31,7 @@ class ObladaBrowserMainExtraParts : public ChromeBrowserMainExtraParts {
     firefox_addons::Init();
     workspaces::Init();
     peek::Init();
+    clean_links::StartMozillaListUpdates();
     debug::MaybeStartWindowSnapshots();
     updater::Start();
   }

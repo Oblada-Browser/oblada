@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.cc b/chrome/browser/ui/views/toolbar/toolbar_view.cc
-index f9bb38f923..73fb212507 100644
+index f9bb38f923..a28b5881c6 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
 +++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
 @@ -4,6 +4,9 @@
@@ -72,7 +72,7 @@ index f9bb38f923..73fb212507 100644
          toolbar_controller_->ShouldShowOverflowButton(size());
      if (was_overflow_button_visible != show_overflow_button) {
        views::ManualLayoutUtil(layout_manager_)
-@@ -1505,6 +1519,17 @@ void ToolbarView::Layout(PassKey) {
+@@ -1505,6 +1519,20 @@ void ToolbarView::Layout(PassKey) {
    // Call super implementation to ensure layout manager and child layouts
    // happen.
    LayoutSuperclass<AccessiblePaneView>(this);
@@ -82,21 +82,28 @@ index f9bb38f923..73fb212507 100644
 +  if (location_bar_view_ && oblada::sidebar::ToolbarInset(this) >= 0) {
 +    oblada::sidebar::LayOutLocationBar(this, location_bar_view_);
 +    oblada::sidebar::ArrangeButtonRow(this, location_bar_view_);
-+    // Out of sight; its popups show from the address bar's extensions button.
-+    if (extensions_container_) {
-+      extensions_container_->SetBoundsRect(gfx::Rect());
-+    }
++  }
++  // Out of sight in Oblada's layouts; its popups show from the address bar's
++  // extensions button.
++  if (extensions_container_ &&
++      (oblada::sidebar::ToolbarInset(this) >= 0 ||
++       oblada::sidebar::IsScaffoldToolbar(this))) {
++    extensions_container_->SetBoundsRect(gfx::Rect());
 +  }
  }
  
  void ToolbarView::OnThemeChanged() {
-@@ -1775,6 +1800,66 @@ void ToolbarView::LayoutCommon() {
+@@ -1775,6 +1803,69 @@ void ToolbarView::LayoutCommon() {
        interior_margin.set_right(0);
      }
    }
 +  // Oblada: in the sidebar the buttons share their row with the window controls, and
 +  // the address bar is left out of it, for a row of its own below (see Layout).
 +  const int oblada_sidebar_inset = oblada::sidebar::ToolbarInset(this);
++  // In scaffold mode a row at the top of the window, as Chromium's, though
++  // without the buttons that are elsewhere in Oblada (below).
++  const bool oblada_layout =
++      oblada_sidebar_inset >= 0 || oblada::sidebar::IsScaffoldToolbar(this);
 +  if (location_bar_view_) {
 +    location_bar_view_->SetProperty(views::kViewIgnoredByLayoutKey,
 +                                    oblada_sidebar_inset >= 0);
@@ -106,9 +113,8 @@ index f9bb38f923..73fb212507 100644
 +  if (avatar_) {
 +    const bool was_hidden_for_sidebar =
 +        avatar_->GetProperty(views::kViewIgnoredByLayoutKey);
-+    avatar_->SetProperty(views::kViewIgnoredByLayoutKey,
-+                         oblada_sidebar_inset >= 0);
-+    if (oblada_sidebar_inset >= 0) {
++    avatar_->SetProperty(views::kViewIgnoredByLayoutKey, oblada_layout);
++    if (oblada_layout) {
 +      avatar_->SetVisible(false);
 +    } else if (was_hidden_for_sidebar) {
 +      avatar_->SetVisible(true);
@@ -135,7 +141,7 @@ index f9bb38f923..73fb212507 100644
 +  }
 +  if (extensions_container_) {
 +    extensions_container_->SetProperty(views::kViewIgnoredByLayoutKey,
-+                                       oblada_sidebar_inset >= 0);
++                                       oblada_layout);
 +    // Out of sight in the sidebar (see Layout), extension buttons included,
 +    // whose layers would show anyway.
 +    if (!extensions_container_->layer()) {
@@ -157,7 +163,7 @@ index f9bb38f923..73fb212507 100644
    layout_manager_->SetInteriorMargin(interior_margin);
  
    // Extend buttons to the window edge if we're either in a maximized or
-@@ -1811,8 +1896,12 @@ void ToolbarView::LayoutCommon() {
+@@ -1811,8 +1902,13 @@ void ToolbarView::LayoutCommon() {
        ShouldAppMenuApplyFittsLaw(is_maximized_or_fullscreen));
  
    if (toolbar_divider_ && extensions_container_) {
@@ -167,7 +173,8 @@ index f9bb38f923..73fb212507 100644
 -        .SetViewHidden(toolbar_divider_, !extensions_container_->GetVisible());
 +        .SetViewHidden(toolbar_divider_,
 +                       !extensions_container_->GetVisible() ||
-+                           oblada::sidebar::ToolbarInset(this) >= 0);
++                           oblada::sidebar::ToolbarInset(this) >= 0 ||
++                           oblada::sidebar::IsScaffoldToolbar(this));
    }
    // Cast button visibility is controlled externally.
  }

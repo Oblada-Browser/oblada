@@ -1,14 +1,17 @@
 diff --git a/chrome/browser/ui/browser_command_controller.cc b/chrome/browser/ui/browser_command_controller.cc
-index 921461b9e9..025b025c6b 100644
+index 921461b9e9..78f32f2969 100644
 --- a/chrome/browser/ui/browser_command_controller.cc
 +++ b/chrome/browser/ui/browser_command_controller.cc
-@@ -1768,7 +1768,8 @@ void BrowserCommandController::InitCommandState() {
+@@ -1768,8 +1768,10 @@ void BrowserCommandController::InitCommandState() {
    UpdateTabRestoreCommandState();
    command_updater_->UpdateCommandEnabled(IDC_EXIT, true);
    command_updater_->UpdateCommandEnabled(IDC_NAME_WINDOW, true);
 -  command_updater_->UpdateCommandEnabled(IDC_TOGGLE_VERTICAL_TABS, true);
+-  command_updater_->UpdateCommandEnabled(IDC_VERTICAL_TABS_SEND_FEEDBACK, true);
 +  command_updater_->UpdateCommandEnabled(IDC_TOGGLE_VERTICAL_TABS,
 +                                         false);  // Oblada: always vertical
-   command_updater_->UpdateCommandEnabled(IDC_VERTICAL_TABS_SEND_FEEDBACK, true);
++  // Oblada: no feedback to Google about Oblada's sidebar.
++  command_updater_->UpdateCommandEnabled(IDC_VERTICAL_TABS_SEND_FEEDBACK, false);
    command_updater_->UpdateCommandEnabled(
        IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER, true);
+   command_updater_->UpdateCommandEnabled(IDC_TOGGLE_VERTICAL_TABS_COLLAPSE,

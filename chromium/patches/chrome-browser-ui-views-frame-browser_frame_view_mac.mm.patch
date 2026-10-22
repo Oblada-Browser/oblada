@@ -1,15 +1,27 @@
 diff --git a/chrome/browser/ui/views/frame/browser_frame_view_mac.mm b/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
-index 8354a9179e..03cab34de3 100644
+index 8354a9179e..9ea1c375f0 100644
 --- a/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
 +++ b/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
-@@ -237,6 +237,10 @@ FullscreenToolbarStyle GetUserPreferredToolbarStyle(bool always_show) {
+@@ -237,6 +237,22 @@ FullscreenToolbarStyle GetUserPreferredToolbarStyle(bool always_show) {
      params.leading_exclusion.horizontal_padding = 0;
      params.trailing_exclusion.content.set_width(0);
      params.trailing_exclusion.horizontal_padding = 0;
 +    // Oblada: the sidebar and the page move down out of the way of the menu bar
-+    // and window controls when they slide in at the top, as in Safari.
-+    params.visual_client_area.Inset(
-+        gfx::Insets::TLBR(TopUIFullscreenYOffset(), 0, 0, 0));
++    // when it slides in at the top; the window controls below it show over
++    // them, as they only do while the pointer is up there.
++    if (TopUIFullscreenYOffset() > 0) {
++      NSWindow* window = GetWidget()->GetNativeWindow().GetNativeNSWindow();
++      // With a camera notch, the window is already below the menu bar.
++      const CGFloat menu_bar_height =
++          window.screen.safeAreaInsets.top != 0
++              ? 0
++              : NSApplication.sharedApplication.mainMenu.menuBarHeight;
++      params.visual_client_area.Inset(gfx::Insets::TLBR(
++          base::ClampRound(
++              [[fullscreen_toolbar_controller_ menubarTracker] menubarFraction] *
++              menu_bar_height),
++          0, 0, 0));
++    }
    }
    return params;
  }

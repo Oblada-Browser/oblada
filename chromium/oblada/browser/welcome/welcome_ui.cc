@@ -1,6 +1,7 @@
 #include "oblada/browser/welcome/welcome_ui.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -31,6 +32,7 @@
 #include "oblada/browser/containers/containers_ui.h"
 #include "oblada/browser/import/import_handler.h"
 #include "oblada/browser/l10n.h"
+#include "oblada/browser/ui/sidebar_mode.h"
 #include "oblada/browser/welcome/welcome_page.h"
 #include "ui/base/page_transition_types.h"
 #include "url/gurl.h"
@@ -55,19 +57,22 @@ constexpr std::string_view kStrings[] = {
     "containers_add", "containers_import_from", "containers_imported",
     "default_title",
     "default_text",  "default",          "default_done",
+    "layout_title",  "layout_text",      "layout_hint",
+    "layout_sidebar", "layout_sidebar_text", "layout_scaffold",
+    "layout_scaffold_text", "layout_compact", "layout_compact_text",
     "workspaces",    "workspaces_text",  "workspaces_hint",
     "containers",    "containers_text",  "containers_hint",
     "work",          "personal",         "address_bar",
     "address_bar_text", "address_bar_hint", "address_query",
     "peek",          "peek_text",        "peek_hint",
     "peek_link",     "split",            "split_text",
-    "split_hint",    "compact",          "compact_text",
-    "compact_hint",  "extensions",       "extensions_text",
+    "split_hint",    "extensions",       "extensions_text",
     "done_title",    "zen",              "zen_link",
 };
 
 // What the page asks of the browser: whether Oblada is the default browser,
-// making it so, and leaving for a new tab once done.
+// making it so, the window's layout (sidebar_mode.h), and leaving for a new tab
+// once done.
 class WelcomeHandler : public content::WebUIMessageHandler {
  public:
   WelcomeHandler() = default;
@@ -85,6 +90,12 @@ class WelcomeHandler : public content::WebUIMessageHandler {
         "setAsDefaultBrowser",
         base::BindRepeating(&WelcomeHandler::SetAsDefaultBrowser,
                             base::Unretained(this)));
+    web_ui()->RegisterMessageCallback(
+        "getLayout",
+        base::BindRepeating(&WelcomeHandler::GetLayout, base::Unretained(this)));
+    web_ui()->RegisterMessageCallback(
+        "setLayout",
+        base::BindRepeating(&WelcomeHandler::SetLayout, base::Unretained(this)));
     web_ui()->RegisterMessageCallback(
         "finish",
         base::BindRepeating(&WelcomeHandler::Finish, base::Unretained(this)));
@@ -114,6 +125,24 @@ class WelcomeHandler : public content::WebUIMessageHandler {
                shell_integration::DefaultWebClientState state) {
     ResolveJavascriptCallback(callback_id,
                               base::Value(state == shell_integration::IS_DEFAULT));
+  }
+
+  void GetLayout(const base::ListValue& args) {
+    AllowJavascript();
+    ResolveJavascriptCallback(
+        args[0], base::Value(sidebar::ModeName(
+                     sidebar::GetMode(Profile::FromWebUI(web_ui())))));
+  }
+
+  // The window around the page takes it at once.
+  void SetLayout(const base::ListValue& args) {
+    if (args.empty() || !args[0].is_string()) {
+      return;
+    }
+    if (std::optional<sidebar::Mode> mode =
+            sidebar::ModeFromName(args[0].GetString())) {
+      sidebar::SetMode(Profile::FromWebUI(web_ui()), *mode);
+    }
   }
 
   // Opens a new tab as ⌘T does, then closes this one: the New Tab page then

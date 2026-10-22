@@ -1,8 +1,17 @@
 diff --git a/chrome/browser/ui/views/frame/system_menu_model_builder.cc b/chrome/browser/ui/views/frame/system_menu_model_builder.cc
-index 20c579d108..8862e52559 100644
+index 20c579d108..42ff197926 100644
 --- a/chrome/browser/ui/views/frame/system_menu_model_builder.cc
 +++ b/chrome/browser/ui/views/frame/system_menu_model_builder.cc
-@@ -200,23 +200,14 @@ void SystemMenuModelBuilder::BuildSystemMenuForBrowserWindow(
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/frame/system_menu_model_builder.h"
+ 
++#include "oblada/browser/workspaces/theme_picker.h"  // Oblada
++
+ #include "base/command_line.h"
+ #include "base/feature_list.h"
+ #include "base/strings/utf_string_conversions.h"
+@@ -200,23 +202,14 @@ void SystemMenuModelBuilder::BuildSystemMenuForBrowserWindow(
  
      model->AddSeparator(ui::NORMAL_SEPARATOR);
  
@@ -27,7 +36,7 @@ index 20c579d108..8862e52559 100644
        model->AddItemWithStringId(IDC_TOGGLE_VERTICAL_TABS_COLLAPSE,
                                   controller->IsCollapsed()
                                       ? IDS_EXPAND_VERTICAL_TABS
-@@ -234,9 +225,9 @@ void SystemMenuModelBuilder::BuildSystemMenuForBrowserWindow(
+@@ -234,9 +227,9 @@ void SystemMenuModelBuilder::BuildSystemMenuForBrowserWindow(
            model->GetIndexOfCommandId(IDC_TOGGLE_VERTICAL_TABS).value(),
            show_badge, ui::NewBadgeType::kNew);
      }
@@ -40,3 +49,17 @@ index 20c579d108..8862e52559 100644
  
      const bool show_expand_on_hover =
          tabs::IsVerticalTabsExpandOnHoverFeatureEnabled() &&
+@@ -253,8 +246,11 @@ void SystemMenuModelBuilder::BuildSystemMenuForBrowserWindow(
+           kToggleVerticalTabsExpandOnHoverElementId);
+     }
+ 
+-    model->AddItemWithStringId(IDC_VERTICAL_TABS_SEND_FEEDBACK,
+-                               IDS_VERTICAL_TABS_SEND_FEEDBACK);
++    // Oblada: no "Send feedback", which goes to Google. The workspaces' default
++    // theme instead.
++    if (display_vertical_tabs) {
++      oblada::workspaces::AddDefaultThemeItems(model);
++    }
+   }
+ 
+   if (chrome::CanOpenTaskManager()) {

@@ -329,6 +329,10 @@ Container AddTemporaryContainer(Profile* profile) {
       profile, kTemporaryPrefix + base::HexEncodeLower(base::RandBytesAsVector(5)));
 }
 
+int TemporaryNumber(const Container& container) {
+  return container.temporary ? container.number - kFirstTemporaryNumber : 0;
+}
+
 void UpdateContainer(Profile* profile, const Container& container) {
   for (Container& temporary : ProfileContainers::Get(profile).temporary) {
     if (temporary.id == container.id) {
@@ -815,15 +819,16 @@ void PaintContainerIndicator(gfx::Canvas* canvas,
   // A short bar along the leading edge of a vertical tab, or under a horizontal one.
   gfx::RectF bar;
   if (vertical) {
+    // Thin, against the tab's edge: well clear of its favicon.
     const float height = bounds.height() * 0.5f;
-    bar = gfx::RectF(bounds.x() + 3, bounds.y() + (bounds.height() - height) / 2, 3,
-                     height);
+    bar = gfx::RectF(bounds.x() + 1.5f, bounds.y() + (bounds.height() - height) / 2,
+                     2, height);
   } else {
     const float width = bounds.width() * 0.5f;
     bar = gfx::RectF(bounds.x() + (bounds.width() - width) / 2, bounds.bottom() - 4,
                      width, 3);
   }
-  canvas->DrawRoundRect(bar, 1.5f, flags);
+  canvas->DrawRoundRect(bar, std::min(bar.width(), bar.height()) / 2, flags);
 }
 
 }  // namespace oblada::containers

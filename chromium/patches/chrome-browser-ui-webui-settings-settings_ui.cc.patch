@@ -1,25 +1,27 @@
 diff --git a/chrome/browser/ui/webui/settings/settings_ui.cc b/chrome/browser/ui/webui/settings/settings_ui.cc
-index c1bb5d445e..67d240cd9f 100644
+index c1bb5d445e..1e6e948bff 100644
 --- a/chrome/browser/ui/webui/settings/settings_ui.cc
 +++ b/chrome/browser/ui/webui/settings/settings_ui.cc
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,9 @@
  
  #include "chrome/browser/ui/webui/settings/settings_ui.h"
  
 +#include "oblada/browser/about/about_page.h"  // Oblada
++#include "oblada/browser/settings/oblada_page.h"  // Oblada
 +
  #include <stddef.h>
  
  #include <memory>
-@@ -482,6 +484,7 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
+@@ -482,6 +485,8 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
  #endif
  
    AddLocalizedStrings(html_source, profile, web_ui->GetWebContents());
 +  oblada::about::AddAboutStrings(html_source);  // Oblada
++  oblada::settings::AddObladaPage(html_source);  // Oblada
    AddSecurityData(html_source);
  
    ManagedUIHandler::Initialize(web_ui, html_source);
-@@ -658,9 +661,12 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
+@@ -658,9 +663,12 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
    // Within the AI subpage are separate sections for Glic, for GEIC, and for all
    // other AI features. The visibility of these is separately controlled, but
    // we want to show the subpage if any of them are enabled.
@@ -34,7 +36,7 @@ index c1bb5d445e..67d240cd9f 100644
    html_source->AddBoolean("showAiPageAiFeatureSection",
                            show_ai_features_section);
  
-@@ -914,9 +920,7 @@ void SettingsUI::UpdateShowGlicState() {
+@@ -914,9 +922,7 @@ void SettingsUI::UpdateShowGlicState() {
    base::DictValue update;
    update.Set("showGlicSettings", show_glic);
    update.Set("glicDisallowedByAdmin", enablement.DisallowedByAdmin());

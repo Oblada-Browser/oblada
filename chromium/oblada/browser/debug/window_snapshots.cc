@@ -23,6 +23,7 @@
 #include "base/timer/timer.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
@@ -33,9 +34,11 @@
 #include "chrome/browser/ui/views/frame/tab_strip_region_view.h"
 #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
+#include "components/prefs/pref_service.h"
 #include "components/split_tabs/split_tab_visual_data.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
+#include "oblada/browser/containers/containers.h"
 #include "oblada/browser/new_tab/new_tab_ui.h"
 #include "components/viz/common/frame_sinks/copy_output_request.h"
 #include "components/viz/common/frame_sinks/copy_output_result.h"
@@ -56,6 +59,10 @@
 #include "ui/gfx/codec/png_codec.h"
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
+#include "oblada/browser/ui/site_panel.h"
+#include "oblada/browser/ui/sidebar_mode.h"
+#include "oblada/browser/ui/window_background.h"
+#include "oblada/browser/workspaces/theme_picker.h"
 #include "oblada/browser/workspaces/workspace_switcher.h"
 #include "oblada/browser/peek/peek.h"
 #include "oblada/browser/workspaces/workspaces.h"
@@ -260,13 +267,19 @@ void SwipeTimed(std::string_view spec) {
 // it side by side), "drag:<n>:<x>,<y>" (see Drag()), "drop" and "grip:<n>:<x>,<y>"
 // (drags a split pane's grip there), "press:<x>,<y>" (a click there), "select-to:<n>"
 // (the tabs from the active one to the <n>th selected), "open:<url>" (in the active
-// tab), "force-click" (a firm press on the trackpad), "expand" (the compact sidebar
+// tab), "temporary" (a new tab in a new temporary container), "site-panel" (the
+// address bar's), "force-click" (a firm press on the trackpad), "peek-tab" (the peek made a tab), "expand" (the compact sidebar
 // expanded, as hovered, until the next "expand"), "type:<text>"
 // (into the address bar), "escape",
 // "wait:<ms>" (before the actions after it) and
 // "ws-new", "ws-next", "ws-prev", "ws-icon:<id>", "ws-color:<n>" (a TabGroupColorId),
-// "ws-tint:<0|1>",
-// "ws-picker", "ws-container:<id>" (workspaces), "hover:<view class>[:<n>]" (as
+// "ws-picker", "ws-container:<id>" (workspaces), "ws-theme" (the theme picker),
+// "ws-theme-dots:<hue>,<distance>[;...]" (its colors, none if empty),
+// "ws-theme-scheme:<auto|light|dark>", "ws-theme-opacity:<0 to 1|default>",
+// "ws-theme-grain:<0 to 1>" (the theme of the workspace shown, its own from then on),
+// "ws-theme-default" (it follows the default theme), "default-theme" (its picker),
+// "default-theme-reset", "ws-header" (the workspace's header shown), "mode:<sidebar|scaffold|compact>"
+// (the window's layout), "hover:<view class>[:<n>]" (as
 // "click:", for the view's hover highlight), "swipe:<dx>[:hold]", "swipe-timed:<dx>:<ms>" and "swipe-end" (see
 // Swipe()), and "film:<count>:<ms>" (see Film()).
 void RunActions(BrowserWindowInterface* browser,
@@ -363,6 +376,16 @@ void RunActions(BrowserWindowInterface* browser,
                                           ui::PAGE_TRANSITION_TYPED,
                                           std::string());
       }
+    } else if (action == "site-panel") {
+      if (BrowserView* view = BrowserView::GetBrowserViewForBrowser(browser)) {
+        site_panel::ShowPanel(view->GetLocationBarView());
+        // No longer quiet, as when the button is clicked under the pointer.
+        view->GetLocationBarView()->UpdateObladaQuiet();
+      }
+    } else if (action == "temporary") {
+      containers::OpenInContainer(
+          browser, containers::AddTemporaryContainer(browser->GetProfile()).id,
+          GURL(), WindowOpenDisposition::NEW_FOREGROUND_TAB);
     } else if (action == "expand") {
       // The compact sidebar expanded, as with the mouse over it, until the next
       // "expand".
@@ -380,6 +403,9 @@ void RunActions(BrowserWindowInterface* browser,
               browser->GetTabStripModel()->GetActiveWebContents()) {
         peek::PeekAtHoveredLink(contents);
       }
+    } else if (action == "peek-tab") {
+      // The peek open made a tab of its own, as its button does.
+      peek::OpenPeekAsTab(browser);
     } else if (action == "escape") {
       // Escape pressed, where the focus is.
       ui::KeyEvent press(ui::EventType::kKeyPressed, ui::VKEY_ESCAPE,
@@ -397,21 +423,67 @@ void RunActions(BrowserWindowInterface* browser,
         workspace->icon = std::string(action.substr(8));
         workspaces::UpdateWorkspace(browser->GetProfile(), *workspace);
       }
-    } else if (action.starts_with("ws-tint:")) {
-      // Whether the window takes the workspace's colors.
-      if (auto workspace = workspaces::CurrentWorkspace(browser)) {
-        workspace->tints_window = action.substr(8) != "0";
-        workspaces::UpdateWorkspace(browser->GetProfile(), *workspace);
+    } else if (action.starts_with("ws-theme-")) {
+      std::optional<workspaces::Workspace> workspace =
+          workspaces::CurrentWorkspace(browser);
+      if (!workspace) {
+        continue;
       }
-    } else if (action.starts_with("ws-color:")) {
-      int color = 0;
-      if (auto workspace = workspaces::CurrentWorkspace(browser);
-          workspace && base::StringToInt(action.substr(9), &color)) {
-        workspace->color = color;
+      if (action == "ws-theme-default") {
+        // It follows the default theme.
+        workspace->theme.reset();
         workspaces::UpdateWorkspace(browser->GetProfile(), *workspace);
+        continue;
       }
-    } else if (action == "ws-picker") {
-      // The icon and color picker of the workspace shown, by its button.
+      if (!workspace->theme) {
+        workspace->theme = workspaces::DefaultTheme(browser->GetProfile());
+      }
+      workspaces::Theme& theme = *workspace->theme;
+      const std::string_view value = action.substr(action.find(':') + 1);
+      double number = 0;
+      if (action.starts_with("ws-theme-dots:")) {
+        theme.dots.clear();
+        for (std::string_view dot : base::SplitStringPiece(
+                 value, ";", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
+          const std::vector<std::string_view> parts = base::SplitStringPiece(
+              dot, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+          double hue = 0;
+          double distance = 0;
+          if (parts.size() == 2 && base::StringToDouble(parts[0], &hue) &&
+              base::StringToDouble(parts[1], &distance) &&
+              theme.dots.size() < workspaces::kMaxThemeDots) {
+            theme.dots.push_back({.hue = hue, .distance = distance});
+          }
+        }
+      } else if (action.starts_with("ws-theme-scheme:")) {
+        theme.scheme = value == "dark"    ? workspaces::Theme::Scheme::kDark
+                       : value == "light" ? workspaces::Theme::Scheme::kLight
+                                          : workspaces::Theme::Scheme::kAuto;
+      } else if (action.starts_with("ws-theme-opacity:")) {
+        theme.opacity = base::StringToDouble(value, &number)
+                            ? std::optional<double>(number)
+                            : std::nullopt;
+      } else if (action.starts_with("ws-theme-grain:") &&
+                 base::StringToDouble(value, &number)) {
+        theme.grain = number;
+      }
+      workspaces::UpdateWorkspace(browser->GetProfile(), *workspace);
+    } else if (action.starts_with("mode:")) {
+      // The window's layout, as Settings > Oblada sets it.
+      browser->GetProfile()->GetPrefs()->SetString(
+          sidebar::kModePref, std::string(action.substr(5)));
+    } else if (action == "ws-header") {
+      // The workspace's header above its tabs, as Settings > Appearance > Oblada
+      // turns it on.
+      browser->GetProfile()->GetPrefs()->SetBoolean(workspaces::kShowHeaderPref,
+                                                    true);
+    } else if (action == "default-theme") {
+      workspaces::ShowDefaultThemePicker(browser);
+    } else if (action == "default-theme-reset") {
+      workspaces::ResetDefaultTheme(browser->GetProfile());
+    } else if (action == "ws-theme" || action == "ws-picker") {
+      // The theme picker, or the icon and color one, of the workspace shown, by its
+      // button.
       const std::optional<workspaces::Workspace> workspace =
           workspaces::CurrentWorkspace(browser);
       std::vector<views::View*> buttons;
@@ -419,10 +491,21 @@ void RunActions(BrowserWindowInterface* browser,
       const std::vector<workspaces::Workspace> all =
           workspaces::GetWorkspaces(browser->GetProfile());
       for (size_t i = 0; workspace && i < all.size() && i < buttons.size(); ++i) {
-        if (all[i].id == workspace->id) {
-          workspaces::ShowWorkspaceIconPicker(browser, workspace->id,
-                                              buttons[i]);
+        if (all[i].id != workspace->id) {
+          continue;
         }
+        if (action == "ws-theme") {
+          workspaces::ShowThemePicker(browser, workspace->id, buttons[i]);
+        } else {
+          workspaces::ShowWorkspaceIconPicker(browser, workspace->id, buttons[i]);
+        }
+      }
+    } else if (action.starts_with("ws-color:")) {
+      int color = 0;
+      if (auto workspace = workspaces::CurrentWorkspace(browser);
+          workspace && base::StringToInt(action.substr(9), &color)) {
+        workspace->color = color;
+        workspaces::UpdateWorkspace(browser->GetProfile(), *workspace);
       }
     } else if (action.starts_with("ws-container:")) {
       if (auto workspace = workspaces::CurrentWorkspace(browser)) {
@@ -511,6 +594,7 @@ void OnCopied(base::FilePath dir,
               float dip_width,
               std::vector<gfx::Rect> window_controls,
               std::string layout,
+              SkBitmap background,
               std::unique_ptr<viz::CopyOutputResult> result) {
   if (result->IsEmpty()) {
     return;
@@ -520,6 +604,14 @@ void OnCopied(base::FilePath dir,
   SkBitmap bitmap;
   if (!bitmap.tryAllocPixels(copied.info()) || !copied.readPixels(bitmap.pixmap())) {
     return;
+  }
+  // The views over the window's background, which the system draws (see
+  // window_background.h), as they show on screen.
+  if (!background.drawsNothing() &&
+      background.dimensions() == bitmap.dimensions()) {
+    SkCanvas canvas(background);
+    canvas.drawImage(bitmap.asImage(), 0, 0);
+    bitmap = std::move(background);
   }
   // Window controls drawn by the system, where they are.
   if (!window_controls.empty() && dip_width > 0) {
@@ -592,6 +684,21 @@ void CaptureWidget(const base::FilePath& dir,
            new_tab::IsSeeThrough(contents) ? "yes" : "no", " background=",
            color ? base::StringPrintf("#%08X", *color) : "none", "\n"});
     }
+    // The window's background (see window_background.h).
+    const window_background::Background background =
+        window_background::Get(widget->GetNativeWindow());
+    std::vector<std::string> colors;
+    for (SkColor color : background.colors) {
+      colors.push_back(base::StringPrintf("#%06X", color & 0xFFFFFF));
+    }
+    base::StrAppend(
+        &layout,
+        {"window background colors=", base::JoinString(colors, ","), " opacity=",
+         background.opacity ? base::StringPrintf("%.2f", *background.opacity)
+                            : "default",
+         " grain=", base::StringPrintf("%.2f", background.grain), " glass=",
+         background.dark ? (*background.dark ? "dark" : "light") : "system",
+         "\n"});
     const gfx::Point origin = widget->GetWindowBoundsInScreen().origin();
     for (views::Widget* owned :
          views::Widget::GetAllOwnedWidgets(widget->GetNativeView())) {
@@ -604,13 +711,21 @@ void CaptureWidget(const base::FilePath& dir,
       }
     }
   }
+  SkBitmap background;
+  if (is_window) {
+    background = window_background::Render(widget->GetNativeWindow(),
+                                           compositor->size());
+  }
   auto request = std::make_unique<viz::CopyOutputRequest>(
       viz::CopyOutputRequest::ResultFormat::RGBA,
       viz::CopyOutputRequest::ResultDestination::kSystemMemory,
       base::BindOnce(&OnCopied, dir, name,
                      static_cast<float>(widget->GetRootView()->width()),
-                     std::move(window_controls), std::move(layout)));
+                     std::move(window_controls), std::move(layout),
+                     std::move(background)));
   request->set_result_task_runner(base::SequencedTaskRunner::GetCurrentDefault());
+  // The window only: shadows can reach out of it (e.g. the compact sidebar's).
+  request->set_area(gfx::Rect(compositor->size()));
   compositor->root_layer()->RequestCopyOfOutput(std::move(request));
 }
 

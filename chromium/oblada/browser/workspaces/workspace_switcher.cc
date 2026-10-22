@@ -9,6 +9,7 @@
 #include "base/functional/bind.h"
 #include "base/memory/weak_ptr.h"
 #include "base/no_destructor.h"
+#include "base/numerics/safe_conversions.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
@@ -29,7 +30,10 @@
 #include "oblada/browser/l10n.h"
 #include "oblada/browser/ui/downloads_button.h"
 #include "oblada/browser/ui/icons.h"
+#include "oblada/browser/ui/window_background.h"
+#include "oblada/browser/workspaces/theme_picker.h"
 #include "oblada/browser/workspaces/workspace_slider.h"
+#include "oblada/browser/workspaces/workspace_theme.h"
 #include "oblada/browser/workspaces/workspaces.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
@@ -37,6 +41,7 @@
 #include "ui/base/mojom/dialog_button.mojom.h"
 #include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/color/color_provider.h"
+#include "ui/color/color_provider_key.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/layer_animator.h"
 #include "ui/compositor/scoped_layer_animation_settings.h"
@@ -50,6 +55,7 @@
 #include "ui/gfx/geometry/transform.h"
 #include "ui/gfx/image/canvas_image_source.h"
 #include "ui/menus/simple_menu_model.h"
+#include "ui/native_theme/native_theme.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/bubble/bubble_border.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
@@ -58,7 +64,6 @@
 #include "ui/views/controls/button/image_button.h"
 #include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/controls/textfield/textfield.h"
-#include "ui/views/layout/box_layout.h"
 #include "ui/views/widget/widget.h"
 
 namespace oblada::workspaces {
@@ -67,43 +72,12 @@ namespace {
 
 constexpr int kButtonSize = 28;
 constexpr int kSpacing = 4;
+// Above and below the buttons.
+constexpr int kVerticalInset = 6;
 // In a row, as in Zen, the buttons spread over the sidebar's width up to this far
 // apart, and get smaller (down to kMinButtonSize) rather than not fit.
 constexpr int kMaxSpacing = 10;
 constexpr int kMinButtonSize = 20;
-
-// The dot for a workspace without an icon, in its color.
-SkColor DotColor(int color) {
-  switch (static_cast<tab_groups::TabGroupColorId>(color)) {
-    case tab_groups::TabGroupColorId::kBlue:
-      return SkColorSetRGB(0x8A, 0xB4, 0xF8);
-    case tab_groups::TabGroupColorId::kRed:
-      return SkColorSetRGB(0xF2, 0x8B, 0x82);
-    case tab_groups::TabGroupColorId::kYellow:
-      return SkColorSetRGB(0xFD, 0xD6, 0x63);
-    case tab_groups::TabGroupColorId::kGreen:
-      return SkColorSetRGB(0x81, 0xC9, 0x95);
-    case tab_groups::TabGroupColorId::kPink:
-      return SkColorSetRGB(0xFF, 0x8B, 0xCB);
-    case tab_groups::TabGroupColorId::kPurple:
-      return SkColorSetRGB(0xC5, 0x8A, 0xF9);
-    case tab_groups::TabGroupColorId::kCyan:
-      return SkColorSetRGB(0x78, 0xD9, 0xEC);
-    case tab_groups::TabGroupColorId::kOrange:
-      return SkColorSetRGB(0xFC, 0xAD, 0x70);
-    default:
-      return SkColorSetRGB(0x9A, 0xA0, 0xA6);
-  }
-}
-
-// The color a window's colors come from while it shows a workspace of `color`:
-// its dot's, or pure gray for a gray one.
-SkColor PaletteSeed(int color) {
-  return static_cast<tab_groups::TabGroupColorId>(color) ==
-                 tab_groups::TabGroupColorId::kGrey
-             ? SkColorSetRGB(0x80, 0x80, 0x80)
-             : DotColor(color);
-}
 
 // The colors a workspace (its tab groups) can have, as a picker offers them.
 std::vector<icons::PickerColor> PickerColors() {
@@ -117,7 +91,7 @@ std::vector<icons::PickerColor> PickerColors() {
         tab_groups::TabGroupColorId::kPurple,
         tab_groups::TabGroupColorId::kGrey}) {
     colors.push_back(
-        {base::NumberToString(static_cast<int>(id)), DotColor(static_cast<int>(id))});
+        {base::NumberToString(static_cast<int>(id)), GroupColor(static_cast<int>(id))});
   }
   return colors;
 }
@@ -192,7 +166,7 @@ class WorkspaceButton : public views::Button, public views::ContextMenuControlle
       canvas->DrawRoundRect(bounds, 8, flags);
     }
     const ui::ImageModel image =
-        icons::Image(base::UTF16ToUTF8(icon_), DotColor(color_), 16);
+        icons::Image(base::UTF16ToUTF8(icon_), GroupColor(color_), 16);
     if (!image.IsEmpty() || !icon_.empty()) {
       if (!shown_) {
         canvas->SaveLayerAlpha(GetState() == STATE_HOVERED ? 0xD0 : 0x80);
@@ -211,7 +185,7 @@ class WorkspaceButton : public views::Button, public views::ContextMenuControlle
       }
       return;
     }
-    flags.setColor(SkColorSetA(DotColor(color_), shown_ ? 0xFF : 0x80));
+    flags.setColor(SkColorSetA(GroupColor(color_), shown_ ? 0xFF : 0x80));
     canvas->DrawCircle(bounds.CenterPoint(), shown_ ? 5 : 4, flags);
   }
 
@@ -235,7 +209,7 @@ END_METADATA
 
 }  // namespace
 
-// A workspace's menu: rename, icon, container, delete.
+// A workspace's menu: rename, icon, theme, container, delete.
 class WorkspaceMenu : public ui::SimpleMenuModel::Delegate {
  public:
   WorkspaceMenu(BrowserWindowInterface* browser, std::string id)
@@ -251,7 +225,8 @@ class WorkspaceMenu : public ui::SimpleMenuModel::Delegate {
     model_->AddItem(kRename, L10n("workspaces.rename"));
 
     model_->AddItem(kIconAndColor, L10n("workspaces.icon_color"));
-    model_->AddCheckItem(kTintsWindow, L10n("workspaces.tints_window"));
+    model_->AddItem(kTheme, L10n("workspaces.theme"));
+    model_->AddCheckItem(kDefaultTheme, L10n("workspaces.default_theme"));
 
     containers_ = std::make_unique<ui::SimpleMenuModel>(this);
     containers_->AddCheckItem(kContainerNone,
@@ -286,8 +261,8 @@ class WorkspaceMenu : public ui::SimpleMenuModel::Delegate {
     if (!workspace) {
       return false;
     }
-    if (command_id == kTintsWindow) {
-      return workspace->tints_window;
+    if (command_id == kDefaultTheme) {
+      return !workspace->theme;
     }
     if (command_id == kContainerNone) {
       return workspace->container.empty();
@@ -323,9 +298,17 @@ class WorkspaceMenu : public ui::SimpleMenuModel::Delegate {
       base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
           FROM_HERE, base::BindOnce(&WorkspaceMenu::ShowIconPicker,
                                     weak_factory_.GetWeakPtr()));
-    } else if (command_id == kTintsWindow) {
-      workspace->tints_window = !workspace->tints_window;
+    } else if (command_id == kDefaultTheme) {
+      // Its own theme starts as the default one, for it to change from there.
+      workspace->theme = workspace->theme
+                             ? std::nullopt
+                             : std::optional<Theme>(DefaultTheme(profile));
       UpdateWorkspace(profile, *workspace);
+    } else if (command_id == kTheme) {
+      // Once the menu is gone.
+      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE, base::BindOnce(&WorkspaceMenu::ShowThemePicker,
+                                    weak_factory_.GetWeakPtr()));
     } else if (command_id == kContainerNone) {
       workspace->container.clear();
       UpdateWorkspace(profile, *workspace);
@@ -342,7 +325,8 @@ class WorkspaceMenu : public ui::SimpleMenuModel::Delegate {
     kRename = 1,
     kDelete,
     kIconAndColor,
-    kTintsWindow,
+    kTheme,
+    kDefaultTheme,
     kContainerMenu,
     kContainerNone = 200,
     kContainerFirst,
@@ -355,6 +339,12 @@ class WorkspaceMenu : public ui::SimpleMenuModel::Delegate {
   void ShowIconPicker() {
     if (anchor_) {
       ShowWorkspaceIconPicker(browser_, id_, anchor_);
+    }
+  }
+
+  void ShowThemePicker() {
+    if (anchor_) {
+      workspaces::ShowThemePicker(browser_, id_, anchor_);
     }
   }
 
@@ -426,16 +416,18 @@ class WorkspaceMenu : public ui::SimpleMenuModel::Delegate {
 
 WorkspaceSwitcher::WorkspaceSwitcher(BrowserWindowInterface* browser)
     : browser_(browser) {
-  SetLayoutManager(std::make_unique<views::BoxLayout>(
-                       views::BoxLayout::Orientation::kHorizontal,
-                       gfx::Insets::VH(6, 0), kSpacing))
-      ->set_main_axis_alignment(views::BoxLayout::MainAxisAlignment::kCenter);
   downloads_ = AddChildView(downloads::CreateButton(browser_));
   downloads_->SetPreferredSize(gfx::Size(kButtonSize, kButtonSize));
   browser_->GetTabStripModel()->AddObserver(this);
   subscription_ = ObserveWorkspaces(
       browser_->GetProfile(),
       base::BindRepeating(&WorkspaceSwitcher::Update, base::Unretained(this)));
+  header_pref_.Init(browser_->GetProfile()->GetOriginalProfile()->GetPrefs());
+  // The sidebar's layout tells its headers whether to show.
+  header_pref_.Add(kShowHeaderPref,
+                   base::BindRepeating(
+                       [](views::View* view) { view->InvalidateLayout(); },
+                       base::Unretained(this)));
   Update();
 }
 
@@ -453,19 +445,44 @@ void WorkspaceSwitcher::RemovedFromWidget() {
   slider_.reset();
 }
 
-void WorkspaceSwitcher::Layout(PassKey) {
-  if (compact_ || !downloads_ || children().size() < 2) {
-    LayoutSuperclass<views::View>(this);
-    return;
+gfx::Size WorkspaceSwitcher::CalculatePreferredSize(
+    const views::SizeBounds& available_size) const {
+  int column = 2 * kVerticalInset;
+  for (const views::View* child : children()) {
+    column += child->GetPreferredSize().height() + kSpacing;
   }
+  if (!children().empty()) {
+    column -= kSpacing;
+  }
+  const int row = 2 * kVerticalInset + kButtonSize;
+  return gfx::Size(kButtonSize,
+                   base::ClampRound(column + (row - column) * expansion_));
+}
+
+void WorkspaceSwitcher::Layout(PassKey) {
+  if (expansion_ == 0 || column_width_ == 0) {
+    column_width_ = expansion_ == 0 ? width() : kButtonSize + kSpacing;
+  }
+  // One above the other, as in the narrow sidebar, from the bottom up.
+  std::vector<gfx::Rect> column;
+  int column_y = height() - kVerticalInset;
+  for (auto it = children().rbegin(); it != children().rend(); ++it) {
+    const int child_height = (*it)->GetPreferredSize().height();
+    column_y -= child_height;
+    column.insert(column.begin(),
+                  gfx::Rect(0, column_y, column_width_, child_height));
+    column_y -= kSpacing;
+  }
+
+  // In a row, as in the full sidebar: the downloads button at the start, the
+  // workspaces in the middle, or as near as they fit past it.
+  std::vector<gfx::Rect> row(children().size());
   const gfx::Rect area = GetContentsBounds();
   const int count = static_cast<int>(children().size());
-  const int size = std::clamp((area.width() - (count - 1) * kSpacing / 2) / count,
+  const int size = std::clamp((area.width() - (count - 1) * kSpacing / 2) /
+                                  std::max(1, count),
                               kMinButtonSize, kButtonSize);
-  const int y = area.y() + (area.height() - size) / 2;
-  // The downloads button at the start; the workspaces in the middle, or as near
-  // as they fit past it.
-  downloads_->SetBounds(area.x(), y, size, size);
+  const int y = height() - kVerticalInset - kButtonSize + (kButtonSize - size) / 2;
   const int start = area.x() + size + kSpacing;
   const int buttons = count - 1;
   const int spacing =
@@ -475,23 +492,26 @@ void WorkspaceSwitcher::Layout(PassKey) {
                   : 0;
   const int width = buttons * size + (buttons - 1) * spacing;
   int x = std::max(start, area.x() + (area.width() - width) / 2);
-  for (views::View* child : children()) {
-    if (child == downloads_) {
-      continue;
+  for (size_t i = 0; i < children().size(); ++i) {
+    if (children()[i] == downloads_) {
+      row[i] = gfx::Rect(area.x(), y, size, size);
+    } else {
+      row[i] = gfx::Rect(x, y, size, size);
+      x += size + spacing;
     }
-    child->SetBounds(x, y, size, size);
-    x += size + spacing;
+  }
+
+  for (size_t i = 0; i < children().size(); ++i) {
+    children()[i]->SetBoundsRect(
+        gfx::Tween::RectValueBetween(expansion_, column[i], row[i]));
   }
 }
 
-void WorkspaceSwitcher::SetCompact(bool compact) {
-  if (compact_ == compact) {
+void WorkspaceSwitcher::SetExpansion(float expansion) {
+  if (expansion_ == expansion) {
     return;
   }
-  compact_ = compact;
-  static_cast<views::BoxLayout*>(GetLayoutManager())
-      ->SetOrientation(compact ? views::BoxLayout::Orientation::kVertical
-                               : views::BoxLayout::Orientation::kHorizontal);
+  expansion_ = expansion;
   PreferredSizeChanged();
 }
 
@@ -511,25 +531,55 @@ void WorkspaceSwitcher::Update() {
                                 weak_factory_.GetWeakPtr()));
 }
 
+void WorkspaceSwitcher::OnThemeChanged() {
+  views::View::OnThemeChanged();
+  // E.g. the system turning dark: the theme's colors follow.
+  ApplyTheme();
+}
+
+void WorkspaceSwitcher::ApplyTheme() {
+  views::Widget* widget = GetWidget() ? GetWidget()->GetTopLevelWidget() : nullptr;
+  if (!widget) {
+    return;
+  }
+  // The window looks as the workspace shown says, as in Arc and Zen, unless its
+  // look is its own: incognito, or with a theme from an extension.
+  const std::optional<Workspace> shown = CurrentWorkspace(browser_);
+  const ThemeService* theme_service =
+      ThemeServiceFactory::GetForProfile(browser_->GetProfile());
+  if (!shown || browser_->GetProfile()->IsOffTheRecord() ||
+      (theme_service && theme_service->UsingExtensionTheme())) {
+    widget->SetColorModeOverride(std::nullopt);
+    widget->SetUserColorOverride(std::nullopt);
+    window_background::Set(widget->GetNativeWindow(), {});
+    return;
+  }
+  const Theme theme = ThemeOf(browser_->GetProfile(), *shown);
+  const bool dark = IsThemeDark(browser_, theme);
+  widget->SetColorModeOverride(
+      theme.scheme == Theme::Scheme::kAuto
+          ? std::nullopt
+          : std::optional(dark ? ui::ColorProviderKey::ColorMode::kDark
+                               : ui::ColorProviderKey::ColorMode::kLight));
+  // The window's other colors come from the theme's first one; without one, gray
+  // gives colors without a hue (see BrowserWidget).
+  const std::vector<SkColor> colors = ColorsOf(theme, dark);
+  widget->SetUserColorOverride(colors.empty() ? SkColorSetRGB(0x80, 0x80, 0x80)
+                                              : colors.front());
+  window_background::Background background;
+  background.colors = colors;
+  background.opacity = theme.opacity;
+  background.grain = theme.grain;
+  if (theme.scheme != Theme::Scheme::kAuto) {
+    background.dark = dark;
+  }
+  window_background::Set(widget->GetNativeWindow(), background);
+}
+
 void WorkspaceSwitcher::Rebuild() {
   update_pending_ = false;
   const std::optional<Workspace> shown = CurrentWorkspace(browser_);
-  // The window takes its colors from the workspace shown, as in Arc and Zen (a
-  // gray one gives colors without a hue; see BrowserWidget), unless it has a
-  // theme from an extension.
-  const ThemeService* theme =
-      ThemeServiceFactory::GetForProfile(browser_->GetProfile());
-  if (views::Widget* widget = GetWidget();
-      widget && !browser_->GetProfile()->IsOffTheRecord() &&
-      !(theme && theme->UsingExtensionTheme())) {
-    // Gray, without a hue, for a workspace that keeps the window's colors.
-    widget->GetTopLevelWidget()->SetUserColorOverride(
-        shown ? std::optional<SkColor>(PaletteSeed(
-                    shown->tints_window
-                        ? shown->color
-                        : static_cast<int>(tab_groups::TabGroupColorId::kGrey)))
-              : std::nullopt);
-  }
+  ApplyTheme();
   // All but the downloads button, which stays.
   for (views::View* child :
        std::vector<views::View*>(children().begin(), children().end())) {
@@ -632,6 +682,26 @@ std::unique_ptr<ui::SimpleMenuModel> CreateMoveToWorkspaceMenu(
   return std::make_unique<MoveToWorkspaceMenu>(browser, tabs);
 }
 
+bool IsThemeDark(BrowserWindowInterface* browser, const Theme& theme) {
+  if (theme.scheme != Theme::Scheme::kAuto) {
+    return theme.scheme == Theme::Scheme::kDark;
+  }
+  // The browser's light or dark mode (the system's, by default), as the window
+  // would have it without the theme.
+  const ThemeService* theme_service =
+      ThemeServiceFactory::GetForProfile(browser->GetProfile());
+  switch (theme_service ? theme_service->GetBrowserColorScheme()
+                        : ThemeService::BrowserColorScheme::kSystem) {
+    case ThemeService::BrowserColorScheme::kLight:
+      return false;
+    case ThemeService::BrowserColorScheme::kDark:
+      return true;
+    case ThemeService::BrowserColorScheme::kSystem:
+      return ui::NativeTheme::GetInstanceForNativeUi()->preferred_color_scheme() ==
+             ui::NativeTheme::PreferredColorScheme::kDark;
+  }
+}
+
 ui::ImageModel WorkspaceIcon(BrowserWindowInterface* browser,
                              const std::u16string& group_title,
                              int size) {
@@ -639,13 +709,13 @@ ui::ImageModel WorkspaceIcon(BrowserWindowInterface* browser,
   for (const Workspace& workspace : GetWorkspaces(browser->GetProfile())) {
     if (workspace.name == name) {
       if (ui::ImageModel icon =
-              icons::Image(workspace.icon, DotColor(workspace.color), size);
+              icons::Image(workspace.icon, GroupColor(workspace.color), size);
           !icon.IsEmpty()) {
         return icon;
       }
       return ui::ImageModel::FromImageSkia(
           gfx::CanvasImageSource::MakeImageSkia<IconSource>(
-              base::UTF8ToUTF16(workspace.icon), DotColor(workspace.color),
+              base::UTF8ToUTF16(workspace.icon), GroupColor(workspace.color),
               size));
     }
   }

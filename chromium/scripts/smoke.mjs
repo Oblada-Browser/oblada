@@ -30,6 +30,10 @@ fs.writeFileSync(path.join(extension, 'manifest.json'), JSON.stringify({
 fs.writeFileSync(path.join(extension, 'background.js'), `
 chrome.webRequest.onBeforeRequest.addListener(
   () => ({ cancel: true }), { urls: ['*://oblada-mv2-check.test/*'] }, ['blocking']);
+// The tab each test page loaded in, by address.
+self.requestTabs = {};
+chrome.webRequest.onBeforeRequest.addListener(
+  (details) => { requestTabs[details.url] = details.tabId; }, { urls: ['http://127.0.0.1/*'] });
 `);
 
 // chrome://omnibox is one of the debug pages, which are off unless enabled in Local State.
@@ -65,6 +69,17 @@ const server = http.createServer((req, res) => {
   if (req.url === '/silence.wav') {
     res.setHeader('Content-Type', 'audio/wav');
     res.end(silentWav());
+    return;
+  }
+  // Mozilla's list of tracking parameters, as its server answers (see cleanLinkChecks).
+  if (req.url === '/mozilla-list.json') {
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ data: [{ stripList: ['oblada_mozilla_tracker'], allowList: [] }] }));
+    return;
+  }
+  if (req.url === '/?peek-from') {
+    res.setHeader('Content-Type', 'text/html');
+    res.end('<!doctype html><a href="/?peek" style="display:block;font-size:40px;padding:40px">peek</a>');
     return;
   }
   if (req.url === '/?music') {
@@ -169,7 +184,8 @@ const launch = (args = []) => launchOblada({
   app,
   profile,
   args: [`--load-extension=${extension}`, '--oblada-auto-confirm-addon-install',
-         '--oblada-addon-update-interval=2', `--oblada-snapshot-dir=${snapshots}`, ...args],
+         '--oblada-addon-update-interval=2', `--oblada-snapshot-dir=${snapshots}`,
+         `--oblada-mozilla-list-url=${site}mozilla-list.json`, ...args],
 });
 
 async function coreChecks(o) {
@@ -280,6 +296,61 @@ async function splitChecks(o) {
   check('a split pane dragged by its grip onto the sidebar becomes a page again',
     separate.length === 1, JSON.stringify(separate));
   for (const targetId of tabs) await o.send('Target.closeTarget', { targetId });
+}
+
+// A link force-clicked opens in a peek, a card over its page, which extensions see as
+// the tab it may become (see oblada/browser/peek/peek.h).
+async function peekChecks(o) {
+  const background = (await o.pages()).find((p) => p.type === 'background_page'
+    && p.url.endsWith('/_generated_background_page.html'));
+  const extension = await o.attach(background.targetId);
+  const fromId = (await o.send('Target.createTarget', { url: `${site}?peek-from` })).targetId;
+  const from = await o.attach(fromId);
+  await until('page with a link', () => o.evaluate('document.readyState === "complete"', from));
+  const link = JSON.parse(await o.evaluate('JSON.stringify(document.querySelector("a").getBoundingClientRect())', from));
+  await o.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: link.x + 20, y: link.y + 20 }, from);
+  await sleep(500);
+  await snapshot(snapshots, path.join(tmp, 'peek.png'), 'force-click wait:1500');
+  const peek = (await o.pages()).find((p) => p.type === 'page' && p.url === `${site}?peek`);
+  const tabId = await o.evaluate(`requestTabs[${JSON.stringify(`${site}?peek`)}] ?? -1`, extension);
+  const ran = tabId > 0 && await o.evaluate(`new Promise((resolve) => chrome.tabs.executeScript(${tabId},
+    { code: 'document.title' }, (r) => resolve(chrome.runtime.lastError?.message ?? r[0])))`, extension);
+  check('extensions see a peek as a tab (its requests, tabs.executeScript)',
+    tabId > 0 && ran === 'Oblada test page', `tab ${tabId}, ${ran}`);
+  // Fullscreen is for tabs: asked for in a peek, its page becomes one.
+  const s = peek && await o.attach(peek.targetId);
+  const full = s && await o.evaluate(`Promise.race([
+    document.documentElement.requestFullscreen().then(() => 'ok', String),
+    new Promise((resolve) => setTimeout(() => resolve('no answer'), 3000))])`, s, true);
+  const fullscreen = s && await o.evaluate('!!document.fullscreenElement', s);
+  const index = tabId > 0 && await o.evaluate(`new Promise((resolve) =>
+    chrome.tabs.get(${tabId}, (tab) => resolve(tab?.index ?? -1)))`, extension);
+  check('fullscreen asked for in a peek makes it a tab, in fullscreen',
+    full === 'ok' && fullscreen && index >= 0, `${full}, tab at ${index}`);
+  if (fullscreen) await o.evaluate('document.exitFullscreen()', s);
+  await sleep(500);
+  for (const targetId of [peek?.targetId, fromId].filter(Boolean)) {
+    await o.send('Target.closeTarget', { targetId });
+  }
+}
+
+// "Copy link" (the site panel's, IDC_COPY_URL) copies the page's link without its
+// tracking parameters, nor those of a link in its parameters (see
+// oblada/browser/clean_links/clean_links.h), Mozilla's list's among them, which
+// Oblada downloads from this test's server. Headless, the clipboard is Oblada's own.
+async function cleanLinkChecks(o) {
+  const inner = (query) => encodeURIComponent(`http://example.com/?${query}`);
+  const url = `${site}?clean-links&utm_source=news&id=5&url=${inner('utm_medium=x&q=1')}&FBCLID=x&oblada_mozilla_tracker=1#top`;
+  const expected = `${site}?clean-links&id=5&url=${inner('q=1')}#top`;
+  const { targetId } = await o.send('Target.createTarget', { url });
+  const s = await o.attach(targetId);
+  await until('page with tracking parameters', () => o.evaluate('document.readyState === "complete"', s));
+  await snapshot(snapshots, path.join(tmp, 'clean-link.png'), '34071 wait:300');
+  await o.send('Browser.grantPermissions', { origin: new URL(site).origin, permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'] });
+  await o.send('Emulation.setFocusEmulationEnabled', { enabled: true }, s);
+  const copied = await o.evaluate('navigator.clipboard.readText()', s, true).catch((e) => e.message);
+  check('"Copy link" copies the page\'s link without its tracking parameters', copied === expected, copied);
+  await o.send('Target.closeTarget', { targetId });
 }
 
 // Music playing in a tab other than the one shown gets a card at the bottom of the
@@ -480,6 +551,131 @@ async function containerChecks(o) {
   const back = tabsShown(`${shot}-swipe-back.layout.txt`);
   check('swiping on the sidebar moves between workspaces', next === 2 && back === home,
     `${home} → ${next} → ${back} tabs`);
+
+  // The workspace's name above its tabs is hidden, until Settings > Oblada turns it on
+  // (through Settings' own API, which needs the pref allowed there).
+  const headerShown = (file) => fs.readFileSync(file, 'utf8').split('\n')
+    .some((l) => /^\s*TabGroupHeaderView \d+,\d+ \d+x\d+$/.test(l));
+  const hiddenAtFirst = !headerShown(`${shot}-swipe-back.layout.txt`);
+  const settingsId = (await o.send('Target.createTarget',
+    { url: 'chrome://settings/oblada' })).targetId;
+  const settings = await o.attach(settingsId);
+  const toggle = `(function find(root) {
+    const found = root.querySelector('settings-toggle-button[pref-key="oblada.workspaces.show_header"]');
+    if (found) return found;
+    for (const e of root.querySelectorAll('*')) {
+      const inner = e.shadowRoot && find(e.shadowRoot);
+      if (inner) return inner;
+    }
+    return null;
+  })(document)`;
+  const listed = await until('Settings > Oblada', () =>
+    o.evaluate(`!!${toggle}?.checkVisibility()`, settings), 10000).catch(() => false);
+  await o.evaluate(`${toggle}?.click()`, settings).catch(() => {});
+  const turnedOn = await until('the header turned on', () => o.evaluate(`new Promise((r) =>
+    chrome.settingsPrivate.getPref('oblada.workspaces.show_header', (p) => r(p?.value === true)))`,
+  settings), 5000).catch(() => false);
+  // The window's layout, picked there.
+  const layouts = await o.evaluate(`[...document.querySelector('settings-ui').shadowRoot
+    .querySelector('settings-main').shadowRoot.querySelectorAll(
+      'settings-oblada-page controlled-radio-button')].map((b) => b.name).join(',')`,
+  settings).catch(() => '');
+  await o.send('Target.closeTarget', { targetId: settingsId });
+  await snapshot(snapshots, `${shot}-header.png`, 'wait:300');
+  check('Settings > Oblada offers the sidebar, scaffold and compact layouts',
+    layouts === 'sidebar,scaffold,compact', layouts);
+  check("the workspace's name shows above its tabs once Settings > Oblada turns it on",
+    hiddenAtFirst && listed && turnedOn && headerShown(`${shot}-header.layout.txt`),
+    `hidden at first: ${hiddenAtFirst}, in Settings: ${listed}, turned on: ${turnedOn}`);
+
+  // A workspace's theme: the picker's buttons and colors ready to pick change it, and
+  // the window takes it (its background, as the snapshot's layout says).
+  const background = (file) => fs.readFileSync(file, 'utf8')
+    .match(/^window background colors=(\S*) opacity=(\S+) grain=(\S+) glass=(\S+)$/m);
+  const colors = (match) => (match?.[1] ? match[1].split(',').length : 0);
+  await snapshot(snapshots, `${shot}-theme.png`, 'ws-theme-dots: wait:300 ws-theme');
+  const opened = fs.existsSync(`${shot}-theme.popup.png`);
+  const plain = background(`${shot}-theme.layout.txt`);
+  await snapshot(snapshots, `${shot}-theme-add.png`, 'click:ThemeToolButton:3 click:ThemeToolButton:3');
+  const added = background(`${shot}-theme-add.layout.txt`);
+  check("the theme picker's + adds colors, which the window takes",
+    opened && !!plain && colors(plain) === 0 && colors(added) === 2,
+    `${opened ? 'open' : 'not open'}, ${colors(plain)} → ${colors(added)} colors`);
+  await snapshot(snapshots, `${shot}-theme-preset.png`, 'click:ThemeSwatch:1');
+  const preset = background(`${shot}-theme-preset.layout.txt`);
+  check('a color ready to pick replaces them', colors(preset) === 1 && preset[1] !== added?.[1],
+    preset?.[1]);
+  await snapshot(snapshots, `${shot}-theme-glass.png`,
+    'ws-theme-opacity:0.8 ws-theme-grain:0.5 ws-theme-scheme:light escape');
+  const glass = background(`${shot}-theme-glass.layout.txt`);
+  check("the window takes the theme's opacity, grain and scheme",
+    glass?.[2] === '0.80' && glass?.[3] === '0.50' && glass?.[4] === 'light', glass?.[0]);
+  await snapshot(snapshots, `${shot}-theme-back.png`,
+    'ws-theme-opacity:default ws-theme-grain:0 ws-theme-scheme:auto');
+
+  // The default theme: the workspaces without their own take it, and one that has
+  // its own can take it back.
+  await snapshot(snapshots, `${shot}-default.png`,
+    'ws-theme-default default-theme-reset wait:300 default-theme');
+  const reset = background(`${shot}-default.layout.txt`);
+  await snapshot(snapshots, `${shot}-default-add.png`, 'click:ThemeToolButton:3');
+  const followed = background(`${shot}-default-add.layout.txt`);
+  check('a workspace without its own theme takes the default one',
+    !!reset && colors(reset) === 0 && colors(followed) === 1,
+    `${colors(reset)} → ${followed?.[1]}`);
+  await snapshot(snapshots, `${shot}-own.png`, 'escape ws-theme-dots:120,0.6;300,0.6');
+  const own = background(`${shot}-own.layout.txt`);
+  await snapshot(snapshots, `${shot}-own-back.png`, 'ws-theme-default');
+  const takenBack = background(`${shot}-own-back.layout.txt`);
+  check("a workspace's own theme replaces the default one, until it takes it back",
+    colors(own) === 2 && takenBack?.[1] === followed?.[1],
+    `${own?.[1]} → ${takenBack?.[1]}`);
+  await snapshot(snapshots, `${shot}-default-back.png`, 'default-theme-reset');
+
+  const shown = (file, name) => fs.readFileSync(file, 'utf8')
+    .match(new RegExp(`^\\s*${name} (-?\\d+),(-?\\d+) (\\d+)x(\\d+)(?!\\d| hidden)`, 'm'))
+    ?.slice(1).map(Number);
+  const controlsIn = (file) => fs.readFileSync(file, 'utf8')
+    .match(/^window control (\d+),(\d+)/m)?.slice(1).map(Number);
+
+  // Scaffold mode: the toolbar a row at the top of the window, the tabs' icons a
+  // column below it, left of the page.
+  await snapshot(snapshots, `${shot}-scaffold.png`, 'mode:scaffold wait:600');
+  const scaffoldBar = shown(`${shot}-scaffold.layout.txt`, 'TopContainerView');
+  const scaffoldTabs = shown(`${shot}-scaffold.layout.txt`, 'VerticalTabStripRegionView');
+  const scaffoldPage = shown(`${shot}-scaffold.layout.txt`, 'MultiContentsView');
+  check('scaffold, the address bar is a row at the top and the tabs icons on the side',
+    scaffoldBar?.[0] === 0 && scaffoldBar?.[1] === 0 &&
+      scaffoldBar?.[2] >= scaffoldPage?.[0] + scaffoldPage?.[2] && scaffoldTabs?.[2] < 60 &&
+      scaffoldTabs?.[1] >= scaffoldBar?.[3] && scaffoldPage?.[0] > scaffoldTabs?.[0] + scaffoldTabs?.[2],
+    `toolbar ${scaffoldBar}, tabs ${scaffoldTabs}, page ${scaffoldPage}`);
+
+  // Compact mode (collapsing the sidebar, as with ⌘⇧L, goes back there): only the
+  // page; the sidebar widens over it as a card with the window controls in its
+  // corner.
+  await snapshot(snapshots, `${shot}-compact.png`, 'mode:compact wait:600');
+  const compactPage = shown(`${shot}-compact.layout.txt`, 'MultiContentsView');
+  const compactTabs = shown(`${shot}-compact.layout.txt`, 'VerticalTabStripRegionView');
+  const hiddenControls = controlsIn(`${shot}-compact.layout.txt`);
+  await snapshot(snapshots, `${shot}-compact-open.png`, 'expand wait:600');
+  const panel = shown(`${shot}-compact-open.layout.txt`, 'VerticalTabStripBackgroundBlurBackdrop');
+  const controls = controlsIn(`${shot}-compact-open.layout.txt`);
+  check('compact, only the page; the sidebar expands over it with the window controls',
+    compactPage?.[0] === 8 && compactTabs?.[0] + compactTabs?.[2] <= 8 && !hiddenControls &&
+      panel?.[2] > 200 && controls?.[0] > 13 && controls?.[1] > 13,
+    `page ${compactPage}, tabs ${compactTabs}, panel ${panel}, window controls at ${controls}`);
+  // Its address bar floats over the page too (here focused as with ⌘L).
+  await snapshot(snapshots, `${shot}-compact-float.png`, 'expand wait:600 39001 wait:800');
+  const floating = shown(`${shot}-compact-float.layout.txt`, 'LocationBarView');
+  check('compact, the address bar floats over the page once focused',
+    floating?.[0] > 100 && floating?.[2] > 300, `address bar at ${floating}`);
+  await snapshot(snapshots, `${shot}-compact-back.png`, 'escape escape 34061 wait:600');
+  const expanded = shown(`${shot}-compact-back.layout.txt`, 'VerticalTabStripRegionView');
+  await snapshot(snapshots, `${shot}-compact-again.png`, '34061 wait:600');
+  const again = shown(`${shot}-compact-again.layout.txt`, 'MultiContentsView');
+  await snapshot(snapshots, `${shot}-sidebar.png`, 'mode:sidebar wait:600');
+  check('⌘⇧L goes from compact to the sidebar and back to compact',
+    expanded?.[2] > 200 && again?.[0] === 8, `sidebar ${expanded}, page then at ${again}`);
 }
 
 // The installed extensions as chrome://extensions-internals lists them.
@@ -636,14 +832,28 @@ async function firstRunChecks() {
   const firstRunProfile = path.join(tmp, 'first-run');
   const o = await launchOblada({ app, profile: firstRunProfile, firstRun: true });
   let tabs = [];
+  let layouts = '';
+  let picked = '';
   try {
     tabs = await until('first window', async () => {
       const pages = (await o.pages()).filter((p) => p.type === 'page');
       return pages.length && pages;
     });
+    // Its layout step: the three layouts, and picking one sets the window's.
+    const welcome = await o.attach(tabs[0].targetId);
+    layouts = await until('the layouts', () => o.evaluate(
+      `[...document.querySelectorAll('.layout')].map((l) => l.dataset.mode).join(',')`,
+      welcome), 10000).catch(() => '');
+    await o.evaluate(`document.querySelector('.layout[data-mode="scaffold"]').click()`, welcome)
+      .catch(() => {});
+    picked = await until('the layout picked', () => o.evaluate(
+      `import('chrome://resources/js/cr.js').then((cr) => cr.sendWithPromise('getLayout'))`,
+      welcome).then((mode) => mode === 'scaffold' && mode), 5000).catch(() => '');
   } finally {
     await o.kill();
   }
+  check('the welcome offers the three layouts, and picking one sets it',
+    layouts === 'sidebar,scaffold,compact' && picked === 'scaffold', `${layouts}; picked ${picked}`);
   const state = JSON.parse(fs.readFileSync(path.join(firstRunProfile, 'Local State'), 'utf8'));
   check('the first launch opens the welcome, not Chromium\'s first run',
     tabs.length === 1 && tabs[0].url === 'chrome://welcome/' && state.browser?.first_run_finished === true,
@@ -658,6 +868,8 @@ try {
   oblada = await launch();
   await coreChecks(oblada);
   await splitChecks(oblada);
+  await peekChecks(oblada);
+  await cleanLinkChecks(oblada);
   await mediaChecks(oblada);
   await containerChecks(oblada);
   await firefoxChecks(oblada);

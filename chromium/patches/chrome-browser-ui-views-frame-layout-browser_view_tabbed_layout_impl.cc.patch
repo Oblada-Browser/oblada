@@ -1,34 +1,73 @@
 diff --git a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-index 389c6f8c6e..3c7722d418 100644
+index 389c6f8c6e..26f9878246 100644
 --- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 +++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-@@ -4,6 +4,11 @@
+@@ -4,6 +4,13 @@
  
  #include "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.h"
  
 +#include "oblada/browser/ui/floating_location_bar.h"  // Oblada
++#include "oblada/browser/ui/sidebar_card.h"  // Oblada
 +#include "oblada/browser/ui/sidebar_layout.h"  // Oblada
++#include "oblada/browser/ui/sidebar_mode.h"  // Oblada
 +#include "oblada/browser/ui/split_handle.h"  // Oblada
 +#include "oblada/browser/ui/traffic_lights.h"  // Oblada
 +
  #include <algorithm>
  #include <memory>
  #include <optional>
-@@ -214,6 +219,13 @@ struct BrowserViewTabbedLayoutImpl::TransientLayoutData {
+@@ -214,6 +221,22 @@ struct BrowserViewTabbedLayoutImpl::TransientLayoutData {
    VerticalTabStripAnimation vertical_tab_strip_animation;
    SeparatorInfo separator_info;
    SidePanelContentAnimation side_panel_content_animation;
-+  // Oblada: the toolbar is at the top of the vertical tab strip (see sidebar_layout.h).
++  // Oblada: the window's layout (oblada/browser/ui/sidebar_mode.h). Sidebar: the
++  // toolbar is at the top of the vertical tab strip (see sidebar_layout.h).
 +  bool oblada_sidebar = false;
-+  // Oblada: the vertical tab strip is collapsed, and compact: the toolbar shows at its
-+  // top only as it expands on hover (see sidebar_layout.h).
++  // Oblada: scaffold, the vertical tab strip is collapsed, a column of the tabs'
++  // icons, and the toolbar a row at the top of the window.
++  bool oblada_scaffold = false;
++  // Oblada: compact, the vertical tab strip is collapsed and hidden: it shows,
++  // its toolbar at its top, only as it expands on hover (see sidebar_layout.h).
 +  bool oblada_compact = false;
-+  // Oblada: either way, the page floats next to the sidebar.
-+  bool oblada_zen() const { return oblada_sidebar || oblada_compact; }
++  // Oblada: any of them, the page floating next to what's around it.
++  bool oblada_zen() const {
++    return oblada_sidebar || oblada_scaffold || oblada_compact;
++  }
++  // Oblada: compact, the sidebar's card widens over the page, what's in it at its
++  // full width, while it's expanded on hover, even partly.
++  bool oblada_overlay = false;
  };
  
  BrowserViewTabbedLayoutImpl::BrowserViewTabbedLayoutImpl(
-@@ -895,9 +907,60 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -822,6 +845,8 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+   const VerticalTabStripAnimation& vertical_tab_strip_animation =
+       layout_data_->vertical_tab_strip_animation;
+   gfx::Rect vertical_tab_strip_bounds;
++  // Oblada: the compact sidebar's card (see oblada/browser/ui/sidebar_card.h).
++  gfx::Rect oblada_card;
+   if (IsParentedTo(views().vertical_tab_strip_region_view,
+                    views().browser_view)) {
+     if (layout_data_->tab_strip_type == TabStripType::kVertical) {
+@@ -830,10 +855,17 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+             horizontal_layout.vertical_tab_strip_width;
+       }
+ 
++      // Oblada: compact, the sidebar is at its full width as soon as it expands
++      // on hover, laid out once: its card widens around it rather than it (see
++      // the compact layout below).
++      const double hover_width =
++          layout_data_->oblada_overlay
++              ? 1.0
++              : vertical_tab_strip_animation.expand_on_hover_width;
+       const int vertical_tab_strip_hover_width =
+           std::max(0, tabs::kVerticalTabStripDefaultUncollapsedWidth -
+                           horizontal_layout.vertical_tab_strip_width) *
+-          vertical_tab_strip_animation.expand_on_hover_width;
++          hover_width;
+ 
+       int vertical_tab_strip_width =
+           horizontal_layout.vertical_tab_strip_width +
+@@ -895,19 +927,126 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
              0, horizontal_layout.vertical_tab_strip_width, 0, 0));
        }
      }
@@ -50,22 +89,55 @@ index 389c6f8c6e..3c7722d418 100644
 +          top_container_local_bounds, column_params);
 +      region_bounds.Inset(
 +          gfx::Insets::TLBR(top_container_layout.bounds.height(), 0, 0, 0));
-+    } else if (layout_data_->oblada_compact) {
-+      // Oblada: compact, the tabs start at the top of the window. As the tab strip
-+      // expands on hover the toolbar slides in at its top, at its expanded width,
-+      // and the tabs move down below it. Hidden, the toolbar is just out of the
-+      // window, so that the address bar can still take the focus (which expands the
-+      // tab strip).
-+      const double reveal = vertical_tab_strip_animation.expand_on_hover_width;
-+      region_bounds = gfx::Rect(vertical_tab_strip_bounds.x(),
-+                                params.visual_client_area.y(),
-+                                vertical_tab_strip_bounds.width(),
-+                                params.visual_client_area.height());
++    } else if (layout_data_->oblada_scaffold) {
++      // Oblada: scaffold, the toolbar is a row at the top of the window, next to
++      // the window controls, and the tabs' icons a column below it, left of the
++      // page, with the page's margins around them. The page is right below the
++      // toolbar, as far from its address bar as the window's top is.
++      const int margin = oblada::sidebar::CardMargin();
 +      auto& top_container_layout =
 +          layout.AddChild(views().top_container, gfx::Rect());
-+      const gfx::Rect column(region_bounds.x(), region_bounds.y(),
-+                             tabs::kVerticalTabStripDefaultUncollapsedWidth,
-+                             region_bounds.height());
++      // Across the window, above the tabs too.
++      const BrowserLayoutParams& window_params = layout_data_->revised_params;
++      const gfx::Rect top_container_local_bounds = CalculateTopContainerLayout(
++          top_container_layout,
++          window_params.InLocalCoordinates(window_params.visual_client_area),
++          /*needs_exclusion=*/true);
++      top_container_layout.bounds = GetTopContainerBoundsInParent(
++          top_container_local_bounds, window_params);
++      params.SetTop(top_container_layout.bounds.bottom());
++      region_bounds = gfx::Rect(
++          vertical_tab_strip_bounds.x() + margin, params.visual_client_area.y(),
++          horizontal_layout.vertical_tab_strip_width,
++          params.visual_client_area.height() - margin);
++    } else if (layout_data_->oblada_compact) {
++      // Oblada: compact, only the page shows. As the sidebar expands on hover (the
++      // pointer at the window's left edge, where the narrow tab strip is, out of
++      // the window but for the margin), a card widens over the page from there
++      // (see oblada/browser/ui/sidebar_card.h), and shows what's in it at its
++      // full width from the start: the toolbar at its top (the window controls
++      // in its corner), which comes down from the card's top, fading in, and the
++      // tabs below it (see DoPostLayoutVisualAdjustments()). Hidden, the toolbar
++      // is laid out just out of the window: its address bar can still take the
++      // focus, and float over the page from there.
++      const int margin = oblada::sidebar::CardMargin();
++      const int narrow_width = horizontal_layout.vertical_tab_strip_width;
++      const int full_width = std::max(
++          narrow_width, tabs::kVerticalTabStripDefaultUncollapsedWidth);
++      const double expanded =
++          layout_data_->oblada_overlay
++              ? vertical_tab_strip_animation.expand_on_hover_width
++              : 0.0;
++      oblada_card = gfx::Rect(
++          vertical_tab_strip_bounds.x() + margin,
++          params.visual_client_area.y() + margin,
++          std::max(1, base::ClampRound(full_width * expanded)),
++          params.visual_client_area.height() - 2 * margin);
++      auto& top_container_layout =
++          layout.AddChild(views().top_container, gfx::Rect());
++      region_bounds = oblada_card;
++      region_bounds.set_width(full_width);
++      const gfx::Rect column = region_bounds;
 +      const BrowserLayoutParams column_params =
 +          layout_data_->revised_params.WithClientArea(column);
 +      const gfx::Rect top_container_local_bounds = CalculateTopContainerLayout(
@@ -73,25 +145,64 @@ index 389c6f8c6e..3c7722d418 100644
 +          /*needs_exclusion=*/false);
 +      top_container_layout.bounds = GetTopContainerBoundsInParent(
 +          top_container_local_bounds, column_params);
-+      top_container_layout.bounds.Offset(
-+          -base::ClampRound(column.width() * (1.0 - reveal)), 0);
-+      if (reveal == 0.0) {
-+        top_container_layout.bounds = gfx::Rect();
++      if (layout_data_->oblada_overlay) {
++        // The toolbar comes down from the card's top, the tabs below it.
++        const int toolbar_shown = base::ClampRound(
++            top_container_layout.bounds.height() * expanded);
++        top_container_layout.bounds.Offset(
++            0, toolbar_shown - top_container_layout.bounds.height());
++        region_bounds.Inset(gfx::Insets::TLBR(toolbar_shown, 0, 0, 0));
++      } else {
++        top_container_layout.bounds.Offset(-column.right(), 0);
++        region_bounds = gfx::Rect(oblada_card.x() - narrow_width,
++                                  oblada_card.y(), narrow_width,
++                                  oblada_card.height());
 +      }
-+      region_bounds.Inset(gfx::Insets::TLBR(
-+          base::ClampRound(top_container_layout.bounds.height() * reveal), 0, 0,
-+          0));
 +    }
 +    layout.AddChild(views().vertical_tab_strip_region_view, region_bounds,
                      layout_data_->tab_strip_type == TabStripType::kVertical);
-+    // Oblada: and the page floats next to them, Zen-like.
++    // Oblada: and the page floats next to them, Zen-like: in scaffold mode next
++    // to the tabs' icons and their margins, in compact mode alone in the window.
 +    if (layout_data_->oblada_zen()) {
 +      params.Inset(oblada::sidebar::ContentInsets());
++    }
++    if (layout_data_->oblada_scaffold) {
++      params.Inset(gfx::Insets::TLBR(-oblada::sidebar::ContentInsets().top(),
++                                     2 * oblada::sidebar::CardMargin(), 0, 0));
++    } else if (layout_data_->oblada_compact) {
++      params.Inset(gfx::Insets::TLBR(
++          0,
++          oblada::sidebar::CardMargin() -
++              (horizontal_layout.vertical_tab_strip_width -
++               GetVerticalTabStripContentOverlap()),
++          0, 0));
 +    }
    }
  
    if (IsParentedTo(views().vertical_tab_strip_background_blur_backdrop,
-@@ -916,6 +979,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+                    views().browser_view)) {
+-    layout.AddChild(
+-        views().vertical_tab_strip_background_blur_backdrop,
+-        vertical_tab_strip_bounds,
+-        in_glass_mode() && features::kGlassExpandOnHoverEnabled.Get() &&
+-            layout_data_->vertical_tab_strip_animation.expand_on_hover_width >
+-                0.0f);
++    if (layout_data_->oblada_compact) {
++      // Oblada: it draws the compact sidebar's card, as it expands.
++      layout.AddChild(views().vertical_tab_strip_background_blur_backdrop,
++                      oblada_card, layout_data_->oblada_overlay);
++    } else {
++      layout.AddChild(
++          views().vertical_tab_strip_background_blur_backdrop,
++          vertical_tab_strip_bounds,
++          in_glass_mode() && features::kGlassExpandOnHoverEnabled.Get() &&
++              layout_data_->vertical_tab_strip_animation.expand_on_hover_width >
++                  0.0f);
++    }
+   }
+ 
+   // Position the vertical tabstrip top corner.
+@@ -916,6 +1055,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
      gfx::Rect corner_bounds;
      const bool top_corner_visible =
          layout_data_->tab_strip_type == TabStripType::kVertical &&
@@ -99,7 +210,7 @@ index 389c6f8c6e..3c7722d418 100644
          vertical_tab_strip_animation.top_corner > 0.0;
  
      // The top corner is drawn when the tabstrip goes all the way to the top.
-@@ -939,6 +1003,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -939,6 +1079,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
      gfx::Rect corner_bounds;
      const bool bottom_corner_visible =
          layout_data_->tab_strip_type == TabStripType::kVertical &&
@@ -107,7 +218,7 @@ index 389c6f8c6e..3c7722d418 100644
          vertical_tab_strip_animation.bottom_corner > 0.0;
      if (bottom_corner_visible) {
        auto preferred =
-@@ -959,6 +1024,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -959,6 +1100,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
    // When the tabstrip isn't at the top or in constrained widths, the top
    // container is laid out before all side panels.
    if (horizontal_layout.force_top_container_to_top &&
@@ -115,7 +226,7 @@ index 389c6f8c6e..3c7722d418 100644
        IsParentedTo(views().top_container, views().browser_view)) {
      auto& top_container_layout =
          layout.AddChild(views().top_container, gfx::Rect());
-@@ -1095,6 +1161,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1095,6 +1237,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
    // toolbar-height side panel with a horizontal tabstrip if the browser is wide
    // enough.
    if (!horizontal_layout.force_top_container_to_top &&
@@ -123,7 +234,7 @@ index 389c6f8c6e..3c7722d418 100644
        IsParentedTo(views().top_container, views().browser_view)) {
      auto& top_container_layout =
          layout.AddChild(views().top_container, gfx::Rect());
-@@ -1138,7 +1205,8 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1138,7 +1281,8 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
    // the required top padding.
    const auto& separator_info = layout_data_->separator_info;
    views().multi_contents_view->SetShouldShowTopSeparator(
@@ -133,7 +244,7 @@ index 389c6f8c6e..3c7722d418 100644
  
    // Updating the top, left and right insets for contents container view when
    // in split view. This is dependent on a number of other browser states.
-@@ -1161,7 +1229,12 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1161,7 +1305,12 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
          include_leading_inset ? default_inset : panel_side_inset, default_inset,
          include_trailing_inset ? default_inset : panel_side_inset);
  
@@ -147,7 +258,7 @@ index 389c6f8c6e..3c7722d418 100644
    }
  
    // Update the multi-contents view about if we will be animating content
-@@ -1260,6 +1333,13 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1260,6 +1409,13 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
      }
      views().multi_contents_view->SetBackgroundRadii(content_corners);
    }
@@ -161,7 +272,7 @@ index 389c6f8c6e..3c7722d418 100644
  
    // Make final visual adjustments required for child views to paint.
    if (layout_data_->tab_strip_type == TabStripType::kVertical) {
-@@ -1275,7 +1355,8 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1275,7 +1431,8 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
      int caption_button_width = 0;
  
      // If the toolbar is not in the browser, then the exclusion isn't either.
@@ -171,7 +282,7 @@ index 389c6f8c6e..3c7722d418 100644
        // Calculate the toolbar height adjacent to the tabstrip. This will be
        // zero if the toolbar is in e.g. an immersive mode overlay, or is not
        // aligned with the tabstrip (which can happen in collapsed mode with
-@@ -1444,7 +1525,17 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+@@ -1444,7 +1601,17 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
    // parented to the `top_container()` and the frame header is not visible.
    // In these cases, the top container's background color should match the
    // frame color to ensure visual consistency.
@@ -190,7 +301,7 @@ index 389c6f8c6e..3c7722d418 100644
        IsParentedTo(views().horizontal_tab_strip_region_view,
                     views().top_container)) {
      background->SetPrimaryColor(ui::kColorFrameActive);
-@@ -1509,6 +1600,51 @@ void BrowserViewTabbedLayoutImpl::DoPreLayoutComputations(
+@@ -1509,6 +1676,70 @@ void BrowserViewTabbedLayoutImpl::DoPreLayoutComputations(
    layout_data_->separator_info = CalculateSeparatorInfo();
    layout_data_->side_panel_content_animation =
        CalculateSidePanelContentAnimation();
@@ -206,8 +317,8 @@ index 389c6f8c6e..3c7722d418 100644
 +      IsParentedTo(views().vertical_tab_strip_region_view,
 +                   views().browser_view) &&
 +      IsParentedTo(views().toolbar, views().top_container);
-+  // Oblada: collapsed, the sidebar is compact.
-+  layout_data_->oblada_compact =
++  // Oblada: collapsed, the sidebar is scaffold or compact.
++  const bool oblada_collapsed =
 +      !layout_data_->oblada_sidebar &&
 +      layout_data_->tab_strip_type == TabStripType::kVertical &&
 +      layout_data_->window_state != WindowState::kFullscreen &&
@@ -215,6 +326,21 @@ index 389c6f8c6e..3c7722d418 100644
 +      IsParentedTo(views().vertical_tab_strip_region_view,
 +                   views().browser_view) &&
 +      IsParentedTo(views().toolbar, views().top_container);
++  layout_data_->oblada_scaffold =
++      oblada_collapsed &&
++      oblada::sidebar::ModeOf(views().vertical_tab_strip_region_view) ==
++          oblada::sidebar::Mode::kScaffold;
++  layout_data_->oblada_compact =
++      oblada_collapsed && !layout_data_->oblada_scaffold;
++  layout_data_->oblada_overlay =
++      layout_data_->oblada_compact &&
++      layout_data_->vertical_tab_strip_animation.expand_on_hover_width > 0.0;
++  // Oblada: what's in the tab strip is as narrow as it is in scaffold mode
++  // (sidebar_layout.h's SetExpansion()).
++  if (views().vertical_tab_strip_region_view) {
++    oblada::sidebar::SetExpansion(views().vertical_tab_strip_region_view,
++                                  layout_data_->oblada_scaffold ? 0.0f : 1.0f);
++  }
 +  // Oblada: no line between the toolbar and the tabs below it (full screen has one).
 +  if (layout_data_->oblada_zen()) {
 +    layout_data_->separator_info.top_container_separator = false;
@@ -227,8 +353,12 @@ index 389c6f8c6e..3c7722d418 100644
 +        params.visual_client_area.x();
 +    oblada::sidebar::SetToolbarInSidebar(
 +        views().toolbar,
-+        layout_data_->oblada_zen() ? std::max(0, window_controls_width) : -1,
++        layout_data_->oblada_sidebar || layout_data_->oblada_compact
++            ? std::max(0, window_controls_width)
++            : -1,
 +        layout_data_->oblada_compact);
++    oblada::sidebar::SetScaffoldToolbar(views().toolbar,
++                                        layout_data_->oblada_scaffold);
 +  }
 +  if (IsParentedTo(views().top_container, views().browser_view) &&
 +      IsParentedTo(views().multi_contents_view, views().browser_view)) {
@@ -242,34 +372,26 @@ index 389c6f8c6e..3c7722d418 100644
  }
  
  void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
-@@ -1528,6 +1664,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1528,6 +1759,8 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
    CustomCorners::ColorChoiceWithAlpha frame_color(CustomCorners::FrameTheme(),
                                                    1.0f);
    CustomCornersBackground* vertical_tabs_background = nullptr;
-+  // Oblada: the compact sidebar's toolbar, over the page: as the tab strip
-+  // expanded under it.
++  // Oblada: the compact sidebar's tab strip and toolbar, over its card.
 +  CustomCorners::ColorChoiceWithAlpha oblada_compact_color = frame_color;
    if (layout_data_->tab_strip_type == TabStripType::kVertical) {
      side_panel_start = views().vertical_tab_strip_region_view->bounds().right();
  
-@@ -1549,10 +1688,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
-       // visible fade. This isn't perfect, but hopefully with glass
-       // expand-on-hover it will improve.
-       auto vertical_tabs_background_color = frame_color;
-+      // Oblada: opaque over the page in compact mode, which would otherwise
-+      // show through it (its edges, its corners).
-+      const double expand_on_hover_opacity =
-+          layout_data_->oblada_compact ? 1.0 : flyover_panel_opacity;
-       vertical_tabs_background_color.opacity = static_cast<float>(
-           (1.0 - animation.expand_on_hover_opacity) * frame_color.opacity +
--          animation.expand_on_hover_opacity * flyover_panel_opacity);
-+          animation.expand_on_hover_opacity * expand_on_hover_opacity);
-       vertical_tabs_background->SetPrimaryColor(vertical_tabs_background_color);
-+      oblada_compact_color = vertical_tabs_background_color;  // Oblada
+@@ -1556,11 +1789,21 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
      } else {
        vertical_tabs_background->SetPrimaryColor(frame_color);
      }
-@@ -1560,7 +1704,11 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
++    // Oblada: compact, see-through over its card (oblada/browser/ui/sidebar_card.h),
++    // its toolbar too.
++    if (layout_data_->oblada_compact) {
++      oblada_compact_color.opacity = 0.0f;
++      vertical_tabs_background->SetPrimaryColor(oblada_compact_color);
++    }
+ 
      // Ensure that corners of the window remain rounded.
      CustomCornersBackground::Corners vertical_tabs_corners;
      if (layout_data_->window_state == WindowState::kNormal) {
@@ -282,7 +404,7 @@ index 389c6f8c6e..3c7722d418 100644
          vertical_tabs_corners[CornerOrientation::kTopLeading] =
              vertical_tabs_background->GetWindowCorner(/*upper=*/true);
        }
-@@ -1570,7 +1718,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1570,7 +1813,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
  
      // When the vertical tabs are below the toolbar but next to the bookmarks
      // bar, draw a curved corner.
@@ -293,28 +415,94 @@ index 389c6f8c6e..3c7722d418 100644
        vertical_tabs_corners[CornerOrientation::kTopTrailing].type =
            views().vertical_tab_strip_region_view->is_expanded_on_hover()
                ? CustomCornersBackground::CornerType::kRounded
-@@ -1630,6 +1780,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1600,7 +1845,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+     // Apply shadow for expand-on-hover.
+     auto* const shadow_frame =
+         views().vertical_tab_strip_region_view->shadow_frame();
+-    if (vertical_tabs_bottom_corner_amount > 0.0) {
++    // Oblada: compact, its card has a shadow of its own.
++    if (vertical_tabs_bottom_corner_amount > 0.0 &&
++        !layout_data_->oblada_compact) {
+       shadow_frame->SetShadowCornerRadius(vertical_tabs_bottom_corner_size);
+       shadow_frame->SetShadowOpacity(vertical_tabs_bottom_corner_amount);
+       shadow_frame->SetShadowVisible(true);
+@@ -1630,6 +1877,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
      if (animation.expand_on_hover_width > 0.0) {
        vertical_tabs_outline.bottom = true;
      }
-+    // Oblada: no line between the sidebar and the page, which floats next to it.
++    // Oblada: no line between the sidebar and the page, which floats next to it,
++    // nor around the compact sidebar, whose card has an edge of its own.
 +    if (layout_data_->oblada_zen()) {
-+      vertical_tabs_outline.top = vertical_tabs_outline.trailing = false;
++      vertical_tabs_outline.top = vertical_tabs_outline.leading =
++          vertical_tabs_outline.bottom = vertical_tabs_outline.trailing = false;
 +    }
      vertical_tabs_background->SetOutline(vertical_tabs_outline);
  
      // Cut the vertical tab strip out of the top container.
-@@ -1754,6 +1908,24 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1659,9 +1912,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+ 
+       // Has to be done after most other adjustments to ensure the correct
+       // outline path.
+-      const bool use_blur_background = IsParentedToAndVisible(
+-          views().vertical_tab_strip_background_blur_backdrop,
+-          views().browser_view);
++      // Oblada: not over the compact sidebar's card, which it draws.
++      const bool use_blur_background =
++          !layout_data_->oblada_compact &&
++          IsParentedToAndVisible(
++              views().vertical_tab_strip_background_blur_backdrop,
++              views().browser_view);
+       vertical_tabs_background->SetUseBackgroundBlur(use_blur_background);
+       if (use_blur_background) {
+         // The opacity of the backdrop needs to fade over the entire animation
+@@ -1754,6 +2010,61 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
        // happen.
        break;
    }
 +  // Oblada: in the sidebar the toolbar is the sidebar's color, its top the window's.
-+  // Compact, the window controls show with it, once the tab strip has expanded.
-+  oblada::sidebar::SetWindowControlsVisible(
++  // Compact, the sidebar's card (see CalculateProposedLayout()) widens over the
++  // page as it expands on hover, and shows what's in it as it widens; the
++  // toolbar fades in at its top, the window controls with it. Shrinking, the
++  // same backwards.
++  const VerticalTabStripAnimation& oblada_animation =
++      layout_data_->vertical_tab_strip_animation;
++  const bool oblada_overlay = layout_data_->oblada_overlay;
++  if (views::View* const card =
++          views().vertical_tab_strip_background_blur_backdrop) {
++    oblada::sidebar::SetCard(card,
++                             oblada_overlay ? oblada::sidebar::Card::kPanel
++                                            : oblada::sidebar::Card::kNone,
++                             in_glass_mode());
++  }
++  if (layout_data_->oblada_zen()) {
++    for (views::View* view :
++         {static_cast<views::View*>(views().vertical_tab_strip_region_view),
++          static_cast<views::View*>(views().top_container),
++          static_cast<views::View*>(
++              views().vertical_tab_strip_background_blur_backdrop)}) {
++      ui::Layer* layer = view ? view->layer() : nullptr;
++      if (!layer) {
++        continue;
++      }
++      layer->SetOpacity(view == views().top_container && oblada_overlay
++                            ? static_cast<float>(
++                                  oblada_animation.expand_on_hover_opacity)
++                            : 1.0f);
++      if (view != views().vertical_tab_strip_background_blur_backdrop) {
++        oblada::sidebar::ClipToCard(
++            view, views().vertical_tab_strip_background_blur_backdrop);
++      }
++    }
++  }
++  // Oblada: compact, in the panel's corner, once its toolbar has come down;
++  // gone as soon as it starts shrinking.
++  oblada::sidebar::SetWindowControls(
 +      views().browser_view->GetWidget(),
 +      !layout_data_->oblada_compact ||
-+          layout_data_->vertical_tab_strip_animation.expand_on_hover_width >=
-+              1.0);
++          (oblada_overlay && oblada_animation.expand_on_hover_opacity >= 0.5 &&
++           oblada_animation.expand_on_hover_width >= 0.95),
++      layout_data_->oblada_compact ? oblada::sidebar::WindowControlsOffset()
++                                   : gfx::Vector2d());
 +  if (layout_data_->oblada_zen()) {
 +    toolbar_corners = CustomCornersBackground::Corners();
 +    if (layout_data_->window_state == WindowState::kNormal) {
@@ -329,7 +517,7 @@ index 389c6f8c6e..3c7722d418 100644
    toolbar_background->SetCorners(toolbar_corners);
  
    auto* const top_container_background =
-@@ -1779,6 +1951,11 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1779,6 +2090,11 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
      toolbar_background->SetCornerColor(frame_color);
      top_container_background->SetCornerColor(frame_color);
    }

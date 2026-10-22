@@ -51,6 +51,7 @@ namespace oblada::workspaces {
 namespace {
 
 constexpr char kPref[] = "oblada.workspaces.list";
+constexpr char kDefaultThemePref[] = "oblada.workspaces.default_theme";
 
 // The colors new workspaces get, in turn.
 constexpr tab_groups::TabGroupColorId kColors[] = {
@@ -60,6 +61,14 @@ constexpr tab_groups::TabGroupColorId kColors[] = {
     tab_groups::TabGroupColorId::kRed,    tab_groups::TabGroupColorId::kYellow,
     tab_groups::TabGroupColorId::kGrey,
 };
+
+// The default theme until it's changed: no colors (gray), the window's opacity,
+// and grain at the dial's second step.
+Theme FirstDefaultTheme() {
+  Theme theme;
+  theme.grain = 2.0 / (kGrainSteps - 1);
+  return theme;
+}
 
 PrefService* PrefsOf(Profile* profile) {
   // Incognito windows have the same workspaces.
@@ -93,7 +102,9 @@ base::DictValue ToDict(const Workspace& workspace) {
       .Set("icon", workspace.icon)
       .Set("container", workspace.container)
       .Set("color", workspace.color)
-      .Set("tints_window", workspace.tints_window);
+      .Set(workspace.theme ? "theme" : "default_theme",
+           workspace.theme ? base::Value(ThemeToDict(*workspace.theme))
+                           : base::Value(true));
 }
 
 std::optional<Workspace> FromDict(const base::Value& value) {
@@ -118,7 +129,14 @@ std::optional<Workspace> FromDict(const base::Value& value) {
   workspace.color =
       std::clamp(dict->FindInt("color").value_or(0), 0,
                  static_cast<int>(tab_groups::TabGroupColorId::kNumEntries) - 1);
-  workspace.tints_window = dict->FindBool("tints_window").value_or(true);
+  if (const base::DictValue* theme = dict->FindDict("theme")) {
+    workspace.theme = ThemeFromDict(*theme);
+  } else if (!dict->FindBool("default_theme").value_or(false) &&
+             dict->FindBool("tints_window").value_or(true)) {
+    // From before themes: the window took the workspace's color (which is its
+    // own theme now), or kept its own colors (the default theme now).
+    workspace.theme = ThemeFromGroupColor(workspace.color, /*tints_window=*/true);
+  }
   return workspace;
 }
 
@@ -437,6 +455,8 @@ class Keepers : public BrowserCollectionObserver {
 
 void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterListPref(kPref);
+  registry->RegisterDictionaryPref(kDefaultThemePref);
+  registry->RegisterBooleanPref(kShowHeaderPref, false);
 }
 
 std::vector<Workspace> GetWorkspaces(Profile* profile) {
@@ -542,6 +562,33 @@ void RemoveWorkspace(Profile* profile, std::string_view id) {
 base::CallbackListSubscription ObserveWorkspaces(Profile* profile,
                                                  base::RepeatingClosure changed) {
   return ProfileWorkspaces::Get(profile).observers.Add(std::move(changed));
+}
+
+Theme DefaultTheme(Profile* profile) {
+  const base::DictValue& saved = PrefsOf(profile)->GetDict(kDefaultThemePref);
+  return saved.empty() ? FirstDefaultTheme() : ThemeFromDict(saved);
+}
+
+void SetDefaultTheme(Profile* profile, const Theme& theme) {
+  PrefsOf(profile)->SetDict(kDefaultThemePref, ThemeToDict(theme));
+  ProfileWorkspaces::Get(profile).observers.Notify();
+}
+
+void ResetDefaultTheme(Profile* profile) {
+  PrefsOf(profile)->ClearPref(kDefaultThemePref);
+  ProfileWorkspaces::Get(profile).observers.Notify();
+}
+
+bool IsDefaultThemeReset(Profile* profile) {
+  return DefaultTheme(profile) == FirstDefaultTheme();
+}
+
+Theme ThemeOf(Profile* profile, const Workspace& workspace) {
+  return workspace.theme ? *workspace.theme : DefaultTheme(profile);
+}
+
+bool ShowsHeader(Profile* profile) {
+  return PrefsOf(profile)->GetBoolean(kShowHeaderPref);
 }
 
 std::optional<Workspace> CurrentWorkspace(BrowserWindowInterface* browser) {

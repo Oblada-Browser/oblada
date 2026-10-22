@@ -1,0 +1,32 @@
+{
+  "added": [
+    "Themes for the window: up to three colors in a gradient, how see-through the window is, grain, and light or dark. Right-click the sidebar to edit the default theme, or a workspace to give it its own.",
+    "Three window layouts, in Settings > Oblada or the menu's Window layout: Sidebar, as before; Scaffold, with the tabs as icons on the side and the address bar at the top; and Compact, only the page, the sidebar showing over it when the pointer reaches the window's left edge.",
+    "Settings > Oblada, a page for Oblada's own settings.",
+    "The welcome lets you pick the window layout, each shown at work in a little window.",
+    "Copy Clean Link, in a link's right-click menu and in the address bar's, copies the link without the parameters sites add to track who follows it (utm_source, fbclid and the like), from Firefox's lists, which Oblada keeps up to date from Mozilla. Copy link, in the site's panel, copies the page's link that way too, and Copy Clean Link to Highlight, for selected text, a link to that text."
+  ],
+  "changed": [
+    "The workspace's name is no longer shown above its tabs: the workspaces at the bottom of the sidebar tell which one is open. It can be turned back on in Settings > Oblada, where it looks like a heading rather than a tab.",
+    "The address bar shows a container's icon, or a temporary container's number, instead of its name, which hid the address. The name is in the tooltip.",
+    "A container's color mark on a tab sits against the tab's edge, further from its icon.",
+    "In compact mode only the page shows: the sidebar widens over it from the window's left edge, with the window's theme, soon after the pointer gets there.",
+    "In full screen, the bar with the window's buttons shows over the sidebar and the page when the pointer reaches the top, rather than pushing them down.",
+    "The site's information is in the Site and extensions panel, at the end of the address bar, rather than at its start. Sites with warnings still show them there."
+  ],
+  "fixed": [
+    "The sidebar shows what's behind the window, blurred, instead of a solid gray.",
+    "In compact mode, ⌘L and ⌘T open the address bar over the page, which didn't show.",
+    "Pages opened in a peek work with extensions as in a tab: ad blockers filter them, also once they're made a tab.",
+    "Full screen from a peek (a video's button, for one) makes the page a tab, in full screen. It used to do nothing, and the page couldn't go full screen even once made a tab."
+  ],
+  "removed": [
+    "Send feedback, which went to Google, is gone from the sidebar's right-click menu.",
+    "Settings no longer has Theme and Customize your toolbar: workspaces have their themes, and the toolbar is the sidebar's."
+  ],
+  "obladaVersion": "0.3.0",
+  "releaseId": 5,
+  "chromiumVersion": "156.0.8078.48",
+  "releaseDate": "",
+  "released": false
+}

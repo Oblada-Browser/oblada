@@ -1,14 +1,18 @@
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-index 52ee4b9479..731d14cd16 100644
+index 52ee4b9479..8ea39f4c5d 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-@@ -34,6 +34,14 @@
+@@ -34,6 +34,18 @@
  #include "ui/views/focus/focus_manager.h"
  #include "ui/views/layout/delegating_layout_manager.h"
  
 +namespace oblada::media {
 +class MediaControls;
 +}  // namespace oblada::media
++
++namespace oblada::sidebar {
++class ModeKeeper;
++}  // namespace oblada::sidebar
 +
 +namespace oblada::workspaces {
 +class WorkspaceSwitcher;
@@ -17,7 +21,7 @@ index 52ee4b9479..731d14cd16 100644
  class BrowserView;
  class VerticalTabStripTopContainer;
  class VerticalTabStripBottomContainer;
-@@ -66,7 +74,9 @@ class VerticalTabStripRegionView final
+@@ -66,7 +78,9 @@ class VerticalTabStripRegionView final
  
    // TODO(crbug.com/465833741): Replace constant with derived value based on
    // caption buttons.
@@ -28,24 +32,28 @@ index 52ee4b9479..731d14cd16 100644
    // TODO(crbug.com/465832180): Replace constant based width final max width for
    // view.
    static constexpr int kUncollapsedMaxWidth = 400;
-@@ -165,6 +175,10 @@ class VerticalTabStripRegionView final
+@@ -165,6 +179,11 @@ class VerticalTabStripRegionView final
    }
  
   private:
-+  // Oblada: whether it's below the toolbar in the sidebar
-+  // (oblada/browser/ui/sidebar_layout.h), where it shows just the tabs.
++  // Oblada: whether it's in one of Oblada's layouts, below the toolbar in the
++  // sidebar (oblada/browser/ui/sidebar_layout.h) or left of the page in scaffold
++  // mode (sidebar_mode.h), where it shows just the tabs.
 +  bool IsObladaSidebar() const;
 +
    // Since VerticalTabStripRegionView inherits from AccessiblePaneView, which is
    // a FocusChangeListener, we need to have a separate focus listener to avoid
    // conflicts with the base class implementation which conditionally listens
-@@ -260,6 +274,9 @@ class VerticalTabStripRegionView final
+@@ -260,6 +279,12 @@ class VerticalTabStripRegionView final
    raw_ptr<VerticalTabStripTopContainer> top_button_container_ = nullptr;
    raw_ptr<views::Separator> top_button_separator_ = nullptr;
    raw_ptr<VerticalTabStripBottomContainer> bottom_button_container_ = nullptr;
 +  // Oblada: the media playing in other tabs, and the workspaces, at the bottom.
 +  raw_ptr<oblada::media::MediaControls> oblada_media_ = nullptr;
 +  raw_ptr<oblada::workspaces::WorkspaceSwitcher> oblada_workspaces_ = nullptr;
++  // Oblada: the tab strip collapsed or not as the window's layout says
++  // (oblada/browser/ui/sidebar_mode.h).
++  std::unique_ptr<oblada::sidebar::ModeKeeper> oblada_mode_;
    raw_ptr<views::View> gemini_button_ = nullptr;
    raw_ptr<views::ResizeArea> resize_area_ = nullptr;
    raw_ptr<ShadowFrameView> shadow_frame_ = nullptr;

@@ -1,0 +1,20 @@
+diff --git a/chrome/browser/resources/settings/settings_main/settings_main.html b/chrome/browser/resources/settings/settings_main/settings_main.html
+index 2ef4dcad53..a401a0c6dd 100644
+--- a/chrome/browser/resources/settings/settings_main/settings_main.html
++++ b/chrome/browser/resources/settings/settings_main/settings_main.html
+@@ -50,6 +50,15 @@
+ 
+ <cr-view-manager id="switcher"
+     show-all$="[[shouldShowAll_(inSearchMode_, lastRoute_)]]">
++  <!-- Oblada: its own settings (oblada/browser/settings/oblada_page.h). -->
++  <div slot="view" id="oblada">
++    <template is="dom-if" if="[[renderPlugin_(
++        routes_.OBLADA, lastRoute_, inSearchMode_)]]">
++      <settings-oblada-page in-search-mode="[[inSearchMode_]]">
++      </settings-oblada-page>
++    </template>
++  </div>
++
+   <template is="dom-if" if="[[showPage_(pageVisibility_.people)]]">
+     <div slot="view" id="people">
+       <template is="dom-if" if="[[renderPlugin_(

@@ -1,0 +1,73 @@
+diff --git a/chrome/browser/renderer_context_menu/link_to_text_menu_observer.cc b/chrome/browser/renderer_context_menu/link_to_text_menu_observer.cc
+index 5f70155273..cdb9ddf1db 100644
+--- a/chrome/browser/renderer_context_menu/link_to_text_menu_observer.cc
++++ b/chrome/browser/renderer_context_menu/link_to_text_menu_observer.cc
+@@ -43,6 +43,8 @@
+ #include "ui/base/data_transfer_policy/data_transfer_endpoint.h"
+ #include "ui/base/l10n/l10n_util.h"
+ #include "ui/gfx/text_elider.h"
++#include "oblada/browser/clean_links/clean_links.h"  // Oblada
++#include "oblada/browser/l10n.h"  // Oblada
+ 
+ using shared_highlighting::LinkGenerationError;
+ using shared_highlighting::LinkGenerationReadyStatus;
+@@ -140,6 +142,12 @@ void LinkToTextMenuObserver::InitMenu(
+     }
+     proxy_->AddMenuItem(IDC_CONTENT_CONTEXT_COPYLINKTOTEXT,
+                         GetCopyLinkToTextLabel());
++    // Oblada: the same link without the page's tracking parameters, as
++    // Firefox has it.
++    if (oblada::clean_links::IsCleanable(url_)) {
++      proxy_->AddMenuItem(oblada::clean_links::kCopyCleanLinkToHighlightMenuId,
++                          oblada::L10n("clean_links.copy_to_highlight"));
++    }
+     RequestLinkGeneration();
+   } else if (annotation_type_.has_value()) {
+     switch (annotation_type_.value()) {
+@@ -166,13 +174,21 @@ void LinkToTextMenuObserver::InitMenu(
+ bool LinkToTextMenuObserver::IsCommandIdSupported(int command_id) {
+   return command_id == IDC_CONTENT_CONTEXT_COPYLINKTOTEXT ||
+          command_id == IDC_CONTENT_CONTEXT_REMOVELINKTOTEXT ||
+-         command_id == IDC_CONTENT_CONTEXT_RESHARELINKTOTEXT;
++         command_id == IDC_CONTENT_CONTEXT_RESHARELINKTOTEXT ||
++         command_id ==
++             oblada::clean_links::kCopyCleanLinkToHighlightMenuId;  // Oblada
+ }
+ 
+ bool LinkToTextMenuObserver::IsCommandIdEnabled(int command_id) {
+   // This should only be called for the command for copying link to text.
+   DCHECK(IsCommandIdSupported(command_id));
+ 
++  // Oblada: the clean link once there's one, if there's something to clean.
++  if (command_id == oblada::clean_links::kCopyCleanLinkToHighlightMenuId) {
++    return generated_link_.has_value() &&
++           oblada::clean_links::HasTracking(url_);
++  }
++
+   // If a link generation was needed, only enable the command if a link was
+   // successfully generated.
+   if (open_from_new_selection_) {
+@@ -189,6 +205,12 @@ void LinkToTextMenuObserver::ExecuteCommand(int command_id) {
+ 
+   if (command_id == IDC_CONTENT_CONTEXT_COPYLINKTOTEXT) {
+     ExecuteCopyLinkToText();
++  } else if (command_id ==
++             oblada::clean_links::kCopyCleanLinkToHighlightMenuId) {  // Oblada
++    // The link to the text, clean: its selector, in the fragment, is kept.
++    generated_link_ =
++        oblada::clean_links::Clean(GURL(*generated_link_)).spec();
++    ExecuteCopyLinkToText();
+   } else if (command_id == IDC_CONTENT_CONTEXT_RESHARELINKTOTEXT) {
+     ReshareLink();
+   } else if (command_id == IDC_CONTENT_CONTEXT_REMOVELINKTOTEXT) {
+@@ -235,6 +257,10 @@ void LinkToTextMenuObserver::OnRequestLinkGenerationCompleted(
+       shared_highlighting::AppendSelectors(url_, {selector}).spec();
+   proxy_->UpdateMenuItem(IDC_CONTENT_CONTEXT_COPYLINKTOTEXT, true, false,
+                          GetCopyLinkToTextLabel());
++  proxy_->UpdateMenuItem(  // Oblada
++      oblada::clean_links::kCopyCleanLinkToHighlightMenuId,
++      oblada::clean_links::HasTracking(url_), false,
++      oblada::L10n("clean_links.copy_to_highlight"));
+ 
+   // Useful only for testing to be notified when generation is complete.
+   auto* cb = GetGenerationCompleteCallbackForTesting();

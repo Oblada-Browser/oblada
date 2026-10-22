@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/tabs/common/tab_group_header_view.h b/chrome/browser/ui/views/tabs/common/tab_group_header_view.h
-index a06c09e58d..423716537d 100644
+index a06c09e58d..5ba8a875e0 100644
 --- a/chrome/browser/ui/views/tabs/common/tab_group_header_view.h
 +++ b/chrome/browser/ui/views/tabs/common/tab_group_header_view.h
 @@ -136,6 +136,10 @@ class TabGroupHeaderView : public views::FlexLayoutView,
@@ -17,8 +17,8 @@ index a06c09e58d..423716537d 100644
    TabGroupEditorBubbleTracker editor_bubble_tracker_;
    base::CallbackListSubscription editor_bubble_opened_subscription_;
    base::CallbackListSubscription editor_bubble_closed_subscription_;
-+  // Oblada: the workspace's header is hidden in the compact sidebar.
-+  base::CallbackListSubscription oblada_collapse_subscription_;
++  // Oblada: the workspace's header shows only when the sidebar shows headers.
++  base::CallbackListSubscription oblada_headers_subscription_;
    base::CallbackListSubscription tab_group_data_changed_subscription_;
    base::WeakPtrFactory<TabGroupHeaderView> weak_ptr_factory_{this};
  };

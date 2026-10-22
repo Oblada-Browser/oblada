@@ -2,7 +2,7 @@
 #define OBLADA_BROWSER_CONTAINERS_CONTAINER_CHIP_H_
 
 // The container of the current tab at the end of the address bar, as in Firefox: its
-// name, in its color. Clicking it offers to always open the site in this container,
+// icon (a temporary one's number), in its color, with its name as the tooltip. Clicking it offers to always open the site in this container,
 // or to reopen the tab in another one.
 //
 // The location bar (location_bar_view.cc) creates it, lays it out with its other

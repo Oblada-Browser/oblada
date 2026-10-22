@@ -45,6 +45,47 @@ const char kWelcomeHtml[] = R"oblada(<!doctype html>
        data-keychain="$i18n{import_keychain}"></div>
 </section>
 
+<section class="step" id="layout">
+  <div class="fit"><div class="layouts">
+    <button class="layout" data-mode="sidebar">
+      <span class="mini"><span class="mock m-ls">
+        <span class="lights"><i></i><i></i><i></i></span>
+        <span class="side"><span class="addr"></span><span class="sel"></span>
+          <span class="tab"></span><span class="tab"></span><span class="tab"></span><span class="tab"></span>
+          <span class="wsd"><i></i><i></i></span></span>
+        <span class="page"><span class="pg a"><i class="l w70"></i><i class="l"></i><i class="l w50"></i><i class="l w80"></i></span>
+          <span class="pg b"><i class="block"></i><i class="l w60"></i><i class="l"></i></span></span>
+      </span></span>
+      <span class="name">$i18n{layout_sidebar}</span>
+      <span class="what">$i18n{layout_sidebar_text}</span>
+    </button>
+    <button class="layout" data-mode="scaffold">
+      <span class="mini"><span class="mock m-lf">
+        <span class="lights"><i></i><i></i><i></i></span>
+        <span class="top"><i></i><i></i><b></b></span>
+        <span class="col"><span class="sel"></span><i></i><i></i><i></i><i></i></span>
+        <span class="page"><span class="pg a"><i class="l w70"></i><i class="l"></i><i class="l w50"></i><i class="l w80"></i></span>
+          <span class="pg b"><i class="block"></i><i class="l w60"></i><i class="l"></i></span></span>
+      </span></span>
+      <span class="name">$i18n{layout_scaffold}</span>
+      <span class="what">$i18n{layout_scaffold_text}</span>
+    </button>
+    <button class="layout" data-mode="compact">
+      <span class="mini"><span class="mock m-lc">
+        <span class="page"><i class="l w70"></i><i class="l"></i><i class="l w50"></i><i class="l w80"></i><i class="l w60"></i></span>
+        <span class="panel"><span class="lights"><i></i><i></i><i></i></span>
+          <span class="side"><span class="addr"></span><span class="tab on"></span><span class="tab"></span><span class="tab"></span></span></span>
+        <svg class="cursor" viewBox="0 0 16 16"><path d="M2 1.5v11.5l3.2-3 2.2 5 2-.9-2.2-4.9h4.4L2 1.5Z"/></svg>
+      </span></span>
+      <span class="name">$i18n{layout_compact}</span>
+      <span class="what">$i18n{layout_compact_text}</span>
+    </button>
+  </div></div>
+  <h2>$i18n{layout_title}</h2>
+  <p class="text">$i18n{layout_text}</p>
+  <p class="hint">$i18n{layout_hint}</p>
+</section>
+
 <section class="step">
   <div class="fit"><div class="art ct-panel">
     <div class="ct-grid" id="ct-grid"></div>
@@ -174,18 +215,6 @@ const char kWelcomeHtml[] = R"oblada(<!doctype html>
   <h2>$i18n{split}</h2>
   <p class="text">$i18n{split_text}</p>
   <p class="hint">$i18n{split_hint}</p>
-</section>
-
-<section class="step">
-  <div class="fit"><div class="mock m-cp">
-    <div class="lights"><i></i><i></i><i></i></div>
-    <div class="page"><i class="l w70"></i><i class="l"></i><i class="l w50"></i><i class="l w80"></i></div>
-    <div class="side"><div class="addr"></div><div class="tab on"></div><div class="tab"></div><div class="tab"></div></div>
-    <svg class="cursor" viewBox="0 0 16 16"><path d="M2 1.5v11.5l3.2-3 2.2 5 2-.9-2.2-4.9h4.4L2 1.5Z"/></svg>
-  </div></div>
-  <h2>$i18n{compact}</h2>
-  <p class="text">$i18n{compact_text}</p>
-  <p class="hint">$i18n{compact_hint}</p>
 </section>
 
 <section class="step">
@@ -897,26 +926,75 @@ body:not(.mac) .lights i { border-radius: 2px; background: var(--veil-strong); }
                       96%, 100% { opacity: 0; transform: scale(.94); } }
 @keyframes sp-src { 0%, 10% { opacity: 1; } 12%, 90% { opacity: 0; } 96%, 100% { opacity: 1; } }
 
-/* Compact mode: the sidebar folds away, and comes back over the page. */
-.m-cp .cursor { left: 330px; top: 150px; opacity: 0; }
-.run.m-cp .side { animation: cp-side 7s cubic-bezier(.2, .8, .2, 1) infinite; }
-.run.m-cp .page { animation: cp-page 7s cubic-bezier(.2, .8, .2, 1) infinite; }
-.run.m-cp .addr, .run.m-cp .lights { animation: cp-top 7s ease infinite; }
-.run.m-cp .cursor { animation: cp-cursor 7s cubic-bezier(.4, 0, .2, 1) infinite; }
-@keyframes cp-side {
-  0%, 10% { width: 112px; background: transparent; box-shadow: none; }
-  20%, 40% { width: 36px; background: transparent; box-shadow: none; }
-  48%, 62% { width: 112px; background: var(--solid); box-shadow: 12px 0 30px -12px rgba(0, 0, 0, .45); }
-  70%, 80% { width: 36px; background: transparent; box-shadow: none; }
-  90%, 100% { width: 112px; background: transparent; box-shadow: none; }
+/* The window's layout: a little window showing each, to pick one. */
+.layouts { display: flex; gap: 12px; }
+.layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 262px;
+  padding: 10px 10px 12px;
+  border: 0;
+  border-radius: 16px;
+  background: none;
+  cursor: pointer;
+  transition: background .15s, box-shadow .15s, transform .12s;
 }
-@keyframes cp-page { 0%, 10% { left: 112px; } 20%, 80% { left: 36px; } 90%, 100% { left: 112px; } }
-@keyframes cp-top { 0%, 10% { opacity: 1; } 18%, 44% { opacity: 0; } 50%, 60% { opacity: 1; }
-                    68%, 82% { opacity: 0; } 90%, 100% { opacity: 1; } }
-@keyframes cp-cursor { 0%, 28% { opacity: 0; transform: none; } 32% { opacity: 1; transform: none; }
-                       44% { opacity: 1; transform: translate(-318px, -10px); }
-                       58% { opacity: 1; transform: translate(-318px, -10px); }
-                       68% { opacity: 1; transform: none; } 74%, 100% { opacity: 0; transform: none; } }
+.layout:hover { background: var(--veil); }
+.layout:active { transform: scale(.98); }
+.layout.selected { background: var(--veil-hover); box-shadow: inset 0 0 0 2px var(--accent); }
+.layout .name { margin-top: 10px; font-size: 13px; font-weight: 600; }
+.layout.selected .name::before { content: '✓ '; color: var(--accent); }
+.layout .what { margin-top: 2px; color: var(--subtle); font-size: 11.5px; line-height: 1.35; }
+:where(.mini span) { display: block; }
+.mini { width: 239px; height: 140px; }
+.mini .mock { zoom: .52; cursor: inherit; box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .55); }
+.m-ls .pg, .m-lf .pg { position: absolute; inset: 8px 0; }
+.m-ls .pg.b, .m-lf .pg.b { opacity: 0; }
+.run.m-ls .pg.a, .run.m-lf .pg.a { animation: lay-a 6s ease-in-out infinite; }
+.run.m-ls .pg.b, .run.m-lf .pg.b { animation: lay-b 6s ease-in-out infinite; }
+@keyframes lay-a { 0%, 30% { opacity: 1; } 36%, 64% { opacity: 0; } 70%, 100% { opacity: 1; } }
+@keyframes lay-b { 0%, 30% { opacity: 0; } 36%, 64% { opacity: 1; } 70%, 100% { opacity: 0; } }
+/* Sidebar: another tab picked in it. */
+.m-ls .sel { position: absolute; left: 8px; right: 8px; top: 54px; height: 15px; border-radius: 5px;
+             background: var(--veil-strong); }
+.m-ls .wsd { position: absolute; left: 0; right: 0; bottom: 12px; display: flex;
+             justify-content: center; gap: 7px; }
+.m-ls .wsd i { width: 7px; height: 7px; border-radius: 50%; background: var(--veil-strong); }
+.m-ls .wsd i:first-child { background: var(--blue); }
+.run.m-ls .sel { animation: ls-sel 6s cubic-bezier(.2, .8, .2, 1) infinite; }
+@keyframes ls-sel { 0%, 30% { transform: none; } 36%, 64% { transform: translateY(38px); }
+                    70%, 100% { transform: none; } }
+/* Scaffold: the address bar on top, another tab's icon picked on the side. */
+.m-lf .top { position: absolute; left: 48px; right: 8px; top: 6px; height: 18px; display: flex;
+             align-items: center; gap: 6px; }
+.m-lf .top i { width: 8px; height: 8px; border-radius: 2px; background: var(--veil-strong); flex: none; }
+.m-lf .top b { flex: 1; height: 16px; margin-left: 6px; border-radius: 6px; background: var(--veil); }
+.m-lf .col { position: absolute; left: 0; top: 30px; bottom: 6px; width: 40px; padding-top: 6px;
+             box-sizing: border-box; }
+.m-lf .col i { position: relative; width: 12px; height: 12px; margin: 0 auto 9px; border-radius: 3px;
+               background: var(--veil-strong); }
+.m-lf .col .sel { position: absolute; left: 10px; top: 2px; width: 20px; height: 20px; border-radius: 6px;
+                  background: var(--veil-strong); }
+.m-lf .page { left: 40px; top: 30px; }
+.run.m-lf .sel { animation: lf-sel 6s cubic-bezier(.2, .8, .2, 1) infinite; }
+@keyframes lf-sel { 0%, 30% { transform: none; } 36%, 64% { transform: translateY(42px); }
+                    70%, 100% { transform: none; } }
+/* Compact: only the page, the sidebar widening over it from the window's edge. */
+.m-lc .page { left: 6px; }
+.m-lc .panel { position: absolute; left: 6px; top: 6px; bottom: 6px; width: 0; overflow: hidden;
+               border-radius: 10px; background: var(--solid); box-shadow: inset 0 0 0 1px var(--line);
+               z-index: 4; }
+.m-lc .panel .side { width: 112px; }
+.m-lc .cursor { left: 300px; top: 120px; opacity: 0; }
+.run.m-lc .panel { animation: lc-panel 6s cubic-bezier(.2, .8, .2, 1) infinite; }
+.run.m-lc .cursor { animation: lc-cursor 6s cubic-bezier(.4, 0, .2, 1) infinite; }
+@keyframes lc-panel { 0%, 26% { width: 0; } 34%, 66% { width: 112px; } 74%, 100% { width: 0; } }
+@keyframes lc-cursor { 0%, 6% { opacity: 0; transform: none; } 10% { opacity: 1; transform: none; }
+                       24% { opacity: 1; transform: translate(-298px, -40px); }
+                       34%, 58% { opacity: 1; transform: translate(-250px, -50px); }
+                       70% { opacity: 1; transform: translate(-60px, 0); }
+                       78%, 100% { opacity: 0; transform: translate(-60px, 0); } }
 
 /* Extensions: from both stores. */
 .m-ex .addr .x1, .m-ex .addr .x2 { position: absolute; top: 3px; width: 10px; height: 10px;
@@ -1048,6 +1126,21 @@ makeDefault.addEventListener('click', async () => {
   }
 });
 addEventListener('focus', checkDefault);
+
+// The window's layout: the one picked shows at once around this page.
+const layouts = [...document.querySelectorAll('.layout')];
+function showLayout(mode) {
+  for (const layout of layouts) {
+    layout.classList.toggle('selected', layout.dataset.mode === mode);
+  }
+}
+sendWithPromise('getLayout').then(showLayout);
+for (const layout of layouts) {
+  layout.addEventListener('click', () => {
+    showLayout(layout.dataset.mode);
+    chrome.send('setLayout', [layout.dataset.mode]);
+  });
+}
 
 // Containers: the profile's, to set up (with oblada://containers' messages),
 // and Firefox's, to bring along.
@@ -1490,11 +1583,18 @@ function fit() {
 }
 addEventListener('resize', fit);
 fit();
-// oblada://welcome/#import (the menus' "Import bookmarks and settings") goes to the
-// import, as it opens or later.
-const showImport = () => show(steps.indexOf(document.getElementById('import')));
-addEventListener('hashchange', () => location.hash === '#import' && showImport());
-location.hash === '#import' ? showImport() : show(0);
+// oblada://welcome/#<step> goes to that step, as it opens or later: #import (the
+// menus' "Import bookmarks and settings"), #layout.
+function showHash() {
+  const step = location.hash && document.getElementById(location.hash.slice(1));
+  if (!step || !steps.includes(step)) {
+    return false;
+  }
+  show(steps.indexOf(step));
+  return true;
+}
+addEventListener('hashchange', showHash);
+showHash() || show(0);
 )oblada";
 
 }  // namespace oblada::welcome

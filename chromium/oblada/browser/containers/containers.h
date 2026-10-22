@@ -93,6 +93,8 @@ void ClearContainerData(Profile* profile,
 
 // A new temporary container, "Temporary <n>".
 Container AddTemporaryContainer(Profile* profile);
+// A temporary container's <n>, which its name may no longer have; 0 for another.
+int TemporaryNumber(const Container& container);
 
 // Notifies of any change to the profile's containers (added, renamed, removed...).
 base::CallbackListSubscription ObserveContainers(Profile* profile,

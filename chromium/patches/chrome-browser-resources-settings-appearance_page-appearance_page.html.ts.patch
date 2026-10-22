@@ -1,0 +1,15 @@
+diff --git a/chrome/browser/resources/settings/appearance_page/appearance_page.html.ts b/chrome/browser/resources/settings/appearance_page/appearance_page.html.ts
+index b6cf0bffe2..a545a33555 100644
+--- a/chrome/browser/resources/settings/appearance_page/appearance_page.html.ts
++++ b/chrome/browser/resources/settings/appearance_page/appearance_page.html.ts
+@@ -49,7 +49,9 @@ export function getHtml(this: SettingsAppearancePageElement) {
+       </div>
+ </if>
+     </div>
+-    <div id="toolbarRow" class="settings-row">
++    <!-- Oblada: no customizing the toolbar, which is the sidebar's row of
++        buttons. -->
++    <div id="toolbarRow" class="settings-row" hidden>
+       <cr-link-row id="customizeToolbar"
+           label="$i18n{customizeToolbar}"
+           @click="${this.onCustomizeToolbarClick_}" external>

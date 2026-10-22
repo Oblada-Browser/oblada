@@ -1,17 +1,18 @@
 diff --git a/chrome/browser/extensions/extension_tab_util.cc b/chrome/browser/extensions/extension_tab_util.cc
-index dd919b9675..9fb06d3bb6 100644
+index dd919b9675..4aa7181b84 100644
 --- a/chrome/browser/extensions/extension_tab_util.cc
 +++ b/chrome/browser/extensions/extension_tab_util.cc
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,9 @@
  
  #include "chrome/browser/extensions/extension_tab_util.h"
  
 +#include "oblada/browser/firefox_addons/cookie_store_ids.h"  // Oblada
++#include "oblada/browser/peek/peek.h"  // Oblada
 +
  #include <stddef.h>
  
  #include <algorithm>
-@@ -364,6 +366,10 @@ api::tabs::Tab ExtensionTabUtil::CreateTabObject(
+@@ -364,6 +367,10 @@ api::tabs::Tab ExtensionTabUtil::CreateTabObject(
    }
    api::tabs::Tab tab_object;
    tab_object.id = GetTabIdForExtensions(*contents);
@@ -22,3 +23,23 @@ index dd919b9675..9fb06d3bb6 100644
    tab_object.index = tab_index;
    tab_object.window_id = GetWindowIdOfTab(contents);
    tab_object.status = GetLoadingStatus(contents);
+@@ -672,6 +679,19 @@ bool ExtensionTabUtil::GetTabById(int tab_id,
+     }
+   }
+ 
++  // Oblada: a peek's page (oblada/browser/peek), as a prerendered one, is a tab
++  // in no window, at no index.
++  if (WebContents* peek = oblada::peek::FindPeekByTabId(tab_id)) {
++    Profile* peek_profile = Profile::FromBrowserContext(peek->GetBrowserContext());
++    if (peek_profile == profile ||
++        (incognito_profile && peek_profile == incognito_profile)) {
++      if (out_contents) {
++        *out_contents = peek;
++      }
++      return true;
++    }
++  }
++
+   // Prerendering tab is not visible and it cannot be in `TabStripModel`, if the
+   // tab id exists as a prerendering tab, and the API will returns
+   // `api::tabs::TAB_INDEX_NONE` for `out_tab_index` and a valid `WebContents`.

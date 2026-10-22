@@ -195,6 +195,7 @@ class SitePanelView : public views::View {
         views::Button::STATE_NORMAL,
         ui::ImageModel::FromVectorIcon(model->GetVectorIcon(), ui::kColorIcon, 16));
     security->SetImageLabelSpacing(6);
+    security->SetTooltipText(L10n("panel.site_info"));
     security->SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(8, 12)));
     security->SetBackground(
         views::CreateRoundedRectBackground(ui::kColorSysNeutralContainer, kTileRadius));
@@ -371,7 +372,7 @@ class SitePanelButton : public views::ImageButton {
     views::InstallCircleHighlightPathGenerator(this);
   }
 
- private:
+  // Opens the panel, or closes it if it's open.
   void ShowPanel() {
     if (panel_) {
       panel_->Close();
@@ -392,6 +393,7 @@ class SitePanelButton : public views::ImageButton {
     panel_->Show();
   }
 
+ private:
   void OnPanelClosed(views::Widget::ClosedReason reason) {
     // Not from within the panel's own notifications (losing focus closes it while
     // they run, e.g. as an extension's popup or dialog opens): once they're over.
@@ -422,6 +424,12 @@ void AddSitePanelButton(views::View* location_bar, BrowserWindowInterface* brows
 
 views::View* SitePanelButtonOf(views::View* location_bar) {
   return location_bar->GetViewByID(kButtonViewId);
+}
+
+void ShowPanel(views::View* location_bar) {
+  if (views::View* button = SitePanelButtonOf(location_bar)) {
+    static_cast<SitePanelButton*>(button)->ShowPanel();
+  }
 }
 
 void HidePageActionsInPanel(views::View* location_bar,

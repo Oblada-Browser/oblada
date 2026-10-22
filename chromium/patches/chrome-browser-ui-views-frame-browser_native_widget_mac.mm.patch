@@ -1,17 +1,18 @@
 diff --git a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
-index 818924fc76..7b66928920 100644
+index 818924fc76..d3b9a2786b 100644
 --- a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
 +++ b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
-@@ -44,6 +44,8 @@
+@@ -44,6 +44,9 @@
  #include "chrome/browser/ui/views/frame/browser_widget.h"
  #include "chrome/browser/ui/views/frame/glass_frame_service.h"
  #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
 +#include "chrome/browser/ui/views/toolbar/toolbar_view.h"  // Oblada
 +#include "oblada/browser/ui/sidebar_layout.h"  // Oblada
++#include "oblada/browser/ui/window_background.h"  // Oblada
  #include "chrome/browser/ui/views/web_apps/frame_toolbar/web_app_frame_toolbar_utils.h"
  #include "chrome/browser/ui/web_applications/app_browser_controller.h"
  #include "chrome/common/pref_names.h"
-@@ -114,7 +116,9 @@ bool ShouldHandleKeyboardEvent(const input::NativeWebKeyboardEvent& event) {
+@@ -114,7 +117,9 @@ bool ShouldHandleKeyboardEvent(const input::NativeWebKeyboardEvent& event) {
    // Values updated after discussion with UX.
    static constexpr std::array<std::array<double, 2>, 2> kDefaultOpacities = {{
        {0.55, 0.80},  // Horizontal: light, dark
@@ -22,7 +23,7 @@ index 818924fc76..7b66928920 100644
    }};
  
    const double opacity = kDefaultOpacities[is_vertical_tabs][is_dark_mode];
-@@ -135,13 +139,6 @@ bool IsCommandTriggeredFromMacMenu(NSInteger parent_menu_tag, int command_id) {
+@@ -135,13 +140,6 @@ bool IsCommandTriggeredFromMacMenu(NSInteger parent_menu_tag, int command_id) {
    return is_mouse_click || is_menu_item_focused;
  }
  
@@ -36,7 +37,7 @@ index 818924fc76..7b66928920 100644
  }  // namespace
  
  // NSGlassEffectView intercepts hit testing even when added below the
-@@ -280,6 +277,15 @@ - (NSTouchBar*)makeTouchBar {
+@@ -280,6 +278,15 @@ - (NSTouchBar*)makeTouchBar {
      if (!browser_view_->ShouldDrawTabStrip()) {
        *titlebar_height += kWebAppMenuMargin * 2;
      }
@@ -52,7 +53,7 @@ index 818924fc76..7b66928920 100644
    } else {
      *override_titlebar_height = false;
      *titlebar_height = 0;
-@@ -310,34 +316,9 @@ - (NSTouchBar*)makeTouchBar {
+@@ -310,34 +317,9 @@ - (NSTouchBar*)makeTouchBar {
  }
  
  std::optional<int> BrowserNativeWidgetMac::GetGlassFrameWidth() const {
@@ -90,7 +91,7 @@ index 818924fc76..7b66928920 100644
  }
  
  void BrowserNativeWidgetMac::OnFocusWindowToolbar() {
-@@ -509,6 +490,10 @@ - (NSTouchBar*)makeTouchBar {
+@@ -509,6 +491,10 @@ - (NSTouchBar*)makeTouchBar {
          result->new_toggle_state =
              prefs->GetBoolean(prefs::kShowFullscreenToolbar);
        }
@@ -101,3 +102,31 @@ index 818924fc76..7b66928920 100644
        break;
      }
      case IDC_SHOW_FULL_URLS: {
+@@ -1133,6 +1119,14 @@ - (NSTouchBar*)makeTouchBar {
+       opaque_mask = NSViewWidthSizable | NSViewHeightSizable;
+     }
+ 
++    // Oblada: the glass covers the whole window (see GetGlassFrameWidth()), so
++    // nothing is left for the opaque view, which would otherwise be all the glass
++    // shows, rather than what's behind the window.
++    if (!target_width.has_value() && !target_height.has_value()) {
++      opaque_width = 0;
++      opaque_height = 0;
++    }
++
+     opaque_background_view_.frame =
+         NSMakeRect(opaque_x, opaque_y, opaque_width, opaque_height);
+     opaque_background_view_.autoresizingMask = opaque_mask;
+@@ -1166,8 +1160,10 @@ - (NSTouchBar*)makeTouchBar {
+   const CGFloat a = GetGlassFrameTintOpacity(color_utils::IsDark(theme_color),
+                                              is_vertical_tabs);
+ 
+-  tint_view_.layer.backgroundColor =
+-      [NSColor colorWithSRGBRed:r green:g blue:b alpha:a].CGColor;
++  // Oblada: the workspace's theme, a gradient of its colors over the glass, as
++  // see-through as it says, with grain (oblada/browser/ui/window_background.h);
++  // the window's own color at Chromium's opacity without one.
++  oblada::window_background::Paint(tint_view_, theme_color, a);
+ 
+   if (opaque_background_view_) {
+     opaque_background_view_.layer.backgroundColor =

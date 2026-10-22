@@ -1,17 +1,19 @@
 diff --git a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller_impl.cc b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller_impl.cc
-index 76487de5df..1fdcc743a3 100644
+index 76487de5df..f4dbc8b3ac 100644
 --- a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller_impl.cc
 +++ b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller_impl.cc
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,10 @@
  
  #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller_impl.h"
  
++#include "oblada/browser/ui/sidebar_mode.h"  // Oblada
++
 +#include <algorithm>  // Oblada
 +
  #include <optional>
  
  #include "base/i18n/rtl.h"
-@@ -58,8 +60,8 @@ VerticalTabStripStateControllerImpl::VerticalTabStripStateControllerImpl(
+@@ -58,8 +62,8 @@ VerticalTabStripStateControllerImpl::VerticalTabStripStateControllerImpl(
        browser_window_(browser_window) {
    pref_change_registrar_.Init(pref_service_);
  
@@ -22,7 +24,18 @@ index 76487de5df..1fdcc743a3 100644
  
    pref_change_registrar_.Add(
        prefs::kVerticalTabsEnabled,
-@@ -168,6 +170,9 @@ bool VerticalTabStripStateControllerImpl::ShouldDisplayVerticalTabs() const {
+@@ -77,6 +81,10 @@ VerticalTabStripStateControllerImpl::VerticalTabStripStateControllerImpl(
+             base::Unretained(this)));
+   }
+ 
++  // Oblada: collapsed or not as the window's layout says, the same in every
++  // window (oblada/browser/ui/sidebar_mode.h), whatever the session saved.
++  restored_state_collapsed =
++      oblada::sidebar::CollapsesTabStrip(pref_service_);
+   if (restored_state_collapsed.has_value()) {
+     SetCollapsed(restored_state_collapsed.value());
+   }
+@@ -168,6 +176,9 @@ bool VerticalTabStripStateControllerImpl::ShouldDisplayVerticalTabs() const {
  }
  
  void VerticalTabStripStateControllerImpl::SetVerticalTabsEnabled(bool enabled) {
@@ -32,7 +45,7 @@ index 76487de5df..1fdcc743a3 100644
    // If the user already has a pending mode switch, but tries to change tab
    // strip mode again, ensure the toast is displayed.
    if (enable_state_lock_count_ > 0 && enabled != is_vertical_tabs_enabled_ &&
-@@ -221,6 +226,8 @@ int VerticalTabStripStateControllerImpl::GetUncollapsedWidth() const {
+@@ -221,6 +232,8 @@ int VerticalTabStripStateControllerImpl::GetUncollapsedWidth() const {
  }
  
  void VerticalTabStripStateControllerImpl::SetUncollapsedWidth(int width) {
@@ -41,7 +54,7 @@ index 76487de5df..1fdcc743a3 100644
    if (state_.uncollapsed_width != width) {
      state_.uncollapsed_width = width;
      NotifyCollapseChanged();
-@@ -261,8 +268,7 @@ void VerticalTabStripStateControllerImpl::NotifyCollapseChanged() {
+@@ -261,8 +274,7 @@ void VerticalTabStripStateControllerImpl::NotifyCollapseChanged() {
  }
  
  void VerticalTabStripStateControllerImpl::OnModeChanged() {

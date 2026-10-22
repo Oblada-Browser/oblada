@@ -14,9 +14,10 @@ class View;
 // sidebar is all one color, without lines between its parts, and the page floats
 // next to it with rounded corners.
 //
-// Collapsed, the sidebar is compact, as Zen's compact mode: only the tabs' icons, with
-// neither toolbar nor window controls; all of it comes back as the tab strip expands
-// on hover (or while the address bar has focus), above the page.
+// Collapsed, the window is in scaffold or compact mode (sidebar_mode.h): the tabs'
+// icons in a column, the toolbar a row at the top of the window; or only the page,
+// the sidebar coming back over it as the tab strip expands on hover (or while the
+// address bar has focus), a card widening from the window's edge (sidebar_card.h).
 //
 // The browser layout (browser_view_tabbed_layout_impl.cc) decides when the toolbar is
 // in the sidebar and tells the toolbar (toolbar_view.cc) through these functions.
@@ -34,6 +35,12 @@ void SetToolbarInSidebar(views::View* toolbar, int leading_inset, bool compact);
 
 // The toolbar's leading inset in the sidebar, or -1 when it is laid out as usual.
 int ToolbarInset(const views::View* toolbar);
+
+// In scaffold mode (sidebar_mode.h) the toolbar is a row at the top of the
+// window, as Chromium's, without the profile and extensions buttons, which are
+// in the app menu and the address bar's site panel (site_panel.h).
+void SetScaffoldToolbar(views::View* toolbar, bool scaffold);
+bool IsScaffoldToolbar(const views::View* toolbar);
 
 // Whether the sidebar is compact (see above).
 bool IsCompact(const views::View* toolbar);
@@ -53,6 +60,12 @@ void SetToolbarAbovePage(views::View* top_container,
                          views::View* tab_strip,
                          bool above,
                          bool clip);
+
+// How wide the tab strip looks, from 0 (narrow, in scaffold mode) to 1 (the full
+// sidebar's). The browser layout sets it on the tab strip's region view, whose row
+// of workspaces follows it (workspace_switcher.h).
+void SetExpansion(views::View* tab_strip_region, float expansion);
+float Expansion(const views::View* tab_strip_region);
 
 // Hides `view` (a toolbar button) while the toolbar is in the sidebar, and shows it
 // again after.

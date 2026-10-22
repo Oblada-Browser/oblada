@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.h b/chrome/browser/ui/views/location_bar/location_bar_view.h
-index 05979cd142..70fadfb119 100644
+index 05979cd142..7dd581a83e 100644
 --- a/chrome/browser/ui/views/location_bar/location_bar_view.h
 +++ b/chrome/browser/ui/views/location_bar/location_bar_view.h
-@@ -289,6 +289,16 @@ class LocationBarView
+@@ -289,6 +289,19 @@ class LocationBarView
    // |is_hovering| should be true when mouse is in omnibox; false when exited.
    void OnOmniboxHovered(bool is_hovering);
  
@@ -12,6 +12,9 @@ index 05979cd142..70fadfb119 100644
 +  void UpdateObladaQuiet();
 +  // Oblada: whether a bubble anchored to one of its buttons is open.
 +  bool HasObladaBubble() const;
++  // Oblada: whether the site's information is left to the site panel (in the
++  // sidebar, while the bar isn't edited) rather than shown by the location icon.
++  bool IsObladaSiteInfoInPanel();
 +  // Oblada: and while it has the focus, it floats over the page (see
 +  // oblada::sidebar::SetLocationBarFloating()).
 +  void UpdateObladaFloating();
@@ -19,7 +22,7 @@ index 05979cd142..70fadfb119 100644
    // LocationBar:
    void SetPermissionPromptShowing(bool showing) override;
    void UpdateFocusBehavior(bool toolbar_visible) override;
-@@ -592,6 +602,9 @@ class LocationBarView
+@@ -592,6 +605,9 @@ class LocationBarView
    raw_ptr<page_actions::PageActionContainerView> page_action_container_ =
        nullptr;
  

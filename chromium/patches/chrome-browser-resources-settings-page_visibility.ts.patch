@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/resources/settings/page_visibility.ts b/chrome/browser/resources/settings/page_visibility.ts
-index feff9bdf64..1eab5198f0 100644
+index feff9bdf64..5ab794d0e7 100644
 --- a/chrome/browser/resources/settings/page_visibility.ts
 +++ b/chrome/browser/resources/settings/page_visibility.ts
-@@ -44,7 +44,31 @@ export interface PrivacyPageVisibility {
+@@ -44,7 +44,39 @@ export interface PrivacyPageVisibility {
  
  function createPageVisibility(): PageVisibility|undefined {
    if (!loadTimeData.getBoolean('isGuest')) {
@@ -12,7 +12,15 @@ index feff9bdf64..1eab5198f0 100644
 +    return {
 +      a11y: true,
 +      ai: true,
-+      appearance: true,
++      // No themes: a window takes its colors from its workspace's theme.
++      appearance: {
++        bookmarksBar: true,
++        homeButton: true,
++        hoverCard: true,
++        pageZoom: true,
++        setTheme: false,
++        sidePanel: true,
++      },
 +      autofill: true,
 +      defaultBrowser: true,
 +      downloads: true,

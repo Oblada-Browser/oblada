@@ -1,0 +1,15 @@
+diff --git a/chrome/browser/extensions/api/settings_private/prefs_util.cc b/chrome/browser/extensions/api/settings_private/prefs_util.cc
+index 618a67dabc..6656feb100 100644
+--- a/chrome/browser/extensions/api/settings_private/prefs_util.cc
++++ b/chrome/browser/extensions/api/settings_private/prefs_util.cc
+@@ -314,6 +314,10 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
+ 
+   // Appearance settings.
+   (*s_allowlist)[::prefs::kCtrlTabMru] = settings_api::PrefType::kBoolean;
++  // Oblada: Settings > Oblada (oblada/browser/settings/oblada_page.h).
++  (*s_allowlist)["oblada.sidebar.mode"] = settings_api::PrefType::kString;
++  (*s_allowlist)["oblada.workspaces.show_header"] =
++      settings_api::PrefType::kBoolean;
+   (*s_allowlist)[::prefs::kCurrentThemeID] = settings_api::PrefType::kString;
+   (*s_allowlist)[::prefs::kPinnedActions] = settings_api::PrefType::kList;
+   (*s_allowlist)[themes::kPolicyThemeColor] = settings_api::PrefType::kNumber;

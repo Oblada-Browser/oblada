@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc b/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc
-index ee897b06f4..b1fc61c200 100644
+index ee897b06f4..f8ccb4b207 100644
 --- a/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc
 +++ b/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc
 @@ -13,8 +13,10 @@
@@ -39,13 +39,15 @@ index ee897b06f4..b1fc61c200 100644
  #include "ui/views/view.h"
  #include "ui/views/view_class_properties.h"
  #include "ui/views/widget/widget.h"
-@@ -56,6 +63,19 @@ constexpr int kFocusRingInset = 2;
+@@ -56,6 +63,21 @@ constexpr int kFocusRingInset = 2;
  constexpr int kAttentionIndicatorWidth = 8;
  // The amount of padding between the label and any sync icon.
  constexpr int kSyncIconLabelPadding = 2;
 +// Oblada: between a workspace's icon and its name, as between a tab's favicon
 +// and its title.
 +constexpr int kObladaIconLabelPadding = 8;
++// Oblada: a workspace's icon, a little smaller than the tabs' favicons.
++constexpr int kObladaIconSize = 14;
 +
 +// Oblada: the window's BrowserView when `header` is in the sidebar, where a
 +// group is a workspace (oblada/browser/workspaces/); else null.
@@ -59,7 +61,7 @@ index ee897b06f4..b1fc61c200 100644
  
  views::ScrollView* GetScrollView(views::View* view) {
    views::View* ancestor = view;
-@@ -101,19 +121,19 @@ void UpdateEditorButtonColors(views::LabelButton* button,
+@@ -101,19 +123,19 @@ void UpdateEditorButtonColors(views::LabelButton* button,
    button->SetImageModel(
        views::Button::STATE_NORMAL,
        ui::ImageModel::FromVectorIcon(features::IsRoundedIconsEnabled()
@@ -82,7 +84,7 @@ index ee897b06f4..b1fc61c200 100644
                                           : kBrowserToolsChromeRefreshOldIcon,
                                       foreground_color, kIconSize));
  }
-@@ -162,7 +182,7 @@ TabGroupHeaderView::TabGroupHeaderView(
+@@ -162,7 +184,7 @@ TabGroupHeaderView::TabGroupHeaderView(
  
    if (editor_bubble_button_) {
      ConfigureEditorBubbleButton(editor_bubble_button_);
@@ -91,17 +93,17 @@ index ee897b06f4..b1fc61c200 100644
    }
    editor_bubble_opened_subscription_ =
        editor_bubble_tracker_.RegisterOnBubbleOpened(base::BindRepeating(
-@@ -171,6 +191,17 @@ TabGroupHeaderView::TabGroupHeaderView(
+@@ -171,6 +193,17 @@ TabGroupHeaderView::TabGroupHeaderView(
        editor_bubble_tracker_.RegisterOnBubbleClosed(base::BindRepeating(
            &TabGroupHeaderView::OnBubbleClosed, base::Unretained(this)));
  
-+  // Oblada: a workspace's header (see OnDataChanged()) only when the sidebar
-+  // looks full (also compact, expanded on hover); narrow, it shows which
-+  // workspace it is at its bottom.
++  // Oblada: a workspace's header (see OnDataChanged()) only if the user wants
++  // it, and when the sidebar looks full (also compact, expanded on hover);
++  // otherwise its bottom shows which workspace it is.
 +  if (state_controller && orientation == TabStripOrientation::kVertical) {
-+    SetVisible(state_controller->IsObladaShownExpanded());
-+    oblada_collapse_subscription_ =
-+        state_controller->RegisterOnObladaShownExpandedChanged(
++    SetVisible(state_controller->IsObladaShowingHeaders());
++    oblada_headers_subscription_ =
++        state_controller->RegisterOnObladaShowingHeadersChanged(
 +            base::BindRepeating(&TabGroupHeaderView::SetVisible,
 +                                base::Unretained(this)));
 +  }
@@ -109,7 +111,7 @@ index ee897b06f4..b1fc61c200 100644
    SetCrossAxisAlignment(views::LayoutAlignment::kCenter);
    SetInteriorMargin(gfx::Insets::VH(0, GetHorizontalInset()));
    SetDefault(views::kFlexBehaviorKey,
-@@ -485,6 +516,10 @@ void TabGroupHeaderView::ShowContextMenuForViewImpl(
+@@ -485,6 +518,10 @@ void TabGroupHeaderView::ShowContextMenuForViewImpl(
        true;
  #endif
  
@@ -120,23 +122,26 @@ index ee897b06f4..b1fc61c200 100644
    if (!expand_on_hover_lock_) {
      expand_on_hover_lock_ = delegate_->AcquireExpandOnHoverLock();
    }
-@@ -523,6 +558,15 @@ void TabGroupHeaderView::OnDataChanged(
+@@ -523,6 +560,18 @@ void TabGroupHeaderView::OnDataChanged(
    } else {
      group_header_label_->SetText(tab_group_visual_data_.title());
    }
 +  // Oblada: in the sidebar a group is a workspace (oblada/browser/workspaces/), whose
-+  // header is just its icon and name, Zen-like (see UpdateColors() too).
++  // header is just its icon and name, Zen-like (see UpdateColors() too): smaller and
++  // fainter than a tab's title, over a line, so that it reads as the heading of the
++  // tabs below rather than as one of them.
 +  if (GetObladaBrowserView(this, orientation_)) {
 +    // Its icon in the tabs' favicon column, its name lined up with their titles.
-+    group_header_label_->SetFontList(gfx::FontList().DeriveWithSizeDelta(1).DeriveWithWeight(
-+        gfx::Font::Weight::MEDIUM));
++    group_header_label_->SetFontList(gfx::FontList().DeriveWithSizeDelta(-1).DeriveWithWeight(
++        gfx::Font::Weight::SEMIBOLD));
++    sync_icon_->SetPreferredSize(gfx::Size(kIconSize, kIconSize));
 +    sync_icon_->SetProperty(views::kMarginsKey,
 +                            gfx::Insets::TLBR(0, 0, 0, kObladaIconLabelPadding));
 +  }
  
    UpdateColors();
    if (GetColorProvider()) {
-@@ -613,8 +657,16 @@ void TabGroupHeaderView::UpdateColors() {
+@@ -613,8 +662,20 @@ void TabGroupHeaderView::UpdateColors() {
    if (!GetColorProvider()) {
      return;
    }
@@ -144,18 +149,22 @@ index ee897b06f4..b1fc61c200 100644
 -  const SkColor foreground_color = GetForegroundColor();
 +  SkColor background_color = GetBackgroundColor();
 +  SkColor foreground_color = GetForegroundColor();
-+  // Oblada: a workspace's header has no chip, and the tabs' text color.
++  // Oblada: a workspace's header has no chip, the tabs' text color, fainter, and a
++  // line under it.
 +  BrowserView* const oblada_browser_view =
 +      GetObladaBrowserView(this, orientation_);
 +  if (oblada_browser_view) {
 +    background_color = SK_ColorTRANSPARENT;
-+    foreground_color =
++    const SkColor text =
 +        GetColorProvider()->GetColor(kColorTabForegroundActiveFrameActive);
++    foreground_color = SkColorSetA(text, 0xA6);
++    SetBorder(views::CreateSolidSidedBorder(gfx::Insets::TLBR(0, 0, 1, 0),
++                                            SkColorSetA(text, 0x24)));
 +  }
  
    // Update label.
    group_header_label_->SetEnabledColor(foreground_color);
-@@ -622,7 +674,13 @@ void TabGroupHeaderView::UpdateColors() {
+@@ -622,7 +683,13 @@ void TabGroupHeaderView::UpdateColors() {
    // Update save tab group related items, the sync icon and attention
    // indicator.
    sync_icon_->SetVisible(is_shared_);
@@ -164,13 +173,13 @@ index ee897b06f4..b1fc61c200 100644
 +  if (oblada_browser_view) {
 +    sync_icon_->SetImage(oblada::workspaces::WorkspaceIcon(
 +        oblada_browser_view->browser(), tab_group_visual_data_.title(),
-+        kIconSize));
++        kObladaIconSize));
 +    sync_icon_->SetVisible(true);
 +  } else if (is_shared_) {
      sync_icon_->SetImage(ui::ImageModel::FromVectorIcon(
          features::IsRoundedIconsEnabled() ? kGroupCustomIcon
                                            : kPeopleGroupOldIcon,
-@@ -702,12 +760,15 @@ void TabGroupHeaderView::SetEditorBubbleButtonVisibilityOnHover(
+@@ -702,12 +769,15 @@ void TabGroupHeaderView::SetEditorBubbleButtonVisibilityOnHover(
    if (!editor_bubble_button_) {
      return;
    }
@@ -188,7 +197,7 @@ index ee897b06f4..b1fc61c200 100644
    if (editor_bubble_tracker_.is_open()) {
      return;
    }
-@@ -719,6 +780,20 @@ void TabGroupHeaderView::ShowEditorBubble() {
+@@ -719,6 +789,20 @@ void TabGroupHeaderView::ShowEditorBubble() {
        /*stop_context_menu_propagation=*/false));
  }
  

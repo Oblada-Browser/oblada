@@ -5,6 +5,10 @@
 oblada_ui_sources = [
   "//oblada/browser/about/about_page.cc",
   "//oblada/browser/about/about_page.h",
+  "//oblada/browser/clean_links/clean_links.cc",
+  "//oblada/browser/clean_links/clean_links.h",
+  "//oblada/browser/clean_links/mozilla_list.cc",
+  "//oblada/browser/clean_links/mozilla_list.h",
   "//oblada/browser/containers/container_chip.cc",
   "//oblada/browser/containers/container_chip.h",
   "//oblada/browser/containers/containers.cc",
@@ -51,6 +55,8 @@ oblada_ui_sources = [
   "//oblada/browser/peek/peek.h",
   "//oblada/browser/prefs.cc",
   "//oblada/browser/prefs.h",
+  "//oblada/browser/settings/oblada_page.cc",
+  "//oblada/browser/settings/oblada_page.h",
   "//oblada/browser/ui/drag_ghost.cc",
   "//oblada/browser/ui/drag_ghost.h",
   "//oblada/browser/ui/downloads_button.cc",
@@ -61,13 +67,19 @@ oblada_ui_sources = [
   "//oblada/browser/ui/icons.h",
   "//oblada/browser/ui/media_controls.cc",
   "//oblada/browser/ui/media_controls.h",
+  "//oblada/browser/ui/sidebar_card.cc",
+  "//oblada/browser/ui/sidebar_card.h",
   "//oblada/browser/ui/sidebar_layout.cc",
   "//oblada/browser/ui/sidebar_layout.h",
+  "//oblada/browser/ui/sidebar_mode.cc",
+  "//oblada/browser/ui/sidebar_mode.h",
   "//oblada/browser/ui/site_panel.cc",
   "//oblada/browser/ui/site_panel.h",
   "//oblada/browser/ui/split_handle.cc",
   "//oblada/browser/ui/split_handle.h",
   "//oblada/browser/ui/traffic_lights.h",
+  "//oblada/browser/ui/window_background.cc",
+  "//oblada/browser/ui/window_background.h",
   "//oblada/browser/updater/updater.cc",
   "//oblada/browser/updater/updater.h",
   "//oblada/browser/updater/updater_platform.h",
@@ -75,10 +87,14 @@ oblada_ui_sources = [
   "//oblada/browser/welcome/welcome_page.h",
   "//oblada/browser/welcome/welcome_ui.cc",
   "//oblada/browser/welcome/welcome_ui.h",
+  "//oblada/browser/workspaces/theme_picker.cc",
+  "//oblada/browser/workspaces/theme_picker.h",
   "//oblada/browser/workspaces/workspace_slider.cc",
   "//oblada/browser/workspaces/workspace_slider.h",
   "//oblada/browser/workspaces/workspace_switcher.cc",
   "//oblada/browser/workspaces/workspace_switcher.h",
+  "//oblada/browser/workspaces/workspace_theme.cc",
+  "//oblada/browser/workspaces/workspace_theme.h",
   "//oblada/browser/workspaces/workspaces.cc",
   "//oblada/browser/workspaces/workspaces.h",
 ]
@@ -94,6 +110,32 @@ write_file("$root_gen_dir/oblada/version.h",
              "#define OBLADA_VERSION_H_",
              "#define OBLADA_VERSION \"$oblada_version\"",
              "#endif  // OBLADA_VERSION_H_",
+           ])
+
+# Firefox's lists of tracking parameters (clean_links/lists), as they are, for
+# clean_links.cc as kStripOnShareList and kStripOnShareLgplList, and Mozilla's
+# for mozilla_list.cc as kMozillaList, in "oblada/clean_links_lists.h". Written
+# when they change.
+write_file("$root_gen_dir/oblada/clean_links_lists.h",
+           [
+             "// Generated from oblada/browser/clean_links/lists by oblada/browser/sources.gni.",
+             "#ifndef OBLADA_CLEAN_LINKS_LISTS_H_",
+             "#define OBLADA_CLEAN_LINKS_LISTS_H_",
+             "namespace oblada::clean_links {",
+             "inline constexpr char kStripOnShareList[] = R\"json(",
+             read_file("//oblada/browser/clean_links/lists/MPL2/StripOnShare.json",
+                       "string"),
+             ")json\";",
+             "inline constexpr char kStripOnShareLgplList[] = R\"json(",
+             read_file("//oblada/browser/clean_links/lists/LGPL/StripOnShareLGPL.json",
+                       "string"),
+             ")json\";",
+             "inline constexpr char kMozillaList[] = R\"json(",
+             read_file("//oblada/browser/clean_links/lists/mozilla/query-stripping.json",
+                       "string"),
+             ")json\";",
+             "}  // namespace oblada::clean_links",
+             "#endif  // OBLADA_CLEAN_LINKS_LISTS_H_",
            ])
 
 # Targets Oblada's sources above need.
@@ -113,6 +155,7 @@ if (is_mac) {
     "//oblada/browser/import/app_icon_mac.mm",
     "//oblada/browser/import/password_decryptor_mac.mm",
     "//oblada/browser/ui/traffic_lights_mac.mm",
+    "//oblada/browser/ui/window_background_mac.mm",
     "//oblada/browser/updater/updater_mac.mm",
   ]
   oblada_ui_deps += [ "//oblada/browser/updater:sparkle" ]
@@ -122,6 +165,7 @@ if (is_win) {
   oblada_ui_sources += [
     "//oblada/browser/import/app_icon_other.cc",
     "//oblada/browser/import/password_decryptor_win.cc",
+    "//oblada/browser/ui/window_background_other.cc",
     "//oblada/browser/updater/updater_other.cc",
   ]
 }
@@ -130,6 +174,7 @@ if (is_linux) {
   oblada_ui_sources += [
     "//oblada/browser/import/app_icon_other.cc",
     "//oblada/browser/import/password_decryptor_linux.cc",
+    "//oblada/browser/ui/window_background_other.cc",
     "//oblada/browser/updater/updater_other.cc",
   ]
 }
