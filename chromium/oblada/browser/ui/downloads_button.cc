@@ -15,6 +15,7 @@
 #include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_button.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
+#include "oblada/browser/ui/horizontal_tabs.h"
 #include "ui/actions/actions.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
@@ -162,9 +163,15 @@ std::unique_ptr<views::View> CreateButton(BrowserWindowInterface* browser) {
 }
 
 ToolbarButton* SidebarButton(BrowserView* browser_view) {
-  return browser_view ? views::AsViewClass<DownloadsButton>(
-                            browser_view->GetViewByID(kButtonViewId))
-                      : nullptr;
+  // None with horizontal tabs, without a sidebar: the toolbar's button is
+  // there instead (horizontal_tabs.h).
+  if (!browser_view ||
+      (browser_view->toolbar() &&
+       horizontal::LayoutOf(browser_view->toolbar()))) {
+    return nullptr;
+  }
+  return views::AsViewClass<DownloadsButton>(
+      browser_view->GetViewByID(kButtonViewId));
 }
 
 views::BubbleBorder::Arrow BubbleArrow(const views::View* anchor,

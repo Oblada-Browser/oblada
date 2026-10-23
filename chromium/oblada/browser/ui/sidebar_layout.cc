@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "oblada/browser/ui/floating_location_bar.h"
+#include "oblada/browser/ui/horizontal_tabs.h"
 #include "third_party/skia/include/core/SkPath.h"
 #include "ui/base/class_property.h"
 #include "ui/compositor/layer.h"
@@ -105,6 +106,12 @@ bool IsCompact(const views::View* toolbar) {
   return toolbar && toolbar->GetProperty(kCompactKey);
 }
 
+bool HasSidebarLocationBar(const views::View* toolbar) {
+  return toolbar &&
+         (ToolbarInset(toolbar) >= 0 ||
+          horizontal::LayoutOf(toolbar) == Mode::kHorizonCompact);
+}
+
 bool IsCompactToolbarInUse(const views::View* toolbar) {
   if (!toolbar || !toolbar->GetProperty(kCompactKey) || !toolbar->parent()) {
     return false;
@@ -123,7 +130,8 @@ void SetToolbarAbovePage(views::View* top_container,
                          views::View* page,
                          views::View* tab_strip,
                          bool above,
-                         bool clip) {
+                         bool clip,
+                         views::View* tabs) {
   views::View* parent = top_container->parent();
   if (!parent || page->parent() != parent) {
     return;
@@ -150,8 +158,19 @@ void SetToolbarAbovePage(views::View* top_container,
       top_container->layer()->SetFillsBoundsOpaquely(false);
       top_container->layer()->SetMasksToBounds(clip);
     }
-    if (*top_index < *page_index) {
-      // Above everything else too: the toolbar is the topmost thing there.
+    // Above everything else too: the toolbar is the topmost thing there, but
+    // for `tabs`.
+    const std::optional<size_t> tabs_index =
+        tabs && tabs->parent() == parent ? parent->GetIndexOf(tabs)
+                                         : std::nullopt;
+    if (tabs_index) {
+      if (*top_index < *page_index || *top_index > *tabs_index) {
+        // Right below them, where they'll be once it has moved.
+        parent->ReorderChildView(
+            top_container,
+            *top_index < *tabs_index ? *tabs_index - 1 : *tabs_index);
+      }
+    } else if (*top_index < *page_index) {
       parent->ReorderChildView(top_container, parent->children().size());
     }
   } else if (*top_index > *page_index) {

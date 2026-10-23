@@ -1,0 +1,167 @@
+diff --git a/chrome/browser/ui/views/tabs/tab.cc b/chrome/browser/ui/views/tabs/tab.cc
+index 7a77fc7f0b..0649227a93 100644
+--- a/chrome/browser/ui/views/tabs/tab.cc
++++ b/chrome/browser/ui/views/tabs/tab.cc
+@@ -4,6 +4,9 @@
+ 
+ #include "chrome/browser/ui/views/tabs/tab.h"
+ 
++#include "oblada/browser/containers/containers.h"  // Oblada
++#include "oblada/browser/ui/horizontal_tabs.h"  // Oblada
++
+ #include <stddef.h>
+ 
+ #include <algorithm>
+@@ -78,6 +81,7 @@
+ #include "ui/gfx/geometry/rect_conversions.h"
+ #include "ui/gfx/geometry/skia_conversions.h"
+ #include "ui/gfx/paint_vector_icon.h"
++#include "ui/gfx/text_utils.h"  // Oblada
+ #include "ui/views/accessibility/view_accessibility.h"
+ #include "ui/views/border.h"
+ #include "ui/views/bubble/bubble_border.h"
+@@ -596,7 +600,8 @@ void Tab::Layout(PassKey) {
+   alert_indicator_button_->SetVisible(showing_alert_indicator_);
+ 
+   // Size the title to fill the remaining width and use all available height.
+-  bool show_title = ShouldRenderAsNormalTab();
++  bool show_title =
++      ShouldRenderAsNormalTab() && !IsObladaUnderLocationBar();  // Oblada
+ 
+   if (features::IsTabStripDeclutterEnabled() && center_icon_) {
+     show_title = false;
+@@ -621,7 +626,25 @@ void Tab::Layout(PassKey) {
+       // Allow the title to overlay the close button's empty border padding.
+       title_right = close_x - after_title_padding;
+     }
+-    const int title_width = std::max(title_right - title_left, 0);
++    int title_width = std::max(title_right - title_left, 0);
++    // Oblada: in horizon modes the icon and the title are in the middle of the
++    // tab, as in Safari, short of the close button.
++    if (oblada::horizontal::SharesRow(this) && !center_icon_) {
++      // Measured, as the title has no size while it's hidden.
++      const int text_width = std::min(
++          gfx::GetStringWidth(title_->GetText(), title_->font_list()) + 1,
++          title_width);
++      const int lead = title_left - start;
++      const int shift = std::clamp(
++          (contents_rect.width() - lead - text_width) / 2, 0,
++          std::max(0, title_right - title_left - text_width));
++      if (showing_icon_) {
++        favicon_bounds.Offset(shift, 0);
++        icon_->SetBoundsRect(favicon_bounds);
++      }
++      title_left += shift;
++      title_width = text_width;
++    }
+     // The Label will automatically center the font's cap height within the
+     // provided vertical space.
+     const gfx::Rect title_bounds(title_left, GetLocalBounds().y(), title_width,
+@@ -854,6 +877,10 @@ void Tab::OnMouseExited(const ui::MouseEvent& event) {
+   }
+   mouse_hovered_ = false;
+   controller_->HideHover(this, TabStyle::HideHoverStyle::kGradual);
++  // Oblada: without its close button (see UpdateIconVisibility()).
++  if (oblada::horizontal::LayoutOf(this)) {
++    InvalidateLayout();
++  }
+ }
+ 
+ void Tab::OnGestureEvent(ui::GestureEvent* event) {
+@@ -924,6 +951,16 @@ void Tab::PaintChildren(const views::PaintInfo& info) {
+ 
+ void Tab::OnPaint(gfx::Canvas* canvas) {
+   tab_style_views()->PaintTab(canvas);
++  // Oblada: the container's color, a bar at the bottom of the tab's veil (see
++  // horizontal_tab_style_views.cc), under its title.
++  const int corner = tab_style()->GetBottomCornerRadius();
++  const int top = GetLayoutConstant(LayoutConstant::kTabStripPadding);
++  const int bottom = GetLayoutConstant(LayoutConstant::kTabHeight) -
++                     GetLayoutConstant(LayoutConstant::kTabstripToolbarOverlap);
++  oblada::containers::PaintTabIndicator(
++      canvas, gfx::Rect(corner, top, std::max(0, width() - 2 * corner),
++                        bottom - top),
++      /*vertical=*/false, tab_handle_.Get());
+ }
+ 
+ void Tab::AddedToWidget() {
+@@ -986,10 +1023,25 @@ TabSlotView::ViewType Tab::GetTabSlotViewType() const {
+ }
+ 
+ TabSizeInfo Tab::GetTabSizeInfo() const {
+-  return {tab_style()->GetPinnedWidth(split().has_value()),
+-          tab_style()->GetMinimumActiveWidth(split().has_value()),
+-          tab_style()->GetMinimumInactiveWidth(),
+-          tab_style()->GetStandardWidth(split().has_value())};
++  TabSizeInfo size_info = {
++      tab_style()->GetPinnedWidth(split().has_value()),
++      tab_style()->GetMinimumActiveWidth(split().has_value()),
++      tab_style()->GetMinimumInactiveWidth(),
++      tab_style()->GetStandardWidth(split().has_value())};
++  // Oblada: in horizon modes the tabs share their row evenly, as Safari's
++  // (oblada/browser/ui/horizontal_tabs.h); in horizon compact mode the active
++  // one never gets too narrow for the address bar over it.
++  if (oblada::horizontal::SharesRow(this)) {
++    size_info.standard_width = oblada::horizontal::kHorizonTabMaxWidth;
++  }
++  if (oblada::horizontal::LayoutOf(this) ==
++      oblada::sidebar::Mode::kHorizonCompact) {
++    size_info.min_active_width = oblada::horizontal::CompactActiveTabMinWidth(
++        this, controller_->GetBrowserWindowInterface(),
++        size_info.min_inactive_width, tab_style()->GetTabOverlap(),
++        size_info.min_active_width);
++  }
++  return size_info;
+ }
+ 
+ void Tab::SetGroup(std::optional<tab_groups::TabGroupId> group) {
+@@ -1282,6 +1334,12 @@ void Tab::MaybeAdjustLeftForPinnedTab(gfx::Rect* bounds,
+           (ideal_x - bounds->x())));
+ }
+ 
++bool Tab::IsObladaUnderLocationBar() const {
++  return IsActive() && !closing_ && !dragging() &&
++         oblada::horizontal::LayoutOf(this) ==
++             oblada::sidebar::Mode::kHorizonCompact;
++}
++
+ void Tab::UpdateIconVisibility() {
+   // When a tab is less than it's minimum inactive width its implied that its
+   // collapsed, but some favicon functionality can escape the bounds of the tab
+@@ -1312,6 +1370,13 @@ void Tab::UpdateIconVisibility() {
+     return;
+   }
+ 
++  // Oblada: but its close button, nothing of its own under the address bar
++  // (oblada/browser/ui/horizontal_tabs.h).
++  if (IsObladaUnderLocationBar()) {
++    showing_close_button_ = true;
++    return;
++  }
++
+   const bool has_favicon = data().should_display_favicon;
+   bool has_alert_icon =
+       (alert_indicator_button_ ? alert_indicator_button_->showing_alert_state()
+@@ -1417,7 +1482,10 @@ void Tab::UpdateIconVisibility() {
+         should_show_close_button && large_enough_for_close_button &&
+         !(declutter_eligible &&
+           available_width <=
+-              TabStyle::kTabStripDeclutterMaxTabWidthForCloseHide);
++              TabStyle::kTabStripDeclutterMaxTabWidthForCloseHide) &&
++        // Oblada: as in the sidebar, only while the pointer is over it
++        // (oblada/browser/ui/horizontal_tabs.h).
++        (mouse_hovered_ || !oblada::horizontal::LayoutOf(this));
+     if (showing_close_button_) {
+       available_width -= close_button_width;
+     }
+@@ -1516,6 +1584,10 @@ void Tab::MaybeUpdateHoverStatus(const ui::MouseEvent& event) {
+ 
+   mouse_hovered_ = true;
+   controller_->ShowHover(this, TabStyle::ShowHoverStyle::kSubtle);
++  // Oblada: with its close button (see UpdateIconVisibility()).
++  if (oblada::horizontal::LayoutOf(this)) {
++    InvalidateLayout();
++  }
+   if (g_show_hover_card_on_mouse_hover) {
+     controller_->UpdateHoverCard(
+         this, TabSlotController::HoverCardUpdateType::kHover);

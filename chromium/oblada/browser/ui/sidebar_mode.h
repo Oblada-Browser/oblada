@@ -30,20 +30,36 @@ class View;
 // - kSidebar, the full sidebar: tabs, the address bar and workspaces;
 // - kScaffold, the tabs as icons in a narrow column, the address bar in a row
 //   at the top, next to the window controls;
+// - kExpandedScaffold, the address bar in that row too, but the full sidebar
+//   below it, without its address bar: tabs with their titles and workspaces;
 // - kCompact, only the page, the sidebar showing over it when the pointer
-//   reaches the window's left edge (sidebar_card.h).
-// Scaffold and compact are Chromium's collapsed vertical tab strip, sidebar its
-// expanded one: collapsing the strip (⌘⇧L, the sidebar's menu) goes to the
-// layout last chosen of the two, expanding it to the sidebar.
+//   reaches the window's left edge (sidebar_card.h);
+// - kHorizon, as Safari's: the address bar in a row at the top, next to the
+//   window controls, and the tabs in a row below it (horizontal_tabs.h);
+// - kHorizonCompact, as Safari's compact one: the tabs in that row instead,
+//   the active one the address bar;
+// - kClassic, the tabs in a row at the top, next to the window controls, and
+//   the address bar in a row below them.
+// Scaffold and compact are Chromium's collapsed vertical tab strip, sidebar and
+// expanded scaffold its expanded one. Collapsing the strip (⌘⇧L, the sidebar's
+// menu) goes from expanded scaffold to scaffold, the address bar staying where
+// it is, and from the sidebar to the collapsed layout last chosen; expanding
+// it, to the expanded layout last chosen. Horizon and classic are Chromium's
+// horizontal tab strip, which doesn't collapse.
 namespace oblada::sidebar {
 
 enum class Mode {
   kSidebar,
   kScaffold,
+  kExpandedScaffold,
   kCompact,
+  kHorizon,
+  kHorizonCompact,
+  kClassic,
 };
 
-// The layout, as Settings sets it ("sidebar", "scaffold" or "compact").
+// The layout, as Settings sets it ("sidebar", "scaffold", "expanded_scaffold",
+// "compact", "horizon", "horizon_compact" or "classic").
 inline constexpr char kModePref[] = "oblada.sidebar.mode";
 
 void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
@@ -55,9 +71,22 @@ void SetMode(Profile* profile, Mode mode);
 std::string_view ModeName(Mode mode);
 std::optional<Mode> ModeFromName(std::string_view name);
 
+// Whether `mode` has the vertical tab strip collapsed (scaffold, compact).
+bool IsCollapsed(Mode mode);
+
+// Whether `mode` has the toolbar in a row at the top of the window (scaffold,
+// expanded or not).
+bool IsScaffold(Mode mode);
+
+// Whether `mode` has horizontal tabs (horizon, compact or not, and classic).
+bool IsHorizontal(Mode mode);
+
 // Whether the layout in `prefs` (a profile's) has the vertical tab strip
 // collapsed: for a new window's to be from the start.
 bool CollapsesTabStrip(const PrefService* prefs);
+
+// Whether the layout in `prefs` (a profile's) has horizontal tabs.
+bool HasHorizontalTabs(const PrefService* prefs);
 
 // The layout of the window whose tab strip region is `tab_strip_region`, as
 // its ModeKeeper last saw it: for the browser layout.

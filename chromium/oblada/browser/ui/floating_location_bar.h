@@ -14,7 +14,9 @@ class View;
 // command bar and Zen's floating address bar: centered in the upper part of the
 // page, larger, over the page dimmed, its suggestions right under it.
 // Its place in the sidebar stays, grayed out, and the bar's shape flies from there
-// to the page as it floats out, and back as it returns, to lead the eye.
+// to the page as it floats out, and back as it returns, to lead the eye. So does
+// the address bar over the active tab in horizon compact mode (horizontal_tabs.h,
+// sidebar_layout.h's HasSidebarLocationBar()).
 //
 // The bar stays its toolbar's child: the toolbar lays it out over the page (see
 // LayOutLocationBar()), and its container is above the page meanwhile (see
@@ -53,6 +55,13 @@ void WhenFloatingLocationBarLands(const gfx::Rect& bounds_in_screen,
 // Lays out `toolbar`'s address bar, in the sidebar: in its row (see
 // LocationBarBounds()), or floating, with its grayed-out place in the row.
 void LayOutLocationBar(views::View* toolbar, views::View* location_bar);
+
+// The same with its place at `slot` (in `toolbar`), e.g. over the active tab in
+// horizon compact mode (horizontal_tabs.h), where its shape flies from and
+// back to.
+void LayOutLocationBar(views::View* toolbar,
+                       views::View* location_bar,
+                       const gfx::Rect& slot);
 
 }  // namespace oblada::sidebar
 

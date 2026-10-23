@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index fdfdd93f07..a170071a00 100644
+index fdfdd93f07..ccf0868c71 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 @@ -4,6 +4,14 @@
@@ -91,7 +91,7 @@ index fdfdd93f07..a170071a00 100644
 +bool VerticalTabStripRegionView::IsObladaSidebar() const {
 +  return (browser_view()->toolbar() &&
 +          oblada::sidebar::ToolbarInset(browser_view()->toolbar()) >= 0) ||
-+         oblada::sidebar::ModeOf(this) == oblada::sidebar::Mode::kScaffold;
++         oblada::sidebar::IsScaffold(oblada::sidebar::ModeOf(this));
 +}
 +
  void VerticalTabStripRegionView::Layout(PassKey) {
@@ -118,7 +118,18 @@ index fdfdd93f07..a170071a00 100644
    LayoutSuperclass<BaseTabStripRegionView>(this);
  
    // When animating the organizer panel in, as soon as it is visible, focus it.
-@@ -817,8 +870,14 @@ VerticalTabStripRegionView::RegionViewFocusListener::RegionViewFocusListener(
+@@ -470,7 +523,9 @@ void VerticalTabStripRegionView::Layout(PassKey) {
+ 
+   // Manually position the resize area as it overlaps views handled by the flex
+   // layout.
+-  resize_area_->SetBoundsRect(gfx::Rect(bounds().right() - resize_area_width_,
++  // Oblada: at its own right edge, wherever it is in the window (it isn't at
++  // the window's edge in scaffold mode, oblada/browser/ui/sidebar_mode.h).
++  resize_area_->SetBoundsRect(gfx::Rect(width() - resize_area_width_,
+                                         0, resize_area_width_,
+                                         bounds().height()));
+   shadow_frame_->SetBoundsRect(GetLocalBounds());
+@@ -817,8 +872,14 @@ VerticalTabStripRegionView::RegionViewFocusListener::RegionViewFocusListener(
  void VerticalTabStripRegionView::RegionViewFocusListener::OnDidChangeFocus(
      views::View* focused_before,
      views::View* focused_now) {
@@ -134,7 +145,7 @@ index fdfdd93f07..a170071a00 100644
      region_view_->UpdateExpandOnHoverState();
    }
  }
-@@ -974,7 +1033,9 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -974,7 +1035,9 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
    }
  
    // If the force collapse lock is held, collapse the tab strip.
@@ -145,7 +156,7 @@ index fdfdd93f07..a170071a00 100644
      if (is_expanded_on_hover_) {
        AnimateExpandOnHover(/*expand=*/false);
      }
-@@ -1009,8 +1070,12 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -1009,8 +1072,12 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
    const bool should_expand =
        !suppress_expand_on_hover_ &&
        state_controller_->IsExpandOnHoverEnabled() &&
@@ -159,7 +170,7 @@ index fdfdd93f07..a170071a00 100644
  
    if (!should_expand) {
      if (is_expanded_on_hover_ && keep_current_state_lock_count_ == 0) {
-@@ -1063,8 +1128,11 @@ void VerticalTabStripRegionView::RestartExpandOnHoverTimer(
+@@ -1063,8 +1130,11 @@ void VerticalTabStripRegionView::RestartExpandOnHoverTimer(
  void VerticalTabStripRegionView::OnMouseVelocityHeuristicInterval() {
    const bool should_expand =
        state_controller_->IsExpandOnHoverEnabled() &&
@@ -172,7 +183,7 @@ index fdfdd93f07..a170071a00 100644
  
    if (!should_expand || is_expanded_on_hover_) {
      ResetExpandOnHoverTimers();
-@@ -1229,8 +1297,14 @@ void VerticalTabStripRegionView::UnregisterExpandOnHoverLock(
+@@ -1229,8 +1299,14 @@ void VerticalTabStripRegionView::UnregisterExpandOnHoverLock(
  void VerticalTabStripRegionView::OnOmniboxPopupVisibilityChanged(bool is_open) {
    if (is_open) {
      if (!omnibox_open_lock_) {

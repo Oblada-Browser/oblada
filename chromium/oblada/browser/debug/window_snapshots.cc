@@ -195,12 +195,37 @@ void Drag(views::Widget* widget,
   DragPoint() = to;
 }
 
+// "resize:<dx>": drags the sidebar's edge (its resize area) <dx> to the right,
+// from wherever the window has it, and lets go.
+void Resize(views::Widget* widget, std::string_view spec) {
+  int dx = 0;
+  const views::View* sidebar =
+      FindView(widget->GetRootView(), "VerticalTabStripRegionView");
+  const views::View* edge = sidebar ? FindView(sidebar, "ResizeArea") : nullptr;
+  if (!base::StringToInt(spec, &dx) || !edge) {
+    return;
+  }
+  const gfx::Point from =
+      edge->ConvertRectToWidget(edge->GetLocalBounds()).CenterPoint();
+  SendMouse(widget, ui::EventType::kMousePressed, from);
+  constexpr int kSteps = 8;
+  for (int i = 1; i <= kSteps; ++i) {
+    SendMouse(widget, ui::EventType::kMouseDragged,
+              from + gfx::Vector2d(dx * i / kSteps, 0));
+  }
+  SendMouse(widget, ui::EventType::kMouseReleased, from + gfx::Vector2d(dx, 0));
+}
+
 // Sends the window a two-finger scroll over its sidebar (which, unlike the tabs
 // it moves, stays put), `dx` in the gesture's `momentum` phase: as macOS's come,
 // MAY_BEGIN as the fingers touch, NONE as they move, END as they lift.
 void SendScroll(views::Widget* widget, ui::EventMomentumPhase momentum, float dx) {
+  // Or over the horizontal tabs, where there's no sidebar.
   const views::View* sidebar =
       FindView(widget->GetRootView(), "VerticalTabStripRegionView");
+  if (!sidebar) {
+    sidebar = FindView(widget->GetRootView(), "HorizontalTabStripRegionViewOld");
+  }
   const gfx::PointF point(
       sidebar ? sidebar->ConvertRectToWidget(sidebar->GetLocalBounds()).CenterPoint()
               : gfx::Point(100, 200));
@@ -265,7 +290,8 @@ void SwipeTimed(std::string_view spec) {
 // Does what a request asks before the snapshot: browser commands (their ids), clicks
 // on views ("click:<view class name>[:<n>]"), "split" (the active tab and the one before
 // it side by side), "drag:<n>:<x>,<y>" (see Drag()), "drop" and "grip:<n>:<x>,<y>"
-// (drags a split pane's grip there), "press:<x>,<y>" (a click there), "select-to:<n>"
+// (drags a split pane's grip there), "resize:<dx>" (see Resize()), "press:<x>,<y>"
+// (a click there), "hold:<x>,<y>" (pressed there, not let go), "select-to:<n>"
 // (the tabs from the active one to the <n>th selected), "open:<url>" (in the active
 // tab), "temporary" (a new tab in a new temporary container), "site-panel" (the
 // address bar's), "force-click" (a firm press on the trackpad), "peek-tab" (the peek made a tab), "expand" (the compact sidebar
@@ -278,7 +304,7 @@ void SwipeTimed(std::string_view spec) {
 // "ws-theme-scheme:<auto|light|dark>", "ws-theme-opacity:<0 to 1|default>",
 // "ws-theme-grain:<0 to 1>" (the theme of the workspace shown, its own from then on),
 // "ws-theme-default" (it follows the default theme), "default-theme" (its picker),
-// "default-theme-reset", "ws-header" (the workspace's header shown), "mode:<sidebar|scaffold|compact>"
+// "default-theme-reset", "ws-header" (the workspace's header shown), "mode:<layout>" (as its pref names it)
 // (the window's layout), "hover:<view class>[:<n>]" (as
 // "click:", for the view's hover highlight), "swipe:<dx>[:hold]", "swipe-timed:<dx>:<ms>" and "swipe-end" (see
 // Swipe()), and "film:<count>:<ms>" (see Film()).
@@ -321,6 +347,8 @@ void RunActions(BrowserWindowInterface* browser,
       SwipeTimed(action.substr(12));
     } else if (action.starts_with("swipe:")) {
       Swipe(widget, action.substr(6));
+    } else if (action.starts_with("resize:")) {
+      Resize(widget, action.substr(7));
     } else if (action == "swipe-end") {
       SendScroll(widget, ui::EventMomentumPhase::END, 0);
     } else if (action == "drop") {
@@ -334,6 +362,17 @@ void RunActions(BrowserWindowInterface* browser,
         chrome::ExecuteCommand(browser, IDC_FOCUS_LOCATION);
         view->GetLocationBarView()->GetOmniboxView()->SetUserText(
             base::UTF8ToUTF16(text), /*update_popup=*/true);
+      }
+    } else if (action.starts_with("hold:")) {
+      // "hold:<x>,<y>": the button pressed there and kept down (e.g. the new
+      // tab button's long press), as the window gets it.
+      const std::vector<std::string_view> xy = base::SplitStringPiece(
+          action.substr(5), ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      int x = 0;
+      int y = 0;
+      if (xy.size() == 2 && base::StringToInt(xy[0], &x) &&
+          base::StringToInt(xy[1], &y)) {
+        SendMouse(widget, ui::EventType::kMousePressed, gfx::Point(x, y));
       }
     } else if (action.starts_with("press:")) {
       // A click at <x>,<y> in the window, as the window gets it.

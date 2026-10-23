@@ -9,9 +9,9 @@
 // information (but for a site with warnings) to it.
 //
 // The location bar (location_bar_view.cc) creates the button and lays it out with its
-// other trailing decorations; with the toolbar in the sidebar, it is where extension
-// popups show from (extensions_toolbar_desktop.cc), the toolbar keeping its
-// extension buttons out of sight.
+// other trailing decorations; in Oblada's layouts, it is where extension popups show
+// from (extensions_toolbar_desktop.cc), the toolbar keeping its extension buttons out
+// of sight.
 
 class BrowserWindowInterface;
 
@@ -40,7 +40,8 @@ void HidePageActionsInPanel(views::View* location_bar,
                             page_actions::PageActionContainerView* container);
 
 // What extension popups should show from, for the extensions container of
-// `toolbar` (the button, while the toolbar is in the sidebar); null for the default.
+// `toolbar` (the button, while the toolbar keeps its extension buttons out of
+// sight, see toolbar_view.cc); null for the default.
 views::View* ExtensionsAnchor(views::View* toolbar);
 
 }  // namespace oblada::site_panel

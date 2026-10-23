@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
-index 818924fc76..d3b9a2786b 100644
+index 818924fc76..ac012be84c 100644
 --- a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
 +++ b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
 @@ -44,6 +44,9 @@
@@ -53,7 +53,19 @@ index 818924fc76..d3b9a2786b 100644
    } else {
      *override_titlebar_height = false;
      *titlebar_height = 0;
-@@ -310,34 +317,9 @@ - (NSTouchBar*)makeTouchBar {
+@@ -289,7 +296,10 @@ - (NSTouchBar*)makeTouchBar {
+ std::optional<int> BrowserNativeWidgetMac::GetGlassFrameHeight() const {
+   // If vertical tabs are being drawn, the glass effect view is not restricted
+   // vertically to top chrome (it spans full height).
+-  if (!browser_view_ || browser_view_->ShouldDrawVerticalTabStrip()) {
++  // Oblada: nor with horizontal tabs (oblada/browser/ui/horizontal_tabs.h):
++  // the page floats on the glass all around in every layout.
++  if (!browser_view_ || browser_view_->ShouldDrawVerticalTabStrip() ||
++      browser_view_->GetIsNormalType()) {
+     return std::nullopt;
+   }
+ 
+@@ -310,34 +320,9 @@ - (NSTouchBar*)makeTouchBar {
  }
  
  std::optional<int> BrowserNativeWidgetMac::GetGlassFrameWidth() const {
@@ -91,7 +103,7 @@ index 818924fc76..d3b9a2786b 100644
  }
  
  void BrowserNativeWidgetMac::OnFocusWindowToolbar() {
-@@ -509,6 +491,10 @@ - (NSTouchBar*)makeTouchBar {
+@@ -509,6 +494,10 @@ - (NSTouchBar*)makeTouchBar {
          result->new_toggle_state =
              prefs->GetBoolean(prefs::kShowFullscreenToolbar);
        }
@@ -102,7 +114,7 @@ index 818924fc76..d3b9a2786b 100644
        break;
      }
      case IDC_SHOW_FULL_URLS: {
-@@ -1133,6 +1119,14 @@ - (NSTouchBar*)makeTouchBar {
+@@ -1133,6 +1122,14 @@ - (NSTouchBar*)makeTouchBar {
        opaque_mask = NSViewWidthSizable | NSViewHeightSizable;
      }
  
@@ -117,7 +129,18 @@ index 818924fc76..d3b9a2786b 100644
      opaque_background_view_.frame =
          NSMakeRect(opaque_x, opaque_y, opaque_width, opaque_height);
      opaque_background_view_.autoresizingMask = opaque_mask;
-@@ -1166,8 +1160,10 @@ - (NSTouchBar*)makeTouchBar {
+@@ -1148,7 +1145,9 @@ - (NSTouchBar*)makeTouchBar {
+   const SkColor theme_color = browser_view_->GetColorProvider()->GetColor(
+       is_active ? ui::kColorFrameActive : ui::kColorFrameInactive);
+ 
+-  bool is_vertical_tabs = browser_view_->ShouldDrawVerticalTabStrip();
++  // Oblada: tinted as lightly with horizontal tabs (see GetGlassFrameHeight()).
++  bool is_vertical_tabs = browser_view_->ShouldDrawVerticalTabStrip() ||
++                          browser_view_->GetIsNormalType();
+ 
+   // Avoid updating the background view if the theme colors and the tab strip
+   // orientation have not changed.
+@@ -1166,8 +1165,10 @@ - (NSTouchBar*)makeTouchBar {
    const CGFloat a = GetGlassFrameTintOpacity(color_utils::IsDark(theme_color),
                                               is_vertical_tabs);
  

@@ -1,0 +1,110 @@
+diff --git a/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc
+index d86ea93f7d..897fafe6f7 100644
+--- a/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc
+@@ -4,6 +4,9 @@
+ 
+ #include "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h"
+ 
++#include "oblada/browser/ui/horizontal_tabs.h"  // Oblada
++#include "oblada/browser/workspaces/workspace_pill.h"  // Oblada
++
+ #include "base/feature_list.h"
+ #include "base/functional/bind.h"
+ #include "base/task/single_thread_task_runner.h"
+@@ -104,6 +107,12 @@ class FrameGrabHandle : public views::View {
+     // Reserve some space for the frame to be grabbed by, even if the tabstrip
+     // is full.
+     // TODO(tbergquist): Define this relative to the NTB insets again.
++    // Oblada: none in horizon mode, whose window is grabbed by the toolbar's
++    // row above the tabs (oblada/browser/ui/horizontal_tabs.h).
++    if (oblada::horizontal::LayoutOf(this) ==
++        oblada::sidebar::Mode::kHorizon) {
++      return gfx::Size();
++    }
+     return gfx::Size(42, 0);
+   }
+ 
+@@ -168,8 +177,13 @@ HorizontalTabStripRegionViewOld::HorizontalTabStripRegionViewOld(
+ 
+   BrowserWindowInterface* const browser = browser_view->browser();
+ 
++  // Oblada: neither the tab search button, which is in the menu, nor the
++  // button leaving the focused tab group: tab groups are workspaces, which the
++  // pill at the start of the tabs switches (oblada/browser/workspaces/
++  // workspace_pill.h).
+   if (browser &&
+-      (browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL)) {
++      (browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL) &&
++      false) {
+     combo_button_ = AddChildView(std::make_unique<TabStripComboButton>(
+         browser, TabStripComboButton::Context::kHorizontalTabStrip));
+     combo_button_->SetProperty(views::kCrossAxisAlignmentKey,
+@@ -177,7 +191,14 @@ HorizontalTabStripRegionViewOld::HorizontalTabStripRegionViewOld(
+     combo_button_->MaybeShowIPH();
+   }
+ 
+-  if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing)) {
++  // Oblada: the workspace shown, where those buttons were.
++  if (browser &&
++      browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL) {
++    oblada_workspace_pill_ = AddChildView(
++        std::make_unique<oblada::workspaces::WorkspacePill>(browser));
++  }
++
++  if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing) && false) {
+     unfocus_button_ = AddChildView(std::make_unique<TabStripControlButton>(
+         browser, views::Button::PressedCallback(),
+         features::IsRoundedIconsEnabled() ? vector_icons::kArrowBackIcon
+@@ -344,6 +365,11 @@ views::View::Views HorizontalTabStripRegionViewOld::GetChildrenInZOrder() {
+     children.emplace_back(unfocus_button_.get());
+   }
+ 
++  // Oblada: what isn't here gets neither painted nor events.
++  if (oblada_workspace_pill_) {
++    children.emplace_back(oblada_workspace_pill_.get());
++  }
++
+   if (tab_strip_action_container_) {
+     children.emplace_back(tab_strip_action_container_.get());
+   }
+@@ -377,6 +403,10 @@ void HorizontalTabStripRegionViewOld::Layout(PassKey) {
+     AdjustViewBoundsRect(combo_button_, leading_offset);
+   }
+ 
++  if (oblada_workspace_pill_) {
++    AdjustViewBoundsRect(oblada_workspace_pill_, leading_offset);  // Oblada
++  }
++
+   views::View* button_to_paint_to_layer = new_tab_button_;
+ 
+   if (button_to_paint_to_layer) {
+@@ -608,6 +638,9 @@ bool HorizontalTabStripRegionViewOld::HasLeadingButtons() const {
+   if (unfocus_button_ && unfocus_button_->GetVisible()) {
+     return true;
+   }
++  if (oblada_workspace_pill_) {
++    return true;  // Oblada
++  }
+   return false;
+ }
+ 
+@@ -703,6 +736,18 @@ void HorizontalTabStripRegionViewOld::UpdateTabStripMargin() {
+         GetLayoutConstant(LayoutConstant::kTabStripPadding);
+   }
+ 
++  // Oblada: the workspace shown, as the tab search button was.
++  if (oblada_workspace_pill_) {
++    if (!oblada_workspace_pill_->layer()) {
++      oblada_workspace_pill_->SetPaintToLayer();
++      oblada_workspace_pill_->layer()->SetFillsBoundsOpaquely(false);
++    }
++    oblada_workspace_pill_->SetProperty(views::kViewIgnoredByLayoutKey, true);
++    current_leading_width +=
++        oblada_workspace_pill_->GetPreferredSize().width() +
++        GetLayoutConstant(LayoutConstant::kTabStripPadding);
++  }
++
+   if (current_leading_width > 0) {
+     tab_strip_left_margin = current_leading_width +
+                             GetLayoutConstant(LayoutConstant::kTabStripPadding);

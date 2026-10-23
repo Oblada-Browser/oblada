@@ -1,0 +1,15 @@
+diff --git a/chrome/browser/ui/views/tabs/tab.h b/chrome/browser/ui/views/tabs/tab.h
+index 4a3919b628..6e2c1fba46 100644
+--- a/chrome/browser/ui/views/tabs/tab.h
++++ b/chrome/browser/ui/views/tabs/tab.h
+@@ -266,6 +266,10 @@ class Tab : public gfx::AnimationDelegate,
+   // before layout is performed.
+   void UpdateIconVisibility();
+ 
++  // Oblada: whether the address bar is over this tab, the active one in
++  // horizon compact mode (oblada/browser/ui/horizontal_tabs.h).
++  bool IsObladaUnderLocationBar() const;
++
+   // Returns whether the tab should be rendered as a normal tab as opposed to a
+   // pinned tab.
+   bool ShouldRenderAsNormalTab() const;

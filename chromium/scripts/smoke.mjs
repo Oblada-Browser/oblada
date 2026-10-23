@@ -415,6 +415,9 @@ async function mediaChecks(o) {
 }
 
 // Cookies and local storage a tab sees, as "cookie|localStorage".
+// The window's layouts, as Settings and the welcome list them
+// (oblada/browser/ui/sidebar_mode.h).
+const ALL_LAYOUTS = 'sidebar,scaffold,expanded_scaffold,compact,horizon,horizon_compact,classic';
 const SEEN = `document.cookie + '|' + (localStorage.who ?? '')`;
 const REMEMBER = (who) => `document.cookie = 'who=${who}; max-age=3600'; localStorage.who = '${who}'`;
 
@@ -582,8 +585,8 @@ async function containerChecks(o) {
   settings).catch(() => '');
   await o.send('Target.closeTarget', { targetId: settingsId });
   await snapshot(snapshots, `${shot}-header.png`, 'wait:300');
-  check('Settings > Oblada offers the sidebar, scaffold and compact layouts',
-    layouts === 'sidebar,scaffold,compact', layouts);
+  check('Settings > Oblada offers the seven layouts, from the sidebar to classic',
+    layouts === ALL_LAYOUTS, layouts);
   check("the workspace's name shows above its tabs once Settings > Oblada turns it on",
     hiddenAtFirst && listed && turnedOn && headerShown(`${shot}-header.layout.txt`),
     `hidden at first: ${hiddenAtFirst}, in Settings: ${listed}, turned on: ${turnedOn}`);
@@ -676,6 +679,140 @@ async function containerChecks(o) {
   await snapshot(snapshots, `${shot}-sidebar.png`, 'mode:sidebar wait:600');
   check('⌘⇧L goes from compact to the sidebar and back to compact',
     expanded?.[2] > 200 && again?.[0] === 8, `sidebar ${expanded}, page then at ${again}`);
+
+  // Expanded scaffold: the toolbar a row at the top of the window, as in scaffold
+  // mode, and the full sidebar's tabs below it, against the window's edge and the
+  // page, whose edge resizes it. ⌘⇧L collapses them into scaffold's icons, the
+  // address bar staying at the top, and expands them back.
+  await snapshot(snapshots, `${shot}-expanded-scaffold.png`, 'mode:expanded_scaffold wait:600');
+  const wideBar = shown(`${shot}-expanded-scaffold.layout.txt`, 'TopContainerView');
+  const wideTabs = shown(`${shot}-expanded-scaffold.layout.txt`, 'VerticalTabStripRegionView');
+  const widePage = shown(`${shot}-expanded-scaffold.layout.txt`, 'MultiContentsView');
+  check('expanded scaffold, the address bar is a row at the top and the full sidebar below it',
+    wideBar?.[0] === 0 && wideBar?.[1] === 0 &&
+      wideBar?.[2] >= widePage?.[0] + widePage?.[2] && wideTabs?.[2] > 200 &&
+      wideTabs?.[0] === 0 && wideTabs?.[1] >= wideBar?.[3] &&
+      widePage?.[0] === wideTabs?.[0] + wideTabs?.[2],
+    `toolbar ${wideBar}, tabs ${wideTabs}, page ${widePage}`);
+  await snapshot(snapshots, `${shot}-expanded-scaffold-resized.png`, 'resize:60 wait:400');
+  const resizedTabs = shown(`${shot}-expanded-scaffold-resized.layout.txt`,
+    'VerticalTabStripRegionView');
+  const resizedPage = shown(`${shot}-expanded-scaffold-resized.layout.txt`, 'MultiContentsView');
+  check("expanded scaffold, dragging the sidebar's edge resizes it",
+    resizedTabs?.[2] === wideTabs?.[2] + 60 && resizedPage?.[0] === widePage?.[0] + 60,
+    `tabs ${resizedTabs}, page ${resizedPage}`);
+  await snapshot(snapshots, `${shot}-expanded-scaffold-collapsed.png`,
+    'resize:-60 wait:400 34061 wait:600');
+  const narrowBar = shown(`${shot}-expanded-scaffold-collapsed.layout.txt`, 'TopContainerView');
+  const narrowTabs = shown(`${shot}-expanded-scaffold-collapsed.layout.txt`,
+    'VerticalTabStripRegionView');
+  await snapshot(snapshots, `${shot}-expanded-scaffold-again.png`, '34061 wait:600');
+  const wideAgain = shown(`${shot}-expanded-scaffold-again.layout.txt`, 'VerticalTabStripRegionView');
+  await snapshot(snapshots, `${shot}-sidebar-again.png`, 'mode:sidebar wait:600');
+  check('⌘⇧L goes from expanded scaffold to scaffold and back',
+    narrowBar?.[0] === 0 && narrowBar?.[1] === 0 && narrowBar?.[2] === wideBar?.[2] &&
+      narrowTabs?.[2] < 60 && wideAgain?.[2] === wideTabs?.[2],
+    `toolbar ${narrowBar}, tabs ${narrowTabs}, then ${wideAgain}`);
+
+  // Horizontal tabs (oblada/browser/ui/horizontal_tabs.h). The tabs shown (the
+  // workspace's), and the strip's region.
+  const horizontalTabs = (file) => fs.readFileSync(file, 'utf8').split('\n')
+    .filter((l) => /^\s*Tab -?\d+,-?\d+ \d+x\d+( \[layer[^\]]*\])?$/.test(l)).length;
+  const region = 'HorizontalTabStripRegionViewOld';
+  // Classic: the tabs in a row at the top, the workspace's pill first, the toolbar
+  // below them, then the page; no sidebar.
+  await snapshot(snapshots, `${shot}-classic.png`, 'mode:classic wait:800');
+  const classicFile = `${shot}-classic.layout.txt`;
+  const classicTabs = shown(classicFile, region);
+  const classicBar = shown(classicFile, 'TopContainerView');
+  const classicPage = shown(classicFile, 'MultiContentsView');
+  const classicPill = shown(classicFile, 'WorkspacePill');
+  check('classic, the tabs in a row at the top, the address bar below them',
+    classicTabs?.[1] === 0 && classicBar?.[1] > 20 && classicPage?.[1] >= classicBar?.[1] + classicBar?.[3] &&
+      classicPill?.[0] >= classicTabs?.[0] && !shown(classicFile, 'VerticalTabStripRegionView') &&
+      horizontalTabs(classicFile) === home,
+    `tabs ${classicTabs}, toolbar ${classicBar}, page ${classicPage}, pill ${classicPill}, ` +
+      `${horizontalTabs(classicFile)} tabs`);
+  // Clicked as the window gets clicks (which view is under the pointer).
+  const middle = (b) => `${b[0] + Math.round(b[2] / 2)},${b[1] + Math.round(b[3] / 2)}`;
+  await snapshot(snapshots, `${shot}-classic-list.png`,
+    `press:${classicPill ? middle(classicPill) : '0,0'} wait:400`);
+  const pillListed = fs.existsSync(`${shot}-classic-list.popup.png`);
+  await snapshot(snapshots, `${shot}-classic-swipe.png`, 'escape wait:200 swipe:-150');
+  const swipedTo = horizontalTabs(`${shot}-classic-swipe.layout.txt`);
+  await snapshot(snapshots, `${shot}-classic-swipe-back.png`, 'swipe:150');
+  const swipedBack = horizontalTabs(`${shot}-classic-swipe-back.layout.txt`);
+  check("the workspace's pill lists the workspaces, and swiping on the tabs moves between them",
+    pillListed && swipedTo === 2 && swipedBack === home,
+    `list ${pillListed ? 'shown' : 'not shown'}, ${home} → ${swipedTo} → ${swipedBack} tabs`);
+  // Holding the new tab button down lists the containers, as in the sidebar.
+  const newTabButton = shown(`${shot}-classic-swipe-back.layout.txt`, 'TabStripControlButton');
+  await snapshot(snapshots, `${shot}-classic-hold.png`,
+    `hold:${newTabButton ? middle(newTabButton) : '0,0'} wait:900`);
+  const held = fs.existsSync(`${shot}-classic-hold.popup.png`);
+  await snapshot(snapshots, `${shot}-classic-held.png`, 'escape wait:300');
+  check('holding the new tab button down lists the containers', held,
+    `new tab button ${newTabButton}`);
+  // Horizon: the toolbar in a row at the top, its address bar in the middle of the
+  // window, the tabs in a row below it.
+  await snapshot(snapshots, `${shot}-horizon.png`, 'mode:horizon wait:800');
+  const horizonFile = `${shot}-horizon.layout.txt`;
+  const horizonBar = shown(horizonFile, 'TopContainerView');
+  const horizonTabs = shown(horizonFile, region);
+  const horizonPage = shown(horizonFile, 'MultiContentsView');
+  const horizonField = shown(horizonFile, 'LocationBarView');
+  const fieldMiddle = horizonField ? horizonField[0] + horizonField[2] / 2 : 0;
+  check('horizon, the address bar in the middle on top, the tabs in a row below it',
+    horizonBar?.[1] === 0 && horizonTabs?.[1] > 20 && horizonPage?.[1] > horizonTabs?.[1] &&
+      Math.abs(fieldMiddle - horizonBar?.[2] / 2) <= 4 && horizonField?.[2] < horizonBar?.[2] * 0.6,
+    `toolbar ${horizonBar}, tabs ${horizonTabs}, page ${horizonPage}, address bar ${horizonField}`);
+  // Closing a tab with the pointer, its row fills up again at once (Chromium
+  // leaves room at the end until the pointer is well away).
+  await snapshot(snapshots, `${shot}-horizon-closed.png`,
+    '34014 wait:400 click:TabCloseButton wait:600');
+  const closedRegion = shown(`${shot}-horizon-closed.layout.txt`, region);
+  const closedStrip = shown(`${shot}-horizon-closed.layout.txt`, 'TabStrip');
+  check('horizon, the tabs fill their row again once one is closed',
+    closedStrip?.[0] + closedStrip?.[2] >= closedRegion?.[0] + closedRegion?.[2] - 60,
+    `tabs ${closedStrip} in ${closedRegion}`);
+  // Horizon compact: one row, the tabs in the toolbar's, the address bar over the
+  // active tab; focused, it floats over the page, as in the sidebar.
+  await snapshot(snapshots, `${shot}-horizon-compact.png`, 'mode:horizon_compact wait:800');
+  const rowFile = `${shot}-horizon-compact.layout.txt`;
+  const rowBar = shown(rowFile, 'TopContainerView');
+  const rowTabs = shown(rowFile, region);
+  const rowPage = shown(rowFile, 'MultiContentsView');
+  const rowField = shown(rowFile, 'LocationBarView');
+  check('horizon compact, the tabs in the toolbar\'s row, the address bar over one of them',
+    rowBar?.[1] === 0 && rowTabs?.[1] < rowBar?.[3] / 2 &&
+      rowPage?.[1] === rowBar?.[3] && rowField?.[0] > rowTabs?.[0] &&
+      rowField?.[0] + rowField?.[2] < rowTabs?.[0] + rowTabs?.[2] &&
+      rowField?.[2] >= 60 && rowField?.[1] + rowField?.[3] <= rowBar?.[3],
+    `toolbar ${rowBar}, tabs ${rowTabs}, page ${rowPage}, address bar ${rowField}`);
+  // Clicked, where the active tab is, it floats over the page, as in the
+  // sidebar; the tab's close button, beside it, closes the tab.
+  await snapshot(snapshots, `${shot}-horizon-compact-focus.png`,
+    `press:${rowField ? middle(rowField) : '0,0'} wait:900`);
+  const rowFloating = shown(`${shot}-horizon-compact-focus.layout.txt`, 'LocationBarView');
+  check('horizon compact, clicking the address bar floats it over the page',
+    rowFloating?.[1] > rowPage?.[1] && rowFloating?.[2] > rowField?.[2],
+    `address bar at ${rowFloating}`);
+  await snapshot(snapshots, `${shot}-horizon-compact-new.png`,
+    'escape escape wait:400 34014 wait:600');
+  const beforeClose = horizontalTabs(`${shot}-horizon-compact-new.layout.txt`);
+  const closeButton = fs.readFileSync(`${shot}-horizon-compact-new.layout.txt`, 'utf8')
+    .match(/^\s*TabCloseButton (\d+),(\d+) (\d+)x(\d+)$/m)?.slice(1).map(Number);
+  await snapshot(snapshots, `${shot}-horizon-compact-closed.png`,
+    `press:${closeButton ? middle(closeButton) : '0,0'} wait:600`);
+  const afterClose = horizontalTabs(`${shot}-horizon-compact-closed.layout.txt`);
+  check("horizon compact, the active tab's close button closes it",
+    !!closeButton && afterClose === beforeClose - 1, `${beforeClose} → ${afterClose} tabs`);
+  // Back to the sidebar, its tabs vertical again.
+  await snapshot(snapshots, `${shot}-sidebar-back.png`, 'mode:sidebar wait:800');
+  const sidebarBack = shown(`${shot}-sidebar-back.layout.txt`, 'VerticalTabStripRegionView');
+  check('back to the sidebar from horizontal tabs',
+    sidebarBack?.[2] > 200 && !shown(`${shot}-sidebar-back.layout.txt`, region),
+    `sidebar ${sidebarBack}`);
 }
 
 // The installed extensions as chrome://extensions-internals lists them.
@@ -854,8 +991,14 @@ async function closeChecks(o) {
     return !now.some((p) => p.url === `${site}?last`) &&
       now.filter(isNewTab).length === before.filter(isNewTab).length + 1 && now;
   }, 5000).catch(() => null);
+  // Which pages went or came besides, if any (it has failed now and then).
+  const gone = kept ? before.filter((p) => p.url !== `${site}?last` &&
+    !kept.some((k) => k.targetId === p.targetId)).map((p) => p.url) : [];
+  const came = kept ? kept.filter((k) => !isNewTab(k) &&
+    !before.some((p) => p.targetId === k.targetId)).map((k) => k.url) : [];
   check('closing the last tab of a workspace leaves a New Tab page', kept?.length === before.length,
-    `${before.length} → ${kept ? kept.length : 'not kept'} tabs`);
+    `${before.length} → ${kept ? kept.length : 'not kept'} tabs` +
+      (gone.length || came.length ? `; gone ${gone.join(' ')}; came ${came.join(' ')}` : ''));
   // (With the window gone, there's nothing to snapshot.)
   await snapshot(snapshots, `${shot}-new-tab.png`, '34015').catch(() => {});
   const closed = await until('the window closed', async () => (await pages()).length === 0, 10000)
@@ -877,7 +1020,7 @@ async function firstRunChecks() {
       const pages = (await o.pages()).filter((p) => p.type === 'page');
       return pages.length && pages;
     });
-    // Its layout step: the three layouts, and picking one sets the window's.
+    // Its layout step: the seven layouts, and picking one sets the window's.
     const welcome = await o.attach(tabs[0].targetId);
     layouts = await until('the layouts', () => o.evaluate(
       `[...document.querySelectorAll('.layout')].map((l) => l.dataset.mode).join(',')`,
@@ -885,16 +1028,17 @@ async function firstRunChecks() {
     // Clicked until it takes: the layouts show before the page's script (welcome.js, a
     // module) listens to them, which on a slow first launch is a while.
     picked = await until('the layout picked', async () => {
-      await o.evaluate(`document.querySelector('.layout[data-mode="scaffold"]').click()`, welcome);
+      await o.evaluate(
+        `document.querySelector('.layout[data-mode="expanded_scaffold"]').click()`, welcome);
       const mode = await o.evaluate(
         `import('chrome://resources/js/cr.js').then((cr) => cr.sendWithPromise('getLayout'))`, welcome);
-      return mode === 'scaffold' && mode;
+      return mode === 'expanded_scaffold' && mode;
     }, 5000).catch(() => '');
   } finally {
     await o.kill();
   }
-  check('the welcome offers the three layouts, and picking one sets it',
-    layouts === 'sidebar,scaffold,compact' && picked === 'scaffold', `${layouts}; picked ${picked}`);
+  check('the welcome offers the seven layouts, and picking one sets it',
+    layouts === ALL_LAYOUTS && picked === 'expanded_scaffold', `${layouts}; picked ${picked}`);
   const state = JSON.parse(fs.readFileSync(path.join(firstRunProfile, 'Local State'), 'utf8'));
   check('the first launch opens the welcome, not Chromium\'s first run',
     tabs.length === 1 && tabs[0].url === 'chrome://welcome/' && state.browser?.first_run_finished === true,

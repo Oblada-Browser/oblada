@@ -45,6 +45,12 @@ bool IsScaffoldToolbar(const views::View* toolbar);
 // Whether the sidebar is compact (see above).
 bool IsCompact(const views::View* toolbar);
 
+// Whether `toolbar`'s address bar is the sidebar's kind: a veil, quiet (the
+// site it shows) until hovered, floating over the page while it has the focus
+// (floating_location_bar.h). In the sidebar, and over the active tab in
+// horizon compact mode (horizontal_tabs.h).
+bool HasSidebarLocationBar(const views::View* toolbar);
+
 // Whether the sidebar is compact, and its toolbar is in use: hovered, or holding the
 // focus (e.g. typing in the address bar). The tab strip stays expanded meanwhile.
 bool IsCompactToolbarInUse(const views::View* toolbar);
@@ -54,12 +60,14 @@ bool IsCompactToolbarInUse(const views::View* toolbar);
 // `tab_strip` when the mouse leaves the toolbar (as if it left the tab strip).
 // `clip`: nothing of it shows outside of its bounds (e.g. the address bar, which
 // has a layer of its own, when the container is hidden), unless the address bar
-// floats out of it.
+// floats out of it. Above everything else too, but `tabs` (another sibling, e.g.
+// horizontal tabs in the toolbar's row), which keep their events.
 void SetToolbarAbovePage(views::View* top_container,
                          views::View* page,
                          views::View* tab_strip,
                          bool above,
-                         bool clip);
+                         bool clip,
+                         views::View* tabs = nullptr);
 
 // How wide the tab strip looks, from 0 (narrow, in scaffold mode) to 1 (the full
 // sidebar's). The browser layout sets it on the tab strip's region view, whose row

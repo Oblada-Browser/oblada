@@ -1,0 +1,50 @@
+diff --git a/chrome/browser/ui/views/tabs/new_tab_button.h b/chrome/browser/ui/views/tabs/new_tab_button.h
+index ff7361bb0b..9caefcd34e 100644
+--- a/chrome/browser/ui/views/tabs/new_tab_button.h
++++ b/chrome/browser/ui/views/tabs/new_tab_button.h
+@@ -6,6 +6,7 @@
+ #define CHROME_BROWSER_UI_VIEWS_TABS_NEW_TAB_BUTTON_H_
+ 
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"  // Oblada
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.h"
+ #include "chrome/browser/ui/views/tabs/tab_strip.h"
+@@ -15,6 +16,10 @@
+ #include "ui/views/controls/menu/menu_runner.h"
+ #include "ui/views/view.h"
+ 
++namespace ui {
++class SimpleMenuModel;
++}  // namespace ui
++
+ namespace views {
+ class MenuRunner;
+ }
+@@ -41,14 +46,26 @@ class NewTabButton : public TabStripControlButton,
+       const gfx::Point& point,
+       ui::mojom::MenuSourceType source_type) override;
+ 
++  // Oblada: holding the button down shows the containers to open the tab in,
++  // as the sidebar's does (tabs/shared/new_tab_button.h).
++  bool OnMousePressed(const ui::MouseEvent& event) override;
++  void OnMouseReleased(const ui::MouseEvent& event) override;
++  void OnMouseCaptureLost() override;
++
+  protected:
+   // TabStripControlButton:
+   void UpdateBackground() override;
+ 
+  private:
++  void ShowContainersMenu();  // Oblada
++
+   std::unique_ptr<NewTabButtonMenuModel> context_menu_model_;
+   std::unique_ptr<views::MenuRunner> context_menu_runner_;
+   raw_ptr<BrowserWindowInterface> browser_;
++  // Oblada: the containers menu shown on a long press.
++  std::unique_ptr<ui::SimpleMenuModel> containers_menu_model_;
++  std::unique_ptr<views::MenuRunner> containers_menu_runner_;
++  base::WeakPtrFactory<NewTabButton> long_press_factory_{this};
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_TABS_NEW_TAB_BUTTON_H_

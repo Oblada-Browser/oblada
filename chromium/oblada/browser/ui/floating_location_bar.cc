@@ -179,7 +179,7 @@ void FadeOut(std::unique_ptr<ui::Layer> layer, base::TimeDelta duration) {
       .SetOpacity(target, 0.f, gfx::Tween::EASE_IN_OUT);
 }
 
-// The bar's place in the sidebar while it floats, grayed out: the site it shows.
+// The bar's place in its toolbar while it floats, grayed out: the site it shows.
 class Placeholder : public views::View {
   METADATA_HEADER(Placeholder, views::View)
 
@@ -255,9 +255,10 @@ class FloatingLocationBar : public views::ViewObserver {
     }
   }
 
-  // Lays the bar out over the page, and its placeholder in its row.
-  void LayOut(views::View* toolbar) {
-    const gfx::Rect slot = LocationBarBounds(toolbar->size(), location_bar_);
+  // Lays the bar out over the page, and its placeholder at `slot`, its place in
+  // its toolbar.
+  void LayOut(views::View* toolbar, const gfx::Rect& slot) {
+    slot_ = slot;
     if (views::View* placeholder = placeholder_.view()) {
       placeholder->SetBoundsRect(slot);
     }
@@ -276,7 +277,8 @@ class FloatingLocationBar : public views::ViewObserver {
     location_bar_->SetBoundsRect(gfx::Rect(
         area.x() + (area.width() - width) / 2,
         area.y() + std::max(kMargin, area.height() / 5), width,
-        slot.height() + kFloatingLocationBarExtraHeight));
+        location_bar_->GetPreferredSize().height() +
+            kFloatingLocationBarExtraHeight));
     LayOutDim();
     if (!flown_) {
       flown_ = true;
@@ -284,8 +286,8 @@ class FloatingLocationBar : public views::ViewObserver {
     }
   }
 
-  // Flies the bar's shape back from the page to its row in the sidebar, where the
-  // bar shows again as it lands.
+  // Flies the bar's shape back from the page to its place in its toolbar, where
+  // the bar shows again as it lands.
   void FlyBack(views::View* toolbar) {
     FadeDimOut();
     views::Widget* widget = location_bar_->GetWidget();
@@ -294,8 +296,7 @@ class FloatingLocationBar : public views::ViewObserver {
       return;
     }
     const gfx::Rect from = BoundsInWidget(location_bar_);
-    const gfx::Rect to = toolbar->ConvertRectToWidget(
-        LocationBarBounds(toolbar->size(), location_bar_));
+    const gfx::Rect to = toolbar->ConvertRectToWidget(slot_);
     Fly(widget, from, to, BarColor(location_bar_), kFlightBack);
     // The bar, back in its row, shows once its shape has landed there; its
     // placeholder keeps its place until then.
@@ -434,6 +435,8 @@ class FloatingLocationBar : public views::ViewObserver {
   raw_ptr<views::View> location_bar_;
   raw_ptr<views::View> page_;
   views::ViewTracker placeholder_;
+  // Its place in its toolbar, the placeholder's (see LayOut()).
+  gfx::Rect slot_;
   std::unique_ptr<ui::Layer> dim_;
   // Whether its shape has flown out to the page yet (see FlyOut()), and landed.
   bool flown_ = false;
@@ -564,10 +567,17 @@ void WhenFloatingLocationBarLands(const gfx::Rect& bounds_in_screen,
 }
 
 void LayOutLocationBar(views::View* toolbar, views::View* location_bar) {
+  LayOutLocationBar(toolbar, location_bar,
+                    LocationBarBounds(toolbar->size(), location_bar));
+}
+
+void LayOutLocationBar(views::View* toolbar,
+                       views::View* location_bar,
+                       const gfx::Rect& slot) {
   if (FloatingLocationBar* floating = location_bar->GetProperty(kFloatingKey)) {
-    floating->LayOut(toolbar);
+    floating->LayOut(toolbar, slot);
   } else {
-    location_bar->SetBoundsRect(LocationBarBounds(toolbar->size(), location_bar));
+    location_bar->SetBoundsRect(slot);
   }
 }
 

@@ -1,0 +1,14 @@
+diff --git a/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h b/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h
+index 474306dd40..92dfff30ce 100644
+--- a/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h
+@@ -134,6 +134,9 @@ class HorizontalTabStripRegionViewOld : public TabStripRegionView {
+   raw_ptr<TabStripComboButton> combo_button_ = nullptr;
+   raw_ptr<views::Button> new_tab_button_ = nullptr;
+   raw_ptr<TabStripControlButton> unfocus_button_ = nullptr;
++  // Oblada: the workspace shown, before the tabs (oblada/browser/workspaces/
++  // workspace_pill.h).
++  raw_ptr<views::View> oblada_workspace_pill_ = nullptr;
+ 
+   std::unique_ptr<views::ActionViewController> action_view_controller_;
+   base::CallbackListSubscription unfocus_button_subscription_;

@@ -1,29 +1,53 @@
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.cc b/chrome/browser/ui/views/toolbar/toolbar_view.cc
-index f9bb38f923..a28b5881c6 100644
+index f9bb38f923..703df76fdc 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
 +++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
-@@ -4,6 +4,9 @@
+@@ -4,6 +4,10 @@
  
  #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
  
 +#include "oblada/browser/ui/floating_location_bar.h"  // Oblada
++#include "oblada/browser/ui/horizontal_tabs.h"  // Oblada
 +#include "oblada/browser/ui/sidebar_layout.h"  // Oblada
 +
  #include <algorithm>
  #include <memory>
  #include <utility>
-@@ -420,7 +423,9 @@ void ToolbarView::Init() {
+@@ -189,6 +193,16 @@ DEFINE_UI_CLASS_PROPERTY_KEY(bool, kActionItemUnderlineIndicatorKey, false)
+ 
+ namespace {
+ 
++// Oblada: Chromium's media button, a view of the toolbar's (see Init()).
++views::View* ObladaMediaButton(views::View* toolbar) {
++  for (views::View* child : toolbar->children()) {
++    if (child->GetClassName() == "MediaToolbarButtonView") {
++      return child;
++    }
++  }
++  return nullptr;
++}
++
+ // Gets the display mode for a given browser.
+ ToolbarView::DisplayMode GetDisplayMode(BrowserWindowInterface* browser) {
+   // Checked in this order because even tabbed PWAs use the CUSTOM_TAB
+@@ -420,13 +434,14 @@ void ToolbarView::Init() {
    }
  
    std::unique_ptr<MediaToolbarButtonView> media_button;
 -#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-+  // Oblada: no media button; media is controlled at the bottom of the sidebar
++  // Oblada: shown only with horizontal tabs (see LayoutCommon()): otherwise
++  // media is controlled at the bottom of the sidebar
 +  // (oblada/browser/ui/media_controls.h).
-+#if 0
    if (!features::IsWebUIMediaButtonEnabled()) {
      media_button = std::make_unique<MediaToolbarButtonView>(
          browser_view_, std::make_unique<MediaToolbarButtonContextualMenu>(
-@@ -463,10 +468,8 @@ void ToolbarView::Init() {
+                            browser_->GetProfile()));
+   }
+-#endif
+ 
+   // Always add children in order from left to right, for accessibility.
+   if (!features::IsWebUIBackForwardButtonEnabled()) {
+@@ -463,10 +478,8 @@ void ToolbarView::Init() {
          browser_, base::BindRepeating(callback, browser_, IDC_HOME)));
    }
  
@@ -36,7 +60,7 @@ index f9bb38f923..a28b5881c6 100644
  
    if (contextual_tasks::IsContextualTasksUIEnabled() &&
        contextual_tasks::kShowEntryPoint.Get() ==
-@@ -555,8 +558,9 @@ void ToolbarView::Init() {
+@@ -555,8 +568,9 @@ void ToolbarView::Init() {
  
    // Only show the Battery Saver button when it is not controlled by the OS. On
    // ChromeOS the battery icon in the shelf shows the same information.
@@ -47,7 +71,7 @@ index f9bb38f923..a28b5881c6 100644
      battery_saver_button_ =
          AddChildView(std::make_unique<BatterySaverButton>(browser_));
    }
-@@ -1423,6 +1427,13 @@ gfx::Size ToolbarView::CalculatePreferredSize(
+@@ -1423,6 +1437,13 @@ gfx::Size ToolbarView::CalculatePreferredSize(
                                 layout_manager_->interior_margin().height();
          size.SetToMin({size.width(), max_height});
        }
@@ -61,7 +85,7 @@ index f9bb38f923..a28b5881c6 100644
    }
    size.set_height(size.height() * size_animation_.GetCurrentValue());
    return size;
-@@ -1490,7 +1501,10 @@ void ToolbarView::Layout(PassKey) {
+@@ -1490,7 +1511,10 @@ void ToolbarView::Layout(PassKey) {
      // update it if the visibility changes.
      const bool was_overflow_button_visible =
          toolbar_controller_->overflow_button()->GetVisible();
@@ -72,7 +96,7 @@ index f9bb38f923..a28b5881c6 100644
          toolbar_controller_->ShouldShowOverflowButton(size());
      if (was_overflow_button_visible != show_overflow_button) {
        views::ManualLayoutUtil(layout_manager_)
-@@ -1505,6 +1519,20 @@ void ToolbarView::Layout(PassKey) {
+@@ -1505,6 +1529,39 @@ void ToolbarView::Layout(PassKey) {
    // Call super implementation to ensure layout manager and child layouts
    // happen.
    LayoutSuperclass<AccessiblePaneView>(this);
@@ -82,6 +106,25 @@ index f9bb38f923..a28b5881c6 100644
 +  if (location_bar_view_ && oblada::sidebar::ToolbarInset(this) >= 0) {
 +    oblada::sidebar::LayOutLocationBar(this, location_bar_view_);
 +    oblada::sidebar::ArrangeButtonRow(this, location_bar_view_);
++  }
++  // In horizon mode, in the middle of the window; in horizon compact mode,
++  // over the active tab (oblada/browser/ui/horizontal_tabs.h).
++  const std::optional<oblada::sidebar::Mode> oblada_horizontal =
++      oblada::horizontal::LayoutOf(this);
++  if (location_bar_view_ &&
++      oblada_horizontal == oblada::sidebar::Mode::kHorizon) {
++    oblada::horizontal::CenterLocationBar(this, location_bar_view_);
++  } else if (location_bar_view_ &&
++             oblada_horizontal == oblada::sidebar::Mode::kHorizonCompact) {
++    oblada::horizontal::LayOutCompactLocationBar(
++        this, location_bar_view_,
++        browser_->GetTabStripModel()->active_index());
++  }
++  // Out of sight but with horizontal tabs, without a sidebar (see
++  // LayoutCommon()).
++  if (views::View* media = ObladaMediaButton(this);
++      media && !oblada_horizontal) {
++    media->SetBoundsRect(gfx::Rect());
 +  }
 +  // Out of sight in Oblada's layouts; its popups show from the address bar's
 +  // extensions button.
@@ -93,7 +136,7 @@ index f9bb38f923..a28b5881c6 100644
  }
  
  void ToolbarView::OnThemeChanged() {
-@@ -1775,6 +1803,69 @@ void ToolbarView::LayoutCommon() {
+@@ -1775,6 +1832,75 @@ void ToolbarView::LayoutCommon() {
        interior_margin.set_right(0);
      }
    }
@@ -107,6 +150,12 @@ index f9bb38f923..a28b5881c6 100644
 +  if (location_bar_view_) {
 +    location_bar_view_->SetProperty(views::kViewIgnoredByLayoutKey,
 +                                    oblada_sidebar_inset >= 0);
++  }
++  // Media is controlled at the bottom of the sidebar (oblada/browser/ui/
++  // media_controls.h); with horizontal tabs, from Chromium's media button.
++  if (views::View* media = ObladaMediaButton(this)) {
++    media->SetProperty(views::kViewIgnoredByLayoutKey,
++                       !oblada::horizontal::LayoutOf(this));
 +  }
 +  // Like Zen's, the sidebar has no profile button (the profile is in the app menu):
 +  // its room goes to back, forward and reload.
@@ -163,7 +212,7 @@ index f9bb38f923..a28b5881c6 100644
    layout_manager_->SetInteriorMargin(interior_margin);
  
    // Extend buttons to the window edge if we're either in a maximized or
-@@ -1811,8 +1902,13 @@ void ToolbarView::LayoutCommon() {
+@@ -1811,8 +1937,13 @@ void ToolbarView::LayoutCommon() {
        ShouldAppMenuApplyFittsLaw(is_maximized_or_fullscreen));
  
    if (toolbar_divider_ && extensions_container_) {

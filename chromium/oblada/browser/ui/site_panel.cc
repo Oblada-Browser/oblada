@@ -459,7 +459,10 @@ void HidePageActionsInPanel(views::View* location_bar,
 }
 
 views::View* ExtensionsAnchor(views::View* toolbar) {
-  if (!toolbar || sidebar::ToolbarInset(toolbar) < 0) {
+  // Wherever the toolbar keeps its extension buttons out of sight: in the
+  // sidebar, and in a row at the top (scaffold modes, horizontal tabs).
+  if (!toolbar || (sidebar::ToolbarInset(toolbar) < 0 &&
+                   !sidebar::IsScaffoldToolbar(toolbar))) {
     return nullptr;
   }
   views::View* button = toolbar->GetViewByID(kButtonViewId);

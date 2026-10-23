@@ -24,11 +24,19 @@ import {html, LitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 
 const t = (key) => loadTimeData.getString(key);
 
-// The window's layouts (oblada/browser/ui/sidebar_mode.h).
+// The window's layouts (oblada/browser/ui/sidebar_mode.h), the sidebar's first,
+// then those with horizontal tabs, from `HORIZONTAL` on.
+const HORIZONTAL = 'horizon';
 const LAYOUTS = [
   ['sidebar', 'obladaLayoutSidebar', 'obladaLayoutSidebarDescription'],
   ['scaffold', 'obladaLayoutScaffold', 'obladaLayoutScaffoldDescription'],
+  ['expanded_scaffold', 'obladaLayoutExpandedScaffold',
+   'obladaLayoutExpandedScaffoldDescription'],
   ['compact', 'obladaLayoutCompact', 'obladaLayoutCompactDescription'],
+  ['horizon', 'obladaLayoutHorizon', 'obladaLayoutHorizonDescription'],
+  ['horizon_compact', 'obladaLayoutHorizonCompact',
+   'obladaLayoutHorizonCompactDescription'],
+  ['classic', 'obladaLayoutClassic', 'obladaLayoutClassicDescription'],
 ];
 
 class SettingsObladaPageElement extends LitElement {
@@ -58,6 +66,11 @@ class SettingsObladaPageElement extends LitElement {
           color: var(--cr-secondary-text-color);
           display: block;
         }
+        settings-oblada-page .oblada-group {
+          color: var(--cr-secondary-text-color);
+          font-weight: 500;
+          padding-block: 16px 4px;
+        }
       </style>
       <div class="cr-centered-card-container">
         <settings-section page-title="${t('obladaAppearance')}">
@@ -67,7 +80,11 @@ class SettingsObladaPageElement extends LitElement {
           <div class="oblada-list">
             <settings-radio-group pref-key="oblada.sidebar.mode"
                 group-aria-label="${t('obladaLayout')}">
-              ${LAYOUTS.map(([name, label, description]) => html`
+              ${LAYOUTS.map(([name, label, description], i) => html`
+                ${i === 0 || name === HORIZONTAL ? html`
+                  <div class="oblada-group">
+                    ${t(i === 0 ? 'obladaLayoutSide' : 'obladaLayoutTop')}
+                  </div>` : ''}
                 <controlled-radio-button name="${name}"
                     pref-key="oblada.sidebar.mode" label="${t(label)}"
                     no-extension-indicator>
@@ -89,7 +106,7 @@ class SettingsObladaPageElement extends LitElement {
     const words = query.trim().toLowerCase();
     const texts = [
       'obladaPageTitle', 'obladaAppearance', 'obladaLayout',
-      'obladaShowWorkspaceHeader',
+      'obladaShowWorkspaceHeader', 'obladaLayoutSide', 'obladaLayoutTop',
       ...LAYOUTS.flatMap(([, label, description]) => [label, description]),
     ].map((key) => t(key).toLowerCase());
     return Promise.resolve({
@@ -110,9 +127,17 @@ void AddObladaPage(content::WebUIDataSource* source) {
   source->AddString("obladaPageTitle", L10n("settings.oblada"));
   source->AddString("obladaAppearance", L10n("settings.appearance"));
   source->AddString("obladaLayout", L10n("settings.layout"));
+  source->AddString("obladaLayoutSide", L10n("settings.layout.side"));
+  source->AddString("obladaLayoutTop", L10n("settings.layout.top"));
   // The window's layouts, by name in the page and in Oblada's strings.
   static constexpr std::pair<const char*, const char*> kLayouts[] = {
-      {"Sidebar", "sidebar"}, {"Scaffold", "scaffold"}, {"Compact", "compact"}};
+      {"Sidebar", "sidebar"},
+      {"Scaffold", "scaffold"},
+      {"ExpandedScaffold", "expanded_scaffold"},
+      {"Compact", "compact"},
+      {"Horizon", "horizon"},
+      {"HorizonCompact", "horizon_compact"},
+      {"Classic", "classic"}};
   for (const auto& [name, key] : kLayouts) {
     source->AddString(base::StrCat({"obladaLayout", name}),
                       L10n(base::StrCat({"settings.layout.", key})));

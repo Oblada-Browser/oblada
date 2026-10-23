@@ -835,9 +835,10 @@ void PaintContainerIndicator(gfx::Canvas* canvas,
     bar = gfx::RectF(bounds.x() + 1.5f, bounds.y() + (bounds.height() - height) / 2,
                      2, height);
   } else {
-    const float width = bounds.width() * 0.5f;
-    bar = gfx::RectF(bounds.x() + (bounds.width() - width) / 2, bounds.bottom() - 4,
-                     width, 3);
+    // As thin, along the bottom of the tab's veil, under its title.
+    const float width = bounds.width() * 0.4f;
+    bar = gfx::RectF(bounds.x() + (bounds.width() - width) / 2, bounds.bottom() - 3.5f,
+                     width, 2);
   }
   canvas->DrawRoundRect(bar, std::min(bar.width(), bar.height()) / 2, flags);
 }

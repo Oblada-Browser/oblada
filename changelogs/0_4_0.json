@@ -1,0 +1,22 @@
+{
+  "added": [
+    "Four new window layouts, for seven in all: pick one in Settings > Oblada, in the menu's Window layout or in the welcome.",
+    "Expanded scaffold: the address bar at the top, as in Scaffold, and the full sidebar below it, with the tabs' titles and the workspaces. ⌘⇧L turns it into Scaffold and back.",
+    "Horizon: the address bar in the middle at the top, and the tabs sharing a row below it, as in Safari.",
+    "Horizon compact: a single row, where the active tab is the address bar, which floats over the page as you type.",
+    "Classic: the tabs in a row at the top, the address bar below them.",
+    "With the tabs at the top, they're as plain as the sidebar's and take little room, and the workspace shown is a pill before them: click it to switch workspace or make a new one, or swipe across the tabs. Hold the + down to open a tab in a container, as in the sidebar."
+  ],
+  "changed": [
+    "The welcome lists the window layouts by where the tabs are, and shows the one picked, or the one under the pointer, at work next to the list."
+  ],
+  "fixed": [
+    "The welcome and the New Tab page no longer turn opaque when reloaded.",
+    "Extensions opened from the site panel show their popups under it, rather than at the top left of the window, in the Scaffold layouts."
+  ],
+  "obladaVersion": "0.4.0",
+  "releaseId": 8,
+  "chromiumVersion": "156.0.8078.48",
+  "releaseDate": "",
+  "released": false
+}

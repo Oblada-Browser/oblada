@@ -1,0 +1,35 @@
+diff --git a/chrome/browser/ui/views/tabs/common/horizontal_tab_style_views.cc b/chrome/browser/ui/views/tabs/common/horizontal_tab_style_views.cc
+index 5e8bf7705c..767039df68 100644
+--- a/chrome/browser/ui/views/tabs/common/horizontal_tab_style_views.cc
++++ b/chrome/browser/ui/views/tabs/common/horizontal_tab_style_views.cc
+@@ -766,8 +766,13 @@ void HorizontalTabStyleViews::PaintTabBackground(
+                 widget->ShouldPaintAsActive() ? kColorTabStrokeFrameActive
+                                               : kColorTabStrokeFrameInactive);
+ 
+-  PaintBackgroundStroke(canvas, group_color.value_or(tab_stroke_color));
+-  PaintSeparators(canvas);
++  // Oblada: no outline, nor lines between tabs: they are veils over the
++  // window's background, as the sidebar's are (oblada/browser/ui/
++  // horizontal_tabs.h).
++  if ((false)) {
++    PaintBackgroundStroke(canvas, group_color.value_or(tab_stroke_color));
++    PaintSeparators(canvas);
++  }
+ }
+ 
+ void HorizontalTabStyleViews::PaintTabBackgroundFill(
+@@ -775,11 +780,10 @@ void HorizontalTabStyleViews::PaintTabBackgroundFill(
+     bool hovered,
+     std::optional<int> fill_id) const {
+   const TabStyle::TabSelectionState selection_state = GetSelectionState();
++  // Oblada: the active tab is the same rounded shape as the others, rather
++  // than Chrome's, which flows into the toolbar.
+   const SkPath fill_path =
+-      GetPath(selection_state == TabStyle::TabSelectionState::kActive
+-                  ? TabStyle::PathType::kActiveTab
+-                  : TabStyle::PathType::kHighlight,
+-              canvas->image_scale(), {});
++      GetPath(TabStyle::PathType::kHighlight, canvas->image_scale(), {});
+   gfx::ScopedCanvas scoped_canvas(canvas);
+   const float scale = canvas->UndoDeviceScaleFactor();
+ 

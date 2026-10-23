@@ -3,7 +3,7 @@
 // headless Oblada with a throwaway profile, a few tabs open (some in containers).
 //
 //   node chromium/scripts/screenshot.mjs [out.png] [--width=1400] [--height=900]
-//       [--mode=scaffold|compact] [--sidebar-width=280] [--media=2] [--do="<command ids, click:<view class>>"]
+//       [--mode=<layout>] [--sidebar-width=280] [--media=2] [--do="<command ids, click:<view class>>"]
 //
 // --mode sets the window's layout (--compact is --mode=compact); --sidebar-width sets the width the
 // sidebar was left at; --media opens that many tabs playing (silent) music, behind the
@@ -23,8 +23,9 @@ const option = (name, fallback) =>
   Number(args.find((a) => a.startsWith(`--${name}=`))?.split('=')[1] ?? fallback);
 const width = option('width', 1400);
 const height = option('height', 900);
-// The window's layout (oblada/browser/ui/sidebar_mode.h): --mode=scaffold or
-// --mode=compact (or --compact).
+// The window's layout, by the name its pref has (oblada/browser/ui/sidebar_mode.h):
+// --mode=scaffold, expanded_scaffold, compact (or --compact), horizon,
+// horizon_compact or classic.
 const mode = args.find((a) => a.startsWith('--mode='))?.slice(7) ??
   (args.includes('--compact') ? 'compact' : 'sidebar');
 const sidebarWidth = option('sidebar-width', 0);

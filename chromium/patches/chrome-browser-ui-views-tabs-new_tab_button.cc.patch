@@ -1,0 +1,65 @@
+diff --git a/chrome/browser/ui/views/tabs/new_tab_button.cc b/chrome/browser/ui/views/tabs/new_tab_button.cc
+index 7f1737fea1..7131f87411 100644
+--- a/chrome/browser/ui/views/tabs/new_tab_button.cc
++++ b/chrome/browser/ui/views/tabs/new_tab_button.cc
+@@ -4,6 +4,10 @@
+ 
+ #include "chrome/browser/ui/views/tabs/new_tab_button.h"
+ 
++#include "base/task/single_thread_task_runner.h"  // Oblada
++#include "oblada/browser/containers/containers_menu_model.h"  // Oblada
++#include "ui/base/mojom/menu_source_type.mojom.h"  // Oblada
++
+ #include <memory>
+ 
+ #include "base/feature_list.h"
+@@ -53,6 +57,49 @@ void NewTabButton::ShowContextMenuForViewImpl(
+   }
+ }
+ 
++// Oblada: as with the back button's history, holding the button down shows a
++// menu, here the containers to open the new tab in.
++bool NewTabButton::OnMousePressed(const ui::MouseEvent& event) {
++  if (event.IsOnlyLeftMouseButton() && GetEnabled()) {
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
++        FROM_HERE,
++        base::BindOnce(&NewTabButton::ShowContainersMenu,
++                       long_press_factory_.GetWeakPtr()),
++        base::Milliseconds(500));
++  }
++  return TabStripControlButton::OnMousePressed(event);
++}
++
++void NewTabButton::OnMouseReleased(const ui::MouseEvent& event) {
++  long_press_factory_.InvalidateWeakPtrs();
++  TabStripControlButton::OnMouseReleased(event);
++}
++
++void NewTabButton::OnMouseCaptureLost() {
++  long_press_factory_.InvalidateWeakPtrs();
++  TabStripControlButton::OnMouseCaptureLost();
++}
++
++void NewTabButton::ShowContainersMenu() {
++  containers_menu_model_ =
++      oblada::containers::ContainersMenuModel::ForNewTab(browser_);
++  containers_menu_runner_ = std::make_unique<views::MenuRunner>(
++      containers_menu_model_.get(), views::MenuRunner::HAS_MNEMONICS,
++      base::BindRepeating(
++          [](NewTabButton* button) {
++            if (button->GetState() != STATE_DISABLED) {
++              button->SetState(STATE_NORMAL);
++            }
++          },
++          base::Unretained(this)));
++  // Look pressed while the menu is open; releasing the mouse then picks an item
++  // instead of opening a normal tab.
++  SetState(STATE_PRESSED);
++  containers_menu_runner_->RunMenuAt(
++      GetWidget(), nullptr, GetAnchorBoundsInScreen(),
++      views::MenuAnchorPosition::kTopLeft, ui::mojom::MenuSourceType::kMouse);
++}
++
+ void NewTabButton::UpdateBackground() {
+   auto* const glass_frame_service = GlassFrameService::GetInstance();
+   if (glass_frame_service &&

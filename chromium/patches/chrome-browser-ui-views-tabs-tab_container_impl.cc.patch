@@ -1,0 +1,37 @@
+diff --git a/chrome/browser/ui/views/tabs/tab_container_impl.cc b/chrome/browser/ui/views/tabs/tab_container_impl.cc
+index 4169530357..2195d7ec4b 100644
+--- a/chrome/browser/ui/views/tabs/tab_container_impl.cc
++++ b/chrome/browser/ui/views/tabs/tab_container_impl.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/tabs/tab_container_impl.h"
+ 
++#include "oblada/browser/ui/horizontal_tabs.h"  // Oblada
++
+ #include <algorithm>
+ #include <memory>
+ 
+@@ -708,6 +710,12 @@ void TabContainerImpl::EnterTabClosingMode(std::optional<int> override_width,
+   if (source == CloseTabSource::kFromNonUIEvent) {
+     return;
+   }
++  // Oblada: nor in horizon modes, whose tabs share their whole row: they fill
++  // it again at once, rather than leaving room at its end until the pointer
++  // is well away from them (oblada/browser/ui/horizontal_tabs.h).
++  if (oblada::horizontal::SharesRow(this)) {
++    return;
++  }
+ 
+   in_tab_close_ = true;
+   if (override_width.has_value()) {
+@@ -751,7 +759,9 @@ void TabContainerImpl::SetTabSlotVisibility() {
+ 
+       // If we change the visibility of a group header, we must recalculate that
+       // group's underline bounds.
+-      bool should_header_be_visible = last_tab_visible;
++      // Oblada: tab groups are workspaces, which the pill at the start of the
++      // tabs shows (oblada/browser/workspaces/workspace_pill.h), not a header.
++      bool should_header_be_visible = last_tab_visible && false;
+       if (focused_group.has_value() && last_tab_group != focused_group) {
+         should_header_be_visible = false;
+       }

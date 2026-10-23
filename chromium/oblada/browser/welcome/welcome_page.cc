@@ -46,40 +46,95 @@ const char kWelcomeHtml[] = R"oblada(<!doctype html>
 </section>
 
 <section class="step" id="layout">
-  <div class="fit"><div class="layouts">
-    <button class="layout" data-mode="sidebar">
-      <span class="mini"><span class="mock m-ls">
+  <div class="fit"><div class="picker">
+    <div class="layouts" role="radiogroup" aria-label="$i18n{layout_title}">
+      <span class="group">$i18n{layout_side}</span>
+      <button class="layout" data-mode="sidebar" role="radio">
+        <span class="name">$i18n{layout_sidebar}</span>
+        <span class="what">$i18n{layout_sidebar_text}</span>
+      </button>
+      <button class="layout" data-mode="scaffold" role="radio">
+        <span class="name">$i18n{layout_scaffold}</span>
+        <span class="what">$i18n{layout_scaffold_text}</span>
+      </button>
+      <button class="layout" data-mode="expanded_scaffold" role="radio">
+        <span class="name">$i18n{layout_expanded_scaffold}</span>
+        <span class="what">$i18n{layout_expanded_scaffold_text}</span>
+      </button>
+      <button class="layout" data-mode="compact" role="radio">
+        <span class="name">$i18n{layout_compact}</span>
+        <span class="what">$i18n{layout_compact_text}</span>
+      </button>
+      <span class="group">$i18n{layout_top}</span>
+      <button class="layout" data-mode="horizon" role="radio">
+        <span class="name">$i18n{layout_horizon}</span>
+        <span class="what">$i18n{layout_horizon_text}</span>
+      </button>
+      <button class="layout" data-mode="horizon_compact" role="radio">
+        <span class="name">$i18n{layout_horizon_compact}</span>
+        <span class="what">$i18n{layout_horizon_compact_text}</span>
+      </button>
+      <button class="layout" data-mode="classic" role="radio">
+        <span class="name">$i18n{layout_classic}</span>
+        <span class="what">$i18n{layout_classic_text}</span>
+      </button>
+    </div>
+    <div class="previews">
+      <span class="mock m-ls" data-mode="sidebar">
         <span class="lights"><i></i><i></i><i></i></span>
         <span class="side"><span class="addr"></span><span class="sel"></span>
           <span class="tab"></span><span class="tab"></span><span class="tab"></span><span class="tab"></span>
           <span class="wsd"><i></i><i></i></span></span>
         <span class="page"><span class="pg a"><i class="l w70"></i><i class="l"></i><i class="l w50"></i><i class="l w80"></i></span>
-          <span class="pg b"><i class="block"></i><i class="l w60"></i><i class="l"></i></span></span>
-      </span></span>
-      <span class="name">$i18n{layout_sidebar}</span>
-      <span class="what">$i18n{layout_sidebar_text}</span>
-    </button>
-    <button class="layout" data-mode="scaffold">
-      <span class="mini"><span class="mock m-lf">
+        <span class="pg b"><i class="block"></i><i class="l w60"></i><i class="l"></i></span></span>
+      </span>
+      <span class="mock m-lf" data-mode="scaffold">
         <span class="lights"><i></i><i></i><i></i></span>
         <span class="top"><i></i><i></i><b></b></span>
         <span class="col"><span class="sel"></span><i></i><i></i><i></i><i></i></span>
         <span class="page"><span class="pg a"><i class="l w70"></i><i class="l"></i><i class="l w50"></i><i class="l w80"></i></span>
-          <span class="pg b"><i class="block"></i><i class="l w60"></i><i class="l"></i></span></span>
-      </span></span>
-      <span class="name">$i18n{layout_scaffold}</span>
-      <span class="what">$i18n{layout_scaffold_text}</span>
-    </button>
-    <button class="layout" data-mode="compact">
-      <span class="mini"><span class="mock m-lc">
+        <span class="pg b"><i class="block"></i><i class="l w60"></i><i class="l"></i></span></span>
+      </span>
+      <span class="mock m-le" data-mode="expanded_scaffold">
+        <span class="lights"><i></i><i></i><i></i></span>
+        <span class="top"><i></i><i></i><b></b></span>
+        <span class="side"><span class="sel"></span>
+          <span class="tab"></span><span class="tab"></span><span class="tab"></span><span class="tab"></span>
+          <span class="wsd"><i></i><i></i></span></span>
+        <span class="page"><span class="pg a"><i class="l w70"></i><i class="l"></i><i class="l w50"></i><i class="l w80"></i></span>
+        <span class="pg b"><i class="block"></i><i class="l w60"></i><i class="l"></i></span></span>
+      </span>
+      <span class="mock m-lc" data-mode="compact">
         <span class="page"><i class="l w70"></i><i class="l"></i><i class="l w50"></i><i class="l w80"></i><i class="l w60"></i></span>
         <span class="panel"><span class="lights"><i></i><i></i><i></i></span>
           <span class="side"><span class="addr"></span><span class="tab on"></span><span class="tab"></span><span class="tab"></span></span></span>
         <svg class="cursor" viewBox="0 0 16 16"><path d="M2 1.5v11.5l3.2-3 2.2 5 2-.9-2.2-4.9h4.4L2 1.5Z"/></svg>
-      </span></span>
-      <span class="name">$i18n{layout_compact}</span>
-      <span class="what">$i18n{layout_compact_text}</span>
-    </button>
+      </span>
+      <span class="mock m-hz" data-mode="horizon">
+        <span class="lights"><i></i><i></i><i></i></span>
+        <span class="top"><i></i><i></i><i></i><b></b></span>
+        <span class="row"><span class="wsp"><i></i></span><span class="sel"></span>
+          <span class="htab"></span><span class="htab"></span><span class="htab"></span><span class="htab"></span><s></s></span>
+        <span class="page"><span class="pg a"><i class="l w70"></i><i class="l"></i><i class="l w50"></i><i class="l w80"></i></span>
+        <span class="pg b"><i class="block"></i><i class="l w60"></i><i class="l"></i></span></span>
+      </span>
+      <span class="mock m-hc" data-mode="horizon_compact">
+        <span class="lights"><i></i><i></i><i></i></span>
+        <span class="top"><i></i><i></i><span class="wsp"><i></i></span>
+          <span class="htab t1"></span><span class="htab t2"></span><span class="field"><i></i><b></b></span>
+          <span class="htab t3"></span><span class="htab t4"></span><s></s></span>
+        <span class="page"><span class="pg a"><i class="l w70"></i><i class="l"></i><i class="l w50"></i><i class="l w80"></i></span>
+        <span class="pg b"><i class="block"></i><i class="l w60"></i><i class="l"></i></span></span>
+      </span>
+      <span class="mock m-cl" data-mode="classic">
+        <span class="lights"><i></i><i></i><i></i></span>
+        <span class="row"><span class="wsp"><i></i></span><span class="sel"></span>
+          <span class="htab"></span><span class="htab"></span><span class="htab"></span><span class="htab"></span><s></s></span>
+        <span class="top"><i></i><i></i><i></i><b></b></span>
+        <span class="page"><span class="pg a"><i class="l w70"></i><i class="l"></i><i class="l w50"></i><i class="l w80"></i></span>
+        <span class="pg b"><i class="block"></i><i class="l w60"></i><i class="l"></i></span></span>
+      </span>
+    </div>
   </div></div>
   <h2>$i18n{layout_title}</h2>
   <p class="text">$i18n{layout_text}</p>
@@ -926,50 +981,71 @@ body:not(.mac) .lights i { border-radius: 2px; background: var(--veil-strong); }
                       96%, 100% { opacity: 0; transform: scale(.94); } }
 @keyframes sp-src { 0%, 10% { opacity: 1; } 12%, 90% { opacity: 0; } 96%, 100% { opacity: 1; } }
 
-/* The window's layout: a little window showing each, to pick one. */
-.layouts { display: flex; gap: 12px; }
+/* The window's layout: the layouts listed by where their tabs are, and the one
+   picked (or the one under the pointer) at work in a little window next to them. */
+.picker { display: flex; align-items: center; gap: 32px; text-align: left; }
+.layouts { display: flex; flex-direction: column; width: 300px; flex: none; }
+.layouts .group {
+  margin: 14px 12px 4px;
+  color: var(--subtle);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.layouts .group:first-child { margin-top: 0; }
 .layout {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  width: 262px;
-  padding: 10px 10px 12px;
+  align-items: flex-start;
+  padding: 7px 12px 8px;
   border: 0;
-  border-radius: 16px;
+  border-radius: 10px;
   background: none;
+  text-align: left;
   cursor: pointer;
-  transition: background .15s, box-shadow .15s, transform .12s;
+  transition: background .15s, box-shadow .15s;
 }
 .layout:hover { background: var(--veil); }
-.layout:active { transform: scale(.98); }
 .layout.selected { background: var(--veil-hover); box-shadow: inset 0 0 0 2px var(--accent); }
-.layout .name { margin-top: 10px; font-size: 13px; font-weight: 600; }
-.layout.selected .name::before { content: '✓ '; color: var(--accent); }
-.layout .what { margin-top: 2px; color: var(--subtle); font-size: 11.5px; line-height: 1.35; }
-:where(.mini span) { display: block; }
-.mini { width: 239px; height: 140px; }
-.mini .mock { zoom: .52; cursor: inherit; box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .55); }
-.m-ls .pg, .m-lf .pg { position: absolute; inset: 8px 0; }
-.m-ls .pg.b, .m-lf .pg.b { opacity: 0; }
-.run.m-ls .pg.a, .run.m-lf .pg.a { animation: lay-a 6s ease-in-out infinite; }
-.run.m-ls .pg.b, .run.m-lf .pg.b { animation: lay-b 6s ease-in-out infinite; }
+.layout .name { font-size: 13px; font-weight: 600; }
+.layout.selected .name::after { content: ' ✓'; color: var(--accent); }
+.layout .what { margin-top: 1px; color: var(--subtle); font-size: 11.5px; line-height: 1.35; }
+.previews { position: relative; width: 460px; height: 270px; flex: none; }
+:where(.previews span) { display: block; }
+.previews .mock {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity .25s ease;
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .55);
+}
+.previews .mock.shown { opacity: 1; }
+.m-ls .pg, .m-lf .pg, .m-le .pg, .m-hz .pg, .m-hc .pg, .m-cl .pg { position: absolute; inset: 8px 0; }
+.m-ls .pg.b, .m-lf .pg.b, .m-le .pg.b, .m-hz .pg.b, .m-hc .pg.b, .m-cl .pg.b { opacity: 0; }
+.run.m-ls .pg.a, .run.m-lf .pg.a, .run.m-le .pg.a, .run.m-hz .pg.a, .run.m-hc .pg.a,
+.run.m-cl .pg.a { animation: lay-a 6s ease-in-out infinite; }
+.run.m-ls .pg.b, .run.m-lf .pg.b, .run.m-le .pg.b, .run.m-hz .pg.b, .run.m-hc .pg.b,
+.run.m-cl .pg.b { animation: lay-b 6s ease-in-out infinite; }
 @keyframes lay-a { 0%, 30% { opacity: 1; } 36%, 64% { opacity: 0; } 70%, 100% { opacity: 1; } }
 @keyframes lay-b { 0%, 30% { opacity: 0; } 36%, 64% { opacity: 1; } 70%, 100% { opacity: 0; } }
 /* Sidebar: another tab picked in it. */
-.m-ls .sel { position: absolute; left: 8px; right: 8px; top: 54px; height: 15px; border-radius: 5px;
-             background: var(--veil-strong); }
-.m-ls .wsd { position: absolute; left: 0; right: 0; bottom: 12px; display: flex;
-             justify-content: center; gap: 7px; }
-.m-ls .wsd i { width: 7px; height: 7px; border-radius: 50%; background: var(--veil-strong); }
-.m-ls .wsd i:first-child { background: var(--blue); }
-.run.m-ls .sel { animation: ls-sel 6s cubic-bezier(.2, .8, .2, 1) infinite; }
+.m-ls .sel, .m-le .sel { position: absolute; left: 8px; right: 8px; top: 54px; height: 15px;
+                         border-radius: 5px; background: var(--veil-strong); }
+.m-ls .wsd, .m-le .wsd { position: absolute; left: 0; right: 0; bottom: 12px; display: flex;
+                         justify-content: center; gap: 7px; }
+.m-ls .wsd i, .m-le .wsd i { width: 7px; height: 7px; border-radius: 50%; background: var(--veil-strong); }
+.m-ls .wsd i:first-child, .m-le .wsd i:first-child { background: var(--blue); }
+.run.m-ls .sel, .run.m-le .sel { animation: ls-sel 6s cubic-bezier(.2, .8, .2, 1) infinite; }
 @keyframes ls-sel { 0%, 30% { transform: none; } 36%, 64% { transform: translateY(38px); }
                     70%, 100% { transform: none; } }
 /* Scaffold: the address bar on top, another tab's icon picked on the side. */
-.m-lf .top { position: absolute; left: 48px; right: 8px; top: 6px; height: 18px; display: flex;
-             align-items: center; gap: 6px; }
-.m-lf .top i { width: 8px; height: 8px; border-radius: 2px; background: var(--veil-strong); flex: none; }
-.m-lf .top b { flex: 1; height: 16px; margin-left: 6px; border-radius: 6px; background: var(--veil); }
+.m-lf .top, .m-le .top { position: absolute; left: 48px; right: 8px; top: 6px; height: 18px;
+                         display: flex; align-items: center; gap: 6px; }
+.m-lf .top i, .m-le .top i { width: 8px; height: 8px; border-radius: 2px; background: var(--veil-strong);
+                             flex: none; }
+.m-lf .top b, .m-le .top b { flex: 1; height: 16px; margin-left: 6px; border-radius: 6px;
+                             background: var(--veil); }
 .m-lf .col { position: absolute; left: 0; top: 30px; bottom: 6px; width: 40px; padding-top: 6px;
              box-sizing: border-box; }
 .m-lf .col i { position: relative; width: 12px; height: 12px; margin: 0 auto 9px; border-radius: 3px;
@@ -979,6 +1055,83 @@ body:not(.mac) .lights i { border-radius: 2px; background: var(--veil-strong); }
 .m-lf .page { left: 40px; top: 30px; }
 .run.m-lf .sel { animation: lf-sel 6s cubic-bezier(.2, .8, .2, 1) infinite; }
 @keyframes lf-sel { 0%, 30% { transform: none; } 36%, 64% { transform: translateY(42px); }
+                    70%, 100% { transform: none; } }
+/* Expanded scaffold: the address bar on top, another tab picked in the sidebar below it. */
+.m-le .side { top: 30px; padding-top: 6px; }
+.m-le .sel { top: 6px; }
+.m-le .page { top: 30px; }
+/* Horizontal tabs: veils in a row, the workspace's pill first; the toolbar's
+   buttons and address bar. */
+.m-hz .row, .m-cl .row { position: absolute; top: 34px; left: 6px; right: 6px; height: 18px;
+                         display: flex; align-items: center; gap: 4px; }
+.m-cl .row { top: 6px; left: 58px; right: 8px; }
+.m-hz .top, .m-cl .top { position: absolute; left: 0; right: 8px; top: 6px; height: 18px;
+                         display: flex; align-items: center; gap: 6px; padding-left: 58px; }
+.m-cl .top { left: 6px; right: 6px; top: 30px; padding-left: 6px; }
+.m-hz .top i, .m-hc .top > i, .m-cl .top i, .m-hz .row s, .m-hc s, .m-cl .row s {
+  flex: none; width: 8px; height: 8px; border-radius: 2px; background: var(--veil-strong); }
+.m-hz .row s, .m-cl .row s { margin-left: 4px; }
+.m-hz .top b { position: absolute; left: calc(50% - 95px); top: 1px; width: 190px; height: 16px;
+               border-radius: 6px; background: var(--veil); }
+.m-cl .top b { flex: 1; height: 16px; margin-left: 6px; border-radius: 6px; background: var(--veil); }
+.wsp { position: relative; flex: none; width: 34px; height: 18px; border-radius: 6px;
+       background: var(--veil); }
+.wsp i { position: absolute; left: 7px; top: 6px; width: 6px; height: 6px; border-radius: 50%;
+         background: var(--blue); }
+.wsp::after { content: ''; position: absolute; right: 7px; top: 8px; width: 7px; height: 3px;
+              border-radius: 2px; background: var(--veil-strong); }
+.htab { position: relative; flex: 1; height: 18px; border-radius: 6px; }
+.htab::before, .htab::after { content: ''; position: absolute; border-radius: 2.5px;
+                              background: var(--veil-strong); }
+.htab::before { top: 5.5px; left: calc(50% - 22px); width: 7px; height: 7px; }
+.htab::after { top: 7px; left: calc(50% - 11px); width: 30px; height: 4px; }
+.m-cl .htab { flex: 0 0 64px; }
+.m-cl .htab::before { left: 8px; }
+.m-cl .htab::after { left: 20px; width: 32px; }
+.m-hz .sel, .m-cl .sel { position: absolute; top: 0; height: 18px; border-radius: 6px;
+                         background: var(--veil-strong); }
+/* Horizon: the address bar in the middle on top, another tab picked in the row below. */
+.m-hz .sel { left: 38px; width: 95.5px; }
+.m-hz .page { left: 6px; top: 58px; }
+.run.m-hz .sel { animation: hz-sel 6s cubic-bezier(.2, .8, .2, 1) infinite; }
+@keyframes hz-sel { 0%, 30% { transform: none; } 36%, 64% { transform: translateX(99.5px); }
+                    70%, 100% { transform: none; } }
+/* Horizon compact: one row, the address bar moving to the tab picked. */
+.m-hc .top { position: absolute; left: 58px; right: 8px; top: 6px; height: 18px; }
+.m-hc .top > * { position: absolute; top: 0; }
+.m-hc .top > i { top: 5px; }
+.m-hc .top > i + i { left: 14px; }
+.m-hc .wsp { left: 30px; width: 26px; }
+.m-hc .wsp::after { display: none; }
+.m-hc .htab { width: 44px; }
+.m-hc .htab::before { left: 18px; }
+.m-hc .htab::after { display: none; }
+.m-hc .t1 { left: 62px; }
+.m-hc .t2 { left: 110px; opacity: 0; }
+.m-hc .t3 { left: 284px; }
+.m-hc .t4 { left: 332px; }
+.m-hc s { left: 384px; top: 5px; }
+.m-hc .field { left: 110px; width: 170px; height: 18px; border-radius: 6px;
+               background: var(--veil-hover); }
+.m-hc .field i { position: absolute; left: 7px; top: 6px; width: 6px; height: 6px;
+                 border-radius: 50%; background: var(--veil-strong); }
+.m-hc .field b { position: absolute; left: 18px; top: 7px; width: 70px; height: 4px;
+                 border-radius: 2px; background: var(--veil-strong); }
+.m-hc .page { left: 6px; top: 30px; }
+.run.m-hc .field { animation: hc-field 6s cubic-bezier(.2, .8, .2, 1) infinite; }
+.run.m-hc .field b { animation: hc-url 6s ease-in-out infinite; }
+.run.m-hc .t2 { animation: hc-in 6s ease-in-out infinite; }
+.run.m-hc .t3 { animation: hc-out 6s ease-in-out infinite; }
+@keyframes hc-field { 0%, 30% { transform: none; } 36%, 64% { transform: translateX(48px); }
+                      70%, 100% { transform: none; } }
+@keyframes hc-url { 0%, 30% { width: 70px; } 36%, 64% { width: 52px; } 70%, 100% { width: 70px; } }
+@keyframes hc-in { 0%, 30% { opacity: 0; } 36%, 64% { opacity: 1; } 70%, 100% { opacity: 0; } }
+@keyframes hc-out { 0%, 30% { opacity: 1; } 36%, 64% { opacity: 0; } 70%, 100% { opacity: 1; } }
+/* Classic: the tabs on top, another one picked; the address bar below them. */
+.m-cl .sel { left: 38px; width: 64px; }
+.m-cl .page { left: 6px; top: 54px; }
+.run.m-cl .sel { animation: cl-sel 6s cubic-bezier(.2, .8, .2, 1) infinite; }
+@keyframes cl-sel { 0%, 30% { transform: none; } 36%, 64% { transform: translateX(68px); }
                     70%, 100% { transform: none; } }
 /* Compact: only the page, the sidebar widening over it from the window's edge. */
 .m-lc .page { left: 6px; }
@@ -1127,12 +1280,27 @@ makeDefault.addEventListener('click', async () => {
 });
 addEventListener('focus', checkDefault);
 
-// The window's layout: the one picked shows at once around this page.
+// The window's layout: the one picked shows at once around this page, and at
+// work next to the list; the one under the pointer shows there meanwhile.
 const layouts = [...document.querySelectorAll('.layout')];
+const previews = [...document.querySelectorAll('.previews .mock')];
+let picked = null;
+function preview(mode) {
+  for (const mock of previews) {
+    const shown = mock.dataset.mode === mode;
+    if (shown && !mock.classList.contains('shown')) {
+      replay(mock);
+    }
+    mock.classList.toggle('shown', shown);
+  }
+}
 function showLayout(mode) {
+  picked = mode;
   for (const layout of layouts) {
     layout.classList.toggle('selected', layout.dataset.mode === mode);
+    layout.setAttribute('aria-checked', String(layout.dataset.mode === mode));
   }
+  preview(mode);
 }
 sendWithPromise('getLayout').then(showLayout);
 for (const layout of layouts) {
@@ -1140,7 +1308,9 @@ for (const layout of layouts) {
     showLayout(layout.dataset.mode);
     chrome.send('setLayout', [layout.dataset.mode]);
   });
+  layout.addEventListener('mouseenter', () => preview(layout.dataset.mode));
 }
+document.querySelector('.layouts').addEventListener('mouseleave', () => preview(picked));
 
 // Containers: the profile's, to set up (with oblada://containers' messages),
 // and Firefox's, to bring along.

@@ -1,0 +1,15 @@
+diff --git a/chrome/browser/ui/views/tabs/tab_group_header.cc b/chrome/browser/ui/views/tabs/tab_group_header.cc
+index 8010ac8f74..6bc2f651e2 100644
+--- a/chrome/browser/ui/views/tabs/tab_group_header.cc
++++ b/chrome/browser/ui/views/tabs/tab_group_header.cc
+@@ -412,7 +412,9 @@ TabSlotView::ViewType TabGroupHeader::GetTabSlotViewType() const {
+ TabSizeInfo TabGroupHeader::GetTabSizeInfo() const {
+   TabSizeInfo size_info;
+   // Group headers have a fixed width based on `title_`'s width.
+-  const int width = GetDesiredWidth();
++  // Oblada: none, hidden (see tab_container_impl.cc): only the overlap with
++  // the next tab, which leaves no room between the tabs around it.
++  const int width = TabStyle::Get()->GetTabOverlap();
+   size_info.pinned_tab_width = width;
+   size_info.min_active_width = width;
+   size_info.min_inactive_width = width;
