@@ -1,0 +1,20 @@
+diff --git a/chrome/browser/sessions/session_restore.cc b/chrome/browser/sessions/session_restore.cc
+index e21bf8de37..7d3d4f5292 100644
+--- a/chrome/browser/sessions/session_restore.cc
++++ b/chrome/browser/sessions/session_restore.cc
+@@ -1266,6 +1266,15 @@ class SessionRestoreImpl : public BrowserCollectionObserver {
+   void ProcessSavedGroup(Profile* profile,
+                          const tab_groups::LocalTabGroupID& local_id,
+                          std::optional<std::string> sync_id) {
++    // Oblada: tab groups are workspaces (oblada/browser/workspaces/workspaces.h),
++    // never saved groups (see saved_tab_group_model_listener.cc): a restored one
++    // is neither saved nor connected to a saved copy. A copy saved here would
++    // keep the workspace's id with only the tabs restored so far, and a tab
++    // opened in it before the service loaded (a link opening Oblada) would fail
++    // SavedTabGroupWebContentsListener's CHECK(tab) on its next navigation.
++    if (true) {
++      return;
++    }
+     tab_groups::TabGroupSyncService* service =
+         tab_groups::TabGroupSyncServiceFactory::GetForProfile(profile);
+     if (!service) {

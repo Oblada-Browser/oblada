@@ -12,12 +12,15 @@ CHROMIUM_VERSION := $(shell tr -d '[:space:]' < chromium/CHROMIUM_VERSION)
 # The build directory, wherever the scripts find it (env.sh); only read when a target
 # needs it.
 BUILD_DIR = $(shell source $(SCRIPTS)/env.sh && echo "$$OUT")
+# Releases' build directory, an official build (build.sh --release).
+RELEASE_DIR = $(shell source $(SCRIPTS)/env.sh && echo "$$RELEASE_OUT")
 # Sparkle's tools, put in the checkout by sparkle.sh.
 SPARKLE = $(shell source $(SCRIPTS)/env.sh && echo "$$SRC")/third_party/sparkle/bin
 UPDATE_KEY := chromium/oblada/browser/updater/PUBLIC_KEY
 
 # Options, e.g. `make test NETWORK=0`.
 TARGETS ?=
+RELEASE ?=
 NETWORK ?=
 PNG ?= /tmp/oblada.png
 DO ?=
@@ -25,9 +28,10 @@ COMPACT ?=
 NOTES ?=
 TO ?=
 FILE ?=
+IPS ?=
 
 .PHONY: help sync build patches apply reset test test-updates screenshot dmg release version \
-        bump update-key import-update-key icons dmg-background run run-fresh
+        bump update-key import-update-key symbolicate icons dmg-background run run-fresh
 
 help: ## this list
 	@echo "Oblada $(VERSION), based on Chromium $(CHROMIUM_VERSION)"
@@ -39,8 +43,8 @@ help: ## this list
 sync: ## check out CHROMIUM_VERSION with its toolchains in ~/chromium, and apply the patches
 	$(SCRIPTS)/sync.sh
 
-build: ## build Oblada.app, a few minutes when incremental (TARGETS=unit_tests for others)
-	$(SCRIPTS)/build.sh $(TARGETS)
+build: ## build Oblada.app, a few minutes when incremental (TARGETS=unit_tests; RELEASE=1 the release build)
+	$(SCRIPTS)/build.sh $(if $(RELEASE),--release) $(TARGETS)
 
 patches: ## rewrite chromium/patches/ from the edits to Chromium's files in ~/chromium/src
 	$(SCRIPTS)/patches.sh update
@@ -53,8 +57,8 @@ reset: ## revert the checkout's patched files, before moving to a new Chromium
 
 # --- Checks: headless, they never show a window nor take the focus
 
-test: ## the smoke test, about 40 checks (NETWORK=0 skips addons.mozilla.org)
-	$(if $(NETWORK),OBLADA_SMOKE_NETWORK=$(NETWORK)) node $(SCRIPTS)/smoke.mjs
+test: ## the smoke test, about 40 checks (NETWORK=0 skips addons.mozilla.org; RELEASE=1)
+	$(if $(NETWORK),OBLADA_SMOKE_NETWORK=$(NETWORK)) node $(SCRIPTS)/smoke.mjs $(if $(RELEASE),"$(RELEASE_DIR)/Oblada.app")
 
 test-updates: ## the update test: packs a release with a test key, updates an older copy to it
 	node $(SCRIPTS)/updates.mjs
@@ -93,12 +97,16 @@ import-update-key: ## put the key releases are signed with in your keychain, fro
 	  echo "imported; its public half is in $(UPDATE_KEY): commit it"; \
 	fi
 
-dmg: ## pack the build into Oblada-silicon.dmg (and the update archive), in the build directory
-	$(SCRIPTS)/dmg.sh
+dmg: ## pack the build into Oblada-silicon.dmg (and the update archive), in its directory (RELEASE=1)
+	$(SCRIPTS)/dmg.sh $(if $(RELEASE),--release)
 
 release: ## build, pack and publish the pushed commit as release <version> (NOTES=notes.md)
 	@[[ -n "$(NOTES)" ]] || { echo "usage: make release NOTES=<notes.md>" >&2; exit 1; }
 	$(SCRIPTS)/release.sh $(NOTES)
+
+symbolicate: ## name Oblada's functions in a release's crash report (IPS=<report.ips>)
+	@[[ -n "$(IPS)" ]] || { echo "usage: make symbolicate IPS=<report.ips>" >&2; exit 1; }
+	python3 $(SCRIPTS)/symbolicate.py "$(IPS)"
 
 # --- Branding
 
@@ -110,8 +118,8 @@ dmg-background: ## redraw the DMG window's background from branding/dmg/backgrou
 
 # --- Trying it out: these open a window
 
-run: ## open the build, with your profile
-	open "$(BUILD_DIR)/Oblada.app"
+run: ## open the build, with your profile (RELEASE=1 the release build)
+	open "$(if $(RELEASE),$(RELEASE_DIR),$(BUILD_DIR))/Oblada.app"
 
-run-fresh: ## open the build with a new throwaway profile, as after a first install
-	open -n "$(BUILD_DIR)/Oblada.app" --args --user-data-dir="$$(mktemp -d -t oblada-fresh)"
+run-fresh: ## open the build with a new throwaway profile, as after a first install (RELEASE=1)
+	open -n "$(if $(RELEASE),$(RELEASE_DIR),$(BUILD_DIR))/Oblada.app" --args --user-data-dir="$$(mktemp -d -t oblada-fresh)"

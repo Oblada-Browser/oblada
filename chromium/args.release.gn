@@ -1,0 +1,13 @@
+# What releases add to args.gn (scripts/build.sh --release, into out/Release).
+# An "official build", as Chromium wants for any build that ships to users, like Chrome's,
+# Brave's and Helium's:
+# - PGO with Google's profiles for this Chromium (fetched by sync.sh, .gclient's
+#   checkout_pgo_profiles), and V8's builtins optimized with V8's profiles;
+# - ThinLTO with optimizations, its cache in out/Release/thinlto-cache kept under 10% of the
+#   disk's free space;
+# - binaries stripped, their symbols in dSYMs next to them, which release.sh keeps on this
+#   Mac (symbolicate.py reads crash reports with them);
+# - CHECK failures without their message, file and line.
+# A full build takes about 4 hours on an M4; then, when few files changed, a minute or two,
+# as the ThinLTO cache spares the link most of its work.
+is_official_build = true

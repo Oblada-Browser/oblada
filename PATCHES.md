@@ -21,7 +21,7 @@ Two kinds of changes are not patches:
 - **Logo images:** they are copied over Chromium's from `chromium/overrides/`, which
   `branding/export.sh` makes.
 
-There are 159 patches for Chromium 156 (`chromium/CHROMIUM_VERSION`). This file describes
+There are 160 patches for Chromium 156 (`chromium/CHROMIUM_VERSION`). This file describes
 each one, and how they depend on each other and on Oblada's code. Update it when a patch
 is added, removed or changes purpose.
 
@@ -115,6 +115,7 @@ source adds. Each pair is listed in the entries.
   - These patches keep the groups local and out of the bookmarks bar:
     - `saved_tab_group_model_listener.cc`;
     - `tab_group_sync_delegate_desktop.cc`;
+    - `session_restore.cc`;
     - `components/saved_tab_groups/public/pref_names.cc`;
     - `bookmark_utils.cc`.
 - **Split view:**
@@ -151,7 +152,7 @@ source adds. Each pair is listed in the entries.
 | Window & frame | `ui_base_features.cc`, `browser_native_widget_mac.mm`, `browser_frame_view_mac.mm`, `browser_view_layout_delegate_impl.cc`, `fullscreen_util_mac.cc`, `window_feature_controller.cc` |
 | Sidebar & compact mode | `browser_view_tabbed_layout_impl.cc`, `browser_view.cc`, `tabs/features.cc`, `vertical_tab_strip_background_blur_backdrop.cc`, `toolbar_view.cc`, `vertical_tab_strip_region_view.{h,cc}`, `vertical_tab_strip_state.h`, `vertical_tab_strip_state_controller{.h,_impl.cc}`, `tab_strip_prefs.cc`, `browser_command_controller.cc`, `vertical_tab_strip_bottom_container.cc`, `download_toolbar_ui_controller.cc` |
 | Tabs | `tab_style.cc`, `tab_hover_card_controller.cc`, `tab_strip_collection_controller.{h,cc}` |
-| Workspaces | `ui_features.cc`, `browser_commands.cc`, `browser_widget.cc`, `tab_group_header_view.{h,cc}`, `tab_group_view_layout.cc`, `tab_collection_animating_layout_manager.{h,cc}`, `vertical_tab_strip_focus_swipe_controller.cc`, `saved_tab_group_model_listener.cc`, `tab_group_sync_delegate_desktop.cc`, `saved_tab_groups/public/pref_names.cc`, `bookmark_utils.cc` |
+| Workspaces | `ui_features.cc`, `browser_commands.cc`, `browser_widget.cc`, `tab_group_header_view.{h,cc}`, `tab_group_view_layout.cc`, `tab_collection_animating_layout_manager.{h,cc}`, `vertical_tab_strip_focus_swipe_controller.cc`, `saved_tab_group_model_listener.cc`, `tab_group_sync_delegate_desktop.cc`, `session_restore.cc`, `saved_tab_groups/public/pref_names.cc`, `bookmark_utils.cc` |
 | Containers | `chrome_content_browser_client_navigation_throttles.cc`, `tab_helpers.cc`, `browser_navigator.cc`, `web_contents_impl.cc`, `session_service_base.cc`, `browser_live_tab_context.cc`, `browser_tabrestore.cc`, `tab_lifecycle_unit.cc`, `render_view_context_menu.{h,cc}`, `new_tab_button.{h,cc}`, `new_tab_button_menu_model.{h,cc}`, `tab_view.cc` |
 | Address bar | `location_bar_view.{h,cc}`, `top_container_view.cc`, `browser_view_layout_impl.cc`, `omnibox_view_views.cc`, `omnibox_popup_presenter_base.cc`, `omnibox_popup_webui_base_content.cc`, `rounded_omnibox_results_frame.cc`, `location_bar_model_delegate.cc`, `aim_eligibility_service_features.cc` |
 | Split view | `multi_contents_view.{h,cc}`, `multi_contents_drop_target_view.cc`, `multi_contents_view_drop_target_controller.{h,cc}`, `multi_contents_resize_area.h`, `contents_container_view.cc`, `contents_container_outline.{h,cc}`, `split_tab_view.{h,cc}`, `tab_view_vertical_layout.cc`, `tab_drag_controller.{h,cc}`, `tab_drag_target.h` |
@@ -216,14 +217,15 @@ startup" can still change it. Needed by: `ui_features.cc` turning off the infoba
 offered it.
 
 #### `base/check.cc`
-`base-check.cc.patch`. `DUMP_WILL_BE_CHECK` failures log an error and go on instead of
-crashing, as they would in a non-official build like Oblada's. Non-fatal check failures no
-longer write crash dumps, which would have nowhere to go and would pile up next to the real
-ones.
+`base-check.cc.patch`. `DUMP_WILL_BE_CHECK` failures log an error and go on in development
+builds too, as in official builds (Chrome's, Oblada's releases), instead of crashing.
+Non-fatal check failures no longer write crash dumps, which would have nowhere to go and
+would pile up next to the real ones.
 
 #### `content/browser/webui/web_ui_main_frame_observer.cc`
 `content-browser-webui-web_ui_main_frame_observer.cc.patch`. A JavaScript error on an
-internal page no longer crashes the browser, as it would in a non-official build.
+internal page doesn't crash development builds either, as it would in a build that isn't an
+official one (releases are).
 
 #### `chrome/browser/ui/startup/infobar_utils.cc`
 `chrome-browser-ui-startup-infobar_utils.cc.patch`. Startup infobars:
@@ -539,6 +541,16 @@ controller, since `WorkspaceSlider` handles the swipes. It can go.
 Workspaces are never saved or synced as tab groups. A synced copy could otherwise close,
 open or rename their tabs. Sessions still keep them. Both leave Chromium's code in place
 behind an early return.
+
+#### `chrome/browser/sessions/session_restore.cc`
+`chrome-browser-sessions-session_restore.cc.patch`. Restoring a session neither saves its
+workspaces as tab groups nor connects them to saved copies; Chromium's code stays behind an
+early return. Chromium saved every restored group not saved yet, with the tabs restored so
+far: when a tab was opened in the workspace before the tab group service had loaded (a link
+opening Oblada), the patches above left the group unconnected, but its saved copy kept the
+workspace's id, so the new tab's next navigation failed `CHECK(tab)` in
+`saved_tab_group_web_contents_listener.cc` and crashed the browser. Goes with the
+`saved_tab_group_model_listener.cc` and `tab_group_sync_delegate_desktop.cc` patches.
 
 #### `components/saved_tab_groups/public/pref_names.cc`, `components/bookmarks/browser/bookmark_utils.cc`
 `components-saved_tab_groups-public-pref_names.cc.patch`,
@@ -1056,9 +1068,9 @@ logo is Oblada's from `chromium/overrides/components/resources` (`branding/expor
   `oblada/browser/about/about_page.h` (`Authors()`, `Copyright()`).
 
 #### `components/webui/version/resources/about_version.html`
-`components-webui-version-resources-about_version.html.patch`. No "(Developer Build)" after
-the version: Chromium says so of any build Google doesn't make officially, Oblada's
-releases included.
+`components-webui-version-resources-about_version.html.patch`. No "(Official Build)" or
+"(Developer Build)" after the version, which only says how it was compiled: releases are
+official builds (`chromium/args.release.gn`), development builds aren't.
 
 #### `components/webui/chrome_urls/resources/app.ts`, `app.html.ts`
 `components-webui-chrome_urls-resources-app.ts.patch`,

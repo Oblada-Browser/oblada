@@ -6,9 +6,11 @@ import os from 'node:os';
 import path from 'node:path';
 
 const src = path.join(process.env.OBLADA_CHROMIUM ?? path.join(os.homedir(), 'chromium'), 'src');
-// In out/Oblada, else in the checkout's existing build directory (see env.sh).
+// In out/Oblada, else in the checkout's existing build directory (see env.sh), not the
+// release build's (out/Release), which tests get as an argument.
 const outDirs = fs.existsSync(path.join(src, 'out'))
-  ? fs.readdirSync(path.join(src, 'out')).map((dir) => path.join(src, 'out', dir)) : [];
+  ? fs.readdirSync(path.join(src, 'out')).filter((dir) => dir !== 'Release')
+    .map((dir) => path.join(src, 'out', dir)) : [];
 export const defaultApp = [path.join(src, 'out/Oblada'), ...outDirs]
   .map((dir) => path.join(dir, 'Oblada.app'))
   .find((app) => fs.existsSync(app)) ?? path.join(src, 'out/Oblada/Oblada.app');

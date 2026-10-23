@@ -6,9 +6,11 @@
 # (Oblada's version, chromium/oblada/VERSION) is the same app for updates: an Apple
 # Archive, which the updater unpacks without mounting a disk (mounting a DMG can stall in
 # macOS's disk check). Prints the archive's path, then the DMG's, last.
-#   dmg.sh [--app <Oblada.app>] [--version <x.y.z>] [--feed <url>] [--public-key <key>]
-#          [--out <dir>]
-# The options are for the update test (updates.mjs): another app, version, feed and key.
+#   dmg.sh [--release] [--app <Oblada.app>] [--version <x.y.z>] [--feed <url>]
+#          [--public-key <key>] [--out <dir>]
+# --release packs the release build (build.sh --release), as release.sh does, in its
+# directory. The other options are for the update test (updates.mjs): another app,
+# version, feed and key.
 #
 # The app in the DMG updates itself (oblada/browser/updater): its Info.plist gets the
 # feed of the latest release, the public half of the key releases are signed with
@@ -33,16 +35,17 @@ PUBLIC_KEY="$(cat "$KEY_FILE" 2>/dev/null | tr -d '[:space:]' || true)"
 DEST="$OUT"
 while [ $# -gt 0 ]; do
   case "$1" in
+    --release) APP="$RELEASE_OUT/Oblada.app"; DEST="$RELEASE_OUT"; shift; continue ;;
     --app) APP="$2" ;;
     --version) VERSION="$2" ;;
     --feed) FEED="$2" ;;
     --public-key) PUBLIC_KEY="$2" ;;
     --out) DEST="$2" ;;
-    *) echo "usage: dmg.sh [--app <app>] [--version <x.y.z>] [--feed <url>] [--public-key <key>] [--out <dir>]" >&2; exit 2 ;;
+    *) echo "usage: dmg.sh [--release] [--app <app>] [--version <x.y.z>] [--feed <url>] [--public-key <key>] [--out <dir>]" >&2; exit 2 ;;
   esac
   shift 2
 done
-[ -d "$APP" ] || { echo "no app at $APP: run build.sh first" >&2; exit 1; }
+[ -d "$APP" ] || { echo "no app at $APP: run build.sh first (--release for the release build)" >&2; exit 1; }
 [ -d "$APP/Contents/Frameworks/Sparkle.framework" ] ||
   { echo "$APP has no Sparkle.framework: build it again (build.sh)" >&2; exit 1; }
 ARCH="$(lipo -archs "$APP/Contents/MacOS/Oblada" | tr ' ' '-')"

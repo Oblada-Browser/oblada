@@ -1,0 +1,13 @@
+{
+  "changed": [
+    "Oblada is now built with the optimizations Chrome is built with, tuned on how the browser really runs: web pages and apps respond faster, scoring about 40% higher on the Speedometer benchmark. Oblada also takes about 200 MB less on disk, and 25 MB less to download."
+  ],
+  "fixed": [
+    "Oblada no longer crashes when a tab opened as it starts, such as a link that opened Oblada, goes to another page."
+  ],
+  "obladaVersion": "0.3.2",
+  "releaseId": 7,
+  "chromiumVersion": "156.0.8078.48",
+  "releaseDate": "",
+  "released": false
+}

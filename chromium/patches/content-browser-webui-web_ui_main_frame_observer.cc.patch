@@ -1,5 +1,5 @@
 diff --git a/content/browser/webui/web_ui_main_frame_observer.cc b/content/browser/webui/web_ui_main_frame_observer.cc
-index d32c21cc09..2727ca6b59 100644
+index d32c21cc09..60a45e9d65 100644
 --- a/content/browser/webui/web_ui_main_frame_observer.cc
 +++ b/content/browser/webui/web_ui_main_frame_observer.cc
 @@ -179,6 +179,10 @@ void WebUIMainFrameObserver::MaybeEnableWebUIJavaScriptErrorReporting(
@@ -7,8 +7,8 @@ index d32c21cc09..2727ca6b59 100644
      should_crash_on_error_ = false;
    }
 +  // Oblada: a script error on an internal page must never take the whole browser
-+  // down, even though Oblada isn't an "official build" (which is what turns this
-+  // crash off in Chrome).
++  // down, not even in development builds (official builds, Chrome's and Oblada's
++  // releases, never crash on it).
 +  should_crash_on_error_ = false;
  
    // If we are collecting error reports, make sure the main frame sends us

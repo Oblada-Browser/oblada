@@ -1,5 +1,5 @@
 diff --git a/base/check.cc b/base/check.cc
-index a91851e30e..e4e72ee246 100644
+index a91851e30e..8cdadf2ad1 100644
 --- a/base/check.cc
 +++ b/base/check.cc
 @@ -56,14 +56,9 @@ constexpr char kCheckFailureMessageSeparator[] =
@@ -14,8 +14,8 @@ index a91851e30e..e4e72ee246 100644
 -  // These should eventually be migrated to fatal CHECKs.
 -  return LOGGING_FATAL;
 -#endif
-+  // Oblada: Oblada is used every day although it isn't an "official build", so these
-+  // report and carry on as in Chrome rather than crashing the browser.
++  // Oblada: development builds, which aren't "official builds" as releases are,
++  // report these and carry on too, rather than crashing the browser.
 +  return LOGGING_ERROR;
  }
  

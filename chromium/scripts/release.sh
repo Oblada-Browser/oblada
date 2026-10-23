@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Publishes the current commit as a GitHub release, with its DMG and update archive
 # (dmg.sh) and its update feed (appcast.py), the archive and the feed signed with the
-# update key in the login keychain (make update-key). The release is marked as the latest:
+# update key in the login keychain (make update-key). Releases are official builds, built
+# apart in out/Release (build.sh --release): their binaries are stripped, and their
+# symbols stay on this Mac, in $OBLADA_CHROMIUM/symbols, for their crash reports
+# (symbolicate.py). The release is marked as the latest:
 # installed apps find it by its feed (releases/latest/download/appcast.xml), the website's
 # download button by its DMG (releases/latest/download/Oblada-silicon.dmg).
 #   release.sh <notes.md>    e.g. release.sh /tmp/notes.md
@@ -37,22 +40,41 @@ if git rev-parse --quiet --verify "refs/tags/$TAG" >/dev/null &&
   echo "$TAG is another commit's release: raise chromium/oblada/VERSION" >&2
   exit 1
 fi
-"$HERE/scripts/build.sh" >&2
+"$HERE/scripts/build.sh" --release >&2
 "$HERE/scripts/patches.sh" update >/dev/null
 [ -z "$(git status --porcelain)" ] || {
   echo "the checkout has edits that aren't in chromium/patches (see git status)" >&2
   exit 1
 }
 
-PACKED="$("$HERE/scripts/dmg.sh")"
+PACKED="$("$HERE/scripts/dmg.sh" --release)"
 ARCHIVE="$(tail -2 <<< "$PACKED" | head -1)"
 DMG="$(tail -1 <<< "$PACKED")"
+
+DSYMS="$(mktemp -d)"
+BODY="$(mktemp)"
+trap 'rm -rf "$DSYMS" "$BODY"' EXIT
+
+# The app's binaries are stripped: the dSYMs made when they were linked, matched by UUID,
+# are kept for the release's crash reports.
+uuids() { xcrun dwarfdump --uuid "$@" 2>/dev/null | awk '{ print $2 }' || true; }
+# One file at a time: dwarfdump stops at the first file that isn't a binary.
+APP_UUIDS="$(find "$RELEASE_OUT/Oblada.app" -type f -perm -u+x -exec xcrun dwarfdump --uuid {} \; 2>/dev/null |
+  awk '{ print $2 }' || true)"
+for dsym in "$RELEASE_OUT"/*.dSYM; do
+  if grep -qxF "$(uuids "$dsym")" <<< "$APP_UUIDS"; then ditto "$dsym" "$DSYMS/$(basename "$dsym")"; fi
+done
+[ -d "$DSYMS/Oblada Framework.dSYM" ] || { echo "no dSYM for the app's framework in $RELEASE_OUT" >&2; exit 1; }
+SYMBOLS="$OBLADA_CHROMIUM/symbols/$(basename "$ARCHIVE" .aar)-dSYMs.aar"
+mkdir -p "$(dirname "$SYMBOLS")"
+rm -f "$SYMBOLS"
+aa archive -d "$DSYMS" -o "$SYMBOLS"
+echo "symbols: $SYMBOLS ($(ls "$DSYMS" | wc -l | tr -d ' ') dSYMs)" >&2
+
 APPCAST="$(dirname "$DMG")/appcast.xml"
 python3 "$HERE/scripts/appcast.py" --archive "$ARCHIVE" --version "$VERSION" --out "$APPCAST" \
   --url "https://github.com/Oblada-Browser/oblada/releases/download/$TAG/$(basename "$ARCHIVE")" \
   --changelog "$CHANGELOG"
-BODY="$(mktemp)"
-trap 'rm -f "$BODY"' EXIT
 {
   cat "$NOTES"
   printf '\nBuilt on Chromium %s.\n' "$CHROMIUM_VERSION"

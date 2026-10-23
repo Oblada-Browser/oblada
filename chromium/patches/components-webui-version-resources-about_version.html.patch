@@ -1,5 +1,5 @@
 diff --git a/components/webui/version/resources/about_version.html b/components/webui/version/resources/about_version.html
-index 950b0a5c48..a70ecb9f01 100644
+index 950b0a5c48..f109519ea3 100644
 --- a/components/webui/version/resources/about_version.html
 +++ b/components/webui/version/resources/about_version.html
 @@ -56,7 +56,7 @@ about:version template page
@@ -7,7 +7,7 @@ index 950b0a5c48..a70ecb9f01 100644
              <span id="copy-content">
                <span>$i18n{version}$i18n{version_suffix}</span>
 -              (<span>$i18n{official}</span>)
-+              <!-- Oblada: no "(Developer Build)": its releases are built so too. -->
++              <!-- Oblada: no "(Official Build)" or "(Developer Build)", which only says how it was compiled. -->
                <span>$i18n{version_modifier}</span>
                <span>$i18n{version_processor_variation}</span>
    <if expr="is_win">

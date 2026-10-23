@@ -882,11 +882,14 @@ async function firstRunChecks() {
     layouts = await until('the layouts', () => o.evaluate(
       `[...document.querySelectorAll('.layout')].map((l) => l.dataset.mode).join(',')`,
       welcome), 10000).catch(() => '');
-    await o.evaluate(`document.querySelector('.layout[data-mode="scaffold"]').click()`, welcome)
-      .catch(() => {});
-    picked = await until('the layout picked', () => o.evaluate(
-      `import('chrome://resources/js/cr.js').then((cr) => cr.sendWithPromise('getLayout'))`,
-      welcome).then((mode) => mode === 'scaffold' && mode), 5000).catch(() => '');
+    // Clicked until it takes: the layouts show before the page's script (welcome.js, a
+    // module) listens to them, which on a slow first launch is a while.
+    picked = await until('the layout picked', async () => {
+      await o.evaluate(`document.querySelector('.layout[data-mode="scaffold"]').click()`, welcome);
+      const mode = await o.evaluate(
+        `import('chrome://resources/js/cr.js').then((cr) => cr.sendWithPromise('getLayout'))`, welcome);
+      return mode === 'scaffold' && mode;
+    }, 5000).catch(() => '');
   } finally {
     await o.kill();
   }

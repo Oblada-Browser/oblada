@@ -6,10 +6,11 @@ Oblada as a Chromium fork, laid out like Brave: Chromium itself is never committ
 | --- | --- |
 | `CHROMIUM_VERSION` | the Chromium release Oblada is built on |
 | `args.gn` | build configuration (copied to `out/Oblada/args.gn`) |
+| `args.release.gn` | what releases add to `args.gn`: an official build, in `out/Release` |
 | `oblada/` | Oblada's own C++/WebUI code, linked into the checkout as `src/oblada`; `oblada/VERSION` is Oblada's version, apart from Chromium's |
 | `patches/` | Oblada's edits to Chromium files, one patch per file (see [PATCHES.md](../PATCHES.md)) |
 | `overrides/` | Oblada's logo files, which replace Chromium's at the same paths in the checkout (made by `branding/export.sh`) |
-| `scripts/` | `sync.sh`, `deps.py`, `build.sh`, `patches.sh`, `sparkle.sh`, `smoke.mjs`, `updates.mjs`, `screenshot.mjs`, `dmg.sh`, `appcast.py`, `release.sh` |
+| `scripts/` | `sync.sh`, `deps.py`, `build.sh`, `patches.sh`, `sparkle.sh`, `smoke.mjs`, `updates.mjs`, `screenshot.mjs`, `dmg.sh`, `appcast.py`, `release.sh`, `symbolicate.py` |
 
 The checkout lives in `~/chromium` (override with `OBLADA_CHROMIUM`). It takes about 32 GB of
 sources and toolchains, plus about 11 GB per build directory (without debug symbols, as
@@ -20,6 +21,7 @@ The repo's `Makefile` runs these scripts (`make` lists its commands):
 ```sh
 make sync       # chromium/scripts/sync.sh: check out CHROMIUM_VERSION, apply patches (re-run after bumping it)
 make build      # build.sh: build Oblada.app (in out/Oblada, or the checkout's existing build directory)
+make build RELEASE=1   # build.sh --release: the release build, an official one, in out/Release (hours)
 make patches    # patches.sh update: after editing Chromium files in ~/chromium/src
 make test       # smoke.mjs: check the patches in the build (headless, no window)
 make test-updates   # updates.mjs: Oblada updating itself, end to end (headless, a test key)
@@ -44,8 +46,21 @@ make update-key                    # once: the key releases are signed with, in 
 make import-update-key FILE=<file> # that key from its backup (generate_keys -x), e.g. on another Mac
 make dmg                           # dmg.sh: Oblada-silicon.dmg (and the .aar), in the build directory
 make bump TO=0.1.1                 # raise chromium/oblada/VERSION, then commit and push it
-make release NOTES=/tmp/notes.md   # release.sh: build, pack and publish the commit
+make release NOTES=/tmp/notes.md   # release.sh: build (out/Release), pack and publish the commit
+make symbolicate IPS=<report.ips>  # symbolicate.py: Oblada's functions in a release's crash report
 ```
+
+Releases are official builds, as Chromium wants for any build that ships to users:
+`release.sh` builds them in `out/Release`, with `args.release.gn` added to `args.gn`. That
+turns on PGO with Google's profiles for the pinned Chromium (`sync.sh` fetches them:
+`checkout_pgo_profiles` in `.gclient`), ThinLTO with optimizations, and stripped binaries
+whose dSYMs are made as they're linked. The first build there takes hours (about 4 on an
+M4), the next ones a minute or two when few files changed, thanks to the ThinLTO cache.
+Changes are still built and tested in the development build directory, whose CHECK failures
+say what failed.
+`release.sh` keeps the dSYMs of the app's binaries on the maintainer's Mac, in
+`~/chromium/symbols/Oblada-<version>-arm64-dSYMs.aar` (they're never published), and
+`symbolicate.py` names Oblada's functions in macOS's crash reports of a release with them.
 
 Oblada updates itself with [Sparkle](https://sparkle-project.org)
 (`oblada/browser/updater`), which `sparkle.sh` puts in the checkout as
