@@ -1,20 +1,21 @@
 diff --git a/chrome/browser/ui/toolbar/app_menu_model.cc b/chrome/browser/ui/toolbar/app_menu_model.cc
-index faaded8ad5..386e6e3132 100644
+index faaded8ad5..ba41c7b4ab 100644
 --- a/chrome/browser/ui/toolbar/app_menu_model.cc
 +++ b/chrome/browser/ui/toolbar/app_menu_model.cc
-@@ -4,6 +4,11 @@
+@@ -4,6 +4,12 @@
  
  #include "chrome/browser/ui/toolbar/app_menu_model.h"
  
 +#include "oblada/browser/containers/containers.h"  // Oblada
 +#include "oblada/browser/containers/containers_menu_model.h"  // Oblada
 +#include "oblada/browser/l10n.h"  // Oblada
++#include "oblada/browser/ui/sidebar_layout.h"  // Oblada
 +#include "oblada/browser/ui/sidebar_mode.h"  // Oblada
 +
  #include <algorithm>
  #include <cmath>
  #include <memory>
-@@ -1074,7 +1079,9 @@ void ToolsMenuModel::Build(BrowserWindowInterface* browser) {
+@@ -1074,7 +1080,9 @@ void ToolsMenuModel::Build(BrowserWindowInterface* browser) {
        this, IDC_NAME_WINDOW, IDS_NAME_WINDOW,
        features::IsRoundedIconsEnabled() ? kWebAssetIcon : kNameWindowOldIcon);
  
@@ -25,7 +26,7 @@ index faaded8ad5..386e6e3132 100644
      if (controller->ShouldDisplayVerticalTabs()) {
        AddItemWithStringIdAndVectorIcon(
            this, IDC_TOGGLE_VERTICAL_TABS, IDS_SWITCH_TO_HORIZONTAL_TAB,
-@@ -2028,6 +2035,9 @@ bool AppMenuModel::IsCommandIdEnabled(int command_id) const {
+@@ -2028,6 +2036,9 @@ bool AppMenuModel::IsCommandIdEnabled(int command_id) const {
    }
  
    switch (command_id) {
@@ -35,14 +36,17 @@ index faaded8ad5..386e6e3132 100644
      case IDC_NEW_INCOGNITO_WINDOW:
        return IncognitoModePrefs::IsIncognitoTypeAllowed(
            browser_->GetProfile(),
-@@ -2112,6 +2122,18 @@ void AppMenuModel::Build() {
+@@ -2112,6 +2123,21 @@ void AppMenuModel::Build() {
        AddDefaultBrowserMenuItems()) {
      AddSeparator(ui::NORMAL_SEPARATOR);
    }
-+  // Oblada: reload is here rather than next to back and forward, as in Zen; and so is
-+  // the window's layout (sidebar, scaffold, compact: oblada/browser/ui/sidebar_mode.h).
-+  AddItemWithStringIdAndVectorIcon(this, IDC_RELOAD, IDS_CONTENT_CONTEXT_RELOAD,
-+                                   vector_icons::kReloadChromeRefreshOldIcon);
++  // Oblada: reload is here when it isn't next to back and forward (in a sidebar too
++  // narrow for it); and so is the window's layout (sidebar, scaffold, compact:
++  // oblada/browser/ui/sidebar_mode.h).
++  if (!oblada::sidebar::ShowsReloadButton(browser_)) {
++    AddItemWithStringIdAndVectorIcon(this, IDC_RELOAD, IDS_CONTENT_CONTEXT_RELOAD,
++                                     vector_icons::kReloadChromeRefreshOldIcon);
++  }
 +  if (tabs::VerticalTabStripStateController::From(browser_)) {
 +    sub_menus_.push_back(
 +        std::make_unique<oblada::sidebar::ModeMenuModel>(browser_->GetProfile()));
@@ -54,7 +58,7 @@ index faaded8ad5..386e6e3132 100644
    int new_tab_string_id = IDS_NEW_TAB;
    if (browser_->GetProfile()->IsEnterpriseIsolatedModeProfile() &&
        !browser_->GetProfile()->IsGuestSession()) {
-@@ -2152,6 +2174,14 @@ void AppMenuModel::Build() {
+@@ -2152,6 +2178,14 @@ void AppMenuModel::Build() {
      }
    }
  

@@ -4,6 +4,8 @@
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/rect.h"
 
+class BrowserWindowInterface;
+
 namespace views {
 class View;
 }  // namespace views
@@ -75,9 +77,15 @@ void SetToolbarAbovePage(views::View* top_container,
 void SetExpansion(views::View* tab_strip_region, float expansion);
 float Expansion(const views::View* tab_strip_region);
 
-// Hides `view` (a toolbar button) while the toolbar is in the sidebar, and shows it
-// again after.
-void HideInSidebar(views::View* view, bool in_sidebar);
+// While the toolbar is in the sidebar, `view` (a toolbar button) shows only if the
+// sidebar is wide enough for it once the other buttons have their room: it is the
+// first to go as the sidebar narrows.
+void ShowIfRoomInSidebar(views::View* view, bool in_sidebar);
+
+// Whether the toolbar of `browser`'s window shows its reload button: at the top of the
+// window, or in the sidebar when it's wide enough (see ShowIfRoomInSidebar()). The app
+// menu has "Reload" when it doesn't.
+bool ShowsReloadButton(const BrowserWindowInterface* browser);
 
 // Height of the address bar's row, below the buttons.
 int LocationRowHeight(const views::View* location_bar);

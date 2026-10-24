@@ -4,6 +4,9 @@
 #include <memory>
 #include <vector>
 
+#include "chrome/browser/ui/views/frame/browser_view.h"
+#include "chrome/browser/ui/views/toolbar/reload_button.h"
+#include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "oblada/browser/ui/floating_location_bar.h"
 #include "oblada/browser/ui/horizontal_tabs.h"
 #include "third_party/skia/include/core/SkPath.h"
@@ -14,6 +17,7 @@
 #include "ui/events/event.h"
 #include "ui/events/event_handler.h"
 #include "ui/views/focus/focus_manager.h"
+#include "ui/views/layout/flex_layout_types.h"
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
 #include "ui/views/view_tracker.h"
@@ -55,7 +59,6 @@ namespace {
 DEFINE_UI_CLASS_PROPERTY_KEY(int, kToolbarInsetKey, -1)
 DEFINE_UI_CLASS_PROPERTY_KEY(bool, kCompactKey, false)
 DEFINE_UI_CLASS_PROPERTY_KEY(bool, kScaffoldKey, false)
-DEFINE_UI_CLASS_PROPERTY_KEY(bool, kHiddenInSidebarKey, false)
 DEFINE_UI_CLASS_PROPERTY_KEY(float, kExpansionKey, 1.0f)
 
 DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(ToolbarHoverWatcher, kHoverWatcherKey)
@@ -67,6 +70,10 @@ constexpr int kBottomPadding = 8;
 // Around the page: none on the sidebar's side, whose tabs have padding of their own.
 constexpr int kContentMargin = 8;
 constexpr float kContentCornerRadius = 10;
+
+// Views with lower flex orders get their room first (views::FlexSpecification): this
+// one comes after any of the toolbar's.
+constexpr int kLastFlexOrder = 1000;
 
 bool IsLaidOut(const views::View* view) {
   return view->GetVisible() && !view->GetProperty(views::kViewIgnoredByLayoutKey) &&
@@ -178,18 +185,30 @@ void SetToolbarAbovePage(views::View* top_container,
   }
 }
 
-void HideInSidebar(views::View* view, bool in_sidebar) {
+void ShowIfRoomInSidebar(views::View* view, bool in_sidebar) {
   if (!view) {
     return;
   }
-  const bool hidden = view->GetProperty(kHiddenInSidebarKey);
-  if (in_sidebar && !hidden && view->GetVisible()) {
-    view->SetProperty(kHiddenInSidebarKey, true);
-    view->SetVisible(false);
-  } else if (!in_sidebar && hidden) {
-    view->SetProperty(kHiddenInSidebarKey, false);
-    view->SetVisible(true);
+  if (in_sidebar) {
+    view->SetProperty(views::kFlexBehaviorKey,
+                      views::FlexSpecification(
+                          views::LayoutOrientation::kHorizontal,
+                          views::MinimumFlexSizeRule::kPreferredSnapToZero,
+                          views::MaximumFlexSizeRule::kPreferred)
+                          .WithOrder(kLastFlexOrder));
+  } else {
+    view->ClearProperty(views::kFlexBehaviorKey);
   }
+}
+
+bool ShowsReloadButton(const BrowserWindowInterface* browser) {
+  const BrowserView* browser_view =
+      BrowserView::GetBrowserViewForBrowser(browser);
+  const views::View* reload =
+      browser_view && browser_view->toolbar()
+          ? browser_view->toolbar()->reload_button()
+          : nullptr;
+  return reload && reload->IsDrawn() && !reload->bounds().IsEmpty();
 }
 
 int LocationRowHeight(const views::View* location_bar) {

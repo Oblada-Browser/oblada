@@ -813,6 +813,20 @@ async function containerChecks(o) {
   check('back to the sidebar from horizontal tabs',
     sidebarBack?.[2] > 200 && !shown(`${shot}-sidebar-back.layout.txt`, region),
     `sidebar ${sidebarBack}`);
+  // Reload next to back and forward, unless the sidebar is too narrow for it (then
+  // it's in the app menu): at its narrowest, 170 (dragged further, it collapses).
+  const wideReload = shown(`${shot}-sidebar-back.layout.txt`, 'ReloadButton');
+  const wideForward = fs.readFileSync(`${shot}-sidebar-back.layout.txt`, 'utf8')
+    .match(/^\s*BackForwardButton (\d+),(\d+) (\d+)x(\d+)$/gm)?.at(-1)?.match(/\d+/g).map(Number);
+  await snapshot(snapshots, `${shot}-sidebar-narrow.png`,
+    `resize:-${(sidebarBack?.[2] ?? 170) - 170} wait:400`);
+  const narrow = shown(`${shot}-sidebar-narrow.layout.txt`, 'VerticalTabStripRegionView');
+  const narrowReload = shown(`${shot}-sidebar-narrow.layout.txt`, 'ReloadButton');
+  await snapshot(snapshots, `${shot}-sidebar-wide.png`,
+    `resize:${(sidebarBack?.[2] ?? 0) - (narrow?.[2] ?? 0)} wait:400`);
+  check('reload next to back and forward, unless the sidebar is too narrow for it',
+    wideReload?.[0] === wideForward?.[0] + wideForward?.[2] && narrow?.[2] < 200 && !narrowReload,
+    `reload at ${wideReload} in ${sidebarBack?.[2]}, ${narrowReload ?? 'none'} in ${narrow?.[2]}`);
 }
 
 // The installed extensions as chrome://extensions-internals lists them.

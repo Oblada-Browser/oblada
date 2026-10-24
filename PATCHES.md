@@ -411,7 +411,8 @@ milliseconds.
 at the top of the window in scaffold modes and with horizontal tabs, without the profile and
 extensions buttons there too (`oblada::sidebar::IsScaffoldToolbar()`).
 - Two rows: the buttons next to the window controls, then the address bar's own row.
-- Hidden: avatar, reload (moved to the menu), overflow and extensions buttons.
+- Hidden: avatar, overflow and extensions buttons. In the sidebar, reload only when it's
+  too narrow for it (`oblada::sidebar::ShowIfRoomInSidebar()`): it's in the menu then.
 - Smaller button insets.
 - `LayOutLocationBar()` lets the address bar float out of it.
 - Always drops the split-tabs and Battery Saver buttons.
@@ -1023,12 +1024,13 @@ modes and with horizontal tabs.
 #### `chrome/browser/ui/toolbar/app_menu_model.cc`, `chrome/browser/ui/views/app_menu/action_app_menu_manager.cc`
 `chrome-browser-ui-toolbar-app_menu_model.cc.patch`,
 `chrome-browser-ui-views-app_menu-action_app_menu_manager.cc.patch`.
-- The menu starts with "Reload" (no longer next to back and forward) and "Window layout ▸"
-  (the sidebar's four, then the three with horizontal tabs: `oblada::sidebar::ModeMenuModel`).
+- The menu starts with "Reload", when the toolbar doesn't show its button (in a sidebar too
+  narrow for it: `oblada::sidebar::ShowsReloadButton()`), and "Window layout ▸" (the
+  sidebar's four, then the three with horizontal tabs: `oblada::sidebar::ModeMenuModel`).
 - "New container tab ▸" follows the new tab and window items.
 - Neither menu offers Chromium's switch to horizontal tabs: the layouts that have them do.
 - Oblada code: `oblada/browser/containers/containers.h`, `containers_menu_model.h`,
-  `oblada/browser/l10n.h`, `oblada/browser/ui/sidebar_mode.h`.
+  `oblada/browser/l10n.h`, `oblada/browser/ui/sidebar_layout.h`, `sidebar_mode.h`.
 
 #### `chrome/browser/ui/views/toolbar/app_menu.cc`, `browser_app_menu_button.cc`
 `chrome-browser-ui-views-toolbar-app_menu.cc.patch`,

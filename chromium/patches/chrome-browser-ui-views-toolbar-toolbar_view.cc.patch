@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.cc b/chrome/browser/ui/views/toolbar/toolbar_view.cc
-index f9bb38f923..703df76fdc 100644
+index f9bb38f923..a988644410 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
 +++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
 @@ -4,6 +4,10 @@
@@ -136,7 +136,7 @@ index f9bb38f923..703df76fdc 100644
  }
  
  void ToolbarView::OnThemeChanged() {
-@@ -1775,6 +1832,75 @@ void ToolbarView::LayoutCommon() {
+@@ -1775,6 +1832,76 @@ void ToolbarView::LayoutCommon() {
        interior_margin.set_right(0);
      }
    }
@@ -169,13 +169,14 @@ index f9bb38f923..703df76fdc 100644
 +      avatar_->SetVisible(true);
 +    }
 +  }
-+  // Like Zen's, next to the window controls only back and forward: reload is in the
-+  // app menu, extensions in the address bar (oblada/browser/ui/site_panel.h).
-+  oblada::sidebar::HideInSidebar(reload_, oblada_sidebar_inset >= 0);
++  // Like Zen's, next to the window controls back, forward and reload, reload
++  // only if the sidebar is wide enough for it: otherwise it's in the app menu.
++  // Extensions are in the address bar (oblada/browser/ui/site_panel.h).
++  oblada::sidebar::ShowIfRoomInSidebar(reload_, oblada_sidebar_inset >= 0);
 +  // Zen's small buttons there, for the sidebar to be as narrow as Zen's: their
 +  // icons with less room around them, and no margins between them.
 +  for (ToolbarButton* button :
-+       {back_.get(), forward_.get(),
++       {back_.get(), forward_.get(), static_cast<ToolbarButton*>(reload_.get()),
 +        static_cast<ToolbarButton*>(app_menu_button_.get())}) {
 +    if (!button) {
 +      continue;
@@ -212,7 +213,7 @@ index f9bb38f923..703df76fdc 100644
    layout_manager_->SetInteriorMargin(interior_margin);
  
    // Extend buttons to the window edge if we're either in a maximized or
-@@ -1811,8 +1937,13 @@ void ToolbarView::LayoutCommon() {
+@@ -1811,8 +1938,13 @@ void ToolbarView::LayoutCommon() {
        ShouldAppMenuApplyFittsLaw(is_maximized_or_fullscreen));
  
    if (toolbar_divider_ && extensions_container_) {
