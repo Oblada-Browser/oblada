@@ -1,0 +1,10 @@
+{
+  "fixed": [
+    "The sidebar keeps its width when Oblada restarts, instead of opening at its default width again."
+  ],
+  "obladaVersion": "0.4.2",
+  "releaseId": 10,
+  "chromiumVersion": "156.0.8078.48",
+  "releaseDate": "",
+  "released": false
+}

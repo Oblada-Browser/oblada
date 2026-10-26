@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/sessions/session_service_base.cc b/chrome/browser/sessions/session_service_base.cc
-index 2e2a9d24d7..8e388a4bf2 100644
+index 2e2a9d24d7..4026612fc8 100644
 --- a/chrome/browser/sessions/session_service_base.cc
 +++ b/chrome/browser/sessions/session_service_base.cc
 @@ -4,6 +4,8 @@
@@ -11,7 +11,15 @@ index 2e2a9d24d7..8e388a4bf2 100644
  #include <stddef.h>
  
  #include <memory>
-@@ -285,6 +287,13 @@ void SessionServiceBase::TabInserted(WebContents* contents) {
+@@ -37,6 +39,7 @@
+ #include "chrome/browser/ui/tabs/tab_group_model.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_selection_state.h"
++#include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"  // Oblada
+ #include "chrome/browser/ui/ui_features.h"
+ #include "chrome/browser/ui/window_feature_controller/window_feature_controller.h"
+ #include "chrome/browser/ui/window_metadata/window_metadata_controller.h"
+@@ -285,6 +288,13 @@ void SessionServiceBase::TabInserted(WebContents* contents) {
      SetTabExtensionAppID(session_tab_helper->window_id(),
                           session_tab_helper->session_id(), app_id);
    }
@@ -25,7 +33,7 @@ index 2e2a9d24d7..8e388a4bf2 100644
  
    // Record the association between the SessionStorageNamespaceHandle and the
    // tab.
-@@ -640,6 +649,13 @@ void SessionServiceBase::BuildCommandsForTab(
+@@ -640,6 +650,13 @@ void SessionServiceBase::BuildCommandsForTab(
      command_storage_manager()->AppendRebuildCommand(
          sessions::CreateSetTabExtensionAppIDCommand(session_id, app_id));
    }
@@ -39,3 +47,27 @@ index 2e2a9d24d7..8e388a4bf2 100644
  
    for (int i = min_index; i < max_index; ++i) {
      NavigationEntry* entry = (i == pending_index)
+@@ -711,6 +728,23 @@ void SessionServiceBase::BuildCommandsForBrowser(
+             WindowMetadataController::From(browser)->user_title()));
+   }
+ 
++  // Oblada: the vertical tab strip's state, which the window otherwise writes only
++  // as it changes (VerticalTabStripStateControllerImpl::UpdateSessionService()): a
++  // rebuilt session lost it, and a restart the sidebar's width.
++  if (const auto* vertical_tabs =
++          tabs::VerticalTabStripStateController::From(browser)) {
++    command_storage_manager()->AppendRebuildCommand(
++        sessions::CreateAddWindowExtraDataCommand(
++            browser->GetSessionID(),
++            tabs::VerticalTabStripStateController::kCollapsedKey,
++            base::ToString(vertical_tabs->IsCollapsed())));
++    command_storage_manager()->AppendRebuildCommand(
++        sessions::CreateAddWindowExtraDataCommand(
++            browser->GetSessionID(),
++            tabs::VerticalTabStripStateController::kUncollapsedWidthKey,
++            base::NumberToString(vertical_tabs->GetUncollapsedWidth())));
++  }
++
+   command_storage_manager()->AppendRebuildCommand(
+       sessions::CreateSetWindowWorkspaceCommand(
+           browser->GetSessionID(),

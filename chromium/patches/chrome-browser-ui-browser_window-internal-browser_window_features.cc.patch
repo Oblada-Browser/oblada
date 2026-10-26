@@ -1,0 +1,18 @@
+diff --git a/chrome/browser/ui/browser_window/internal/browser_window_features.cc b/chrome/browser/ui/browser_window/internal/browser_window_features.cc
+index f51b071375..12ee2e960a 100644
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features.cc
+@@ -645,6 +645,13 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
+       restored_state_uncollapsed_width =
+           profile->GetPrefs()->GetInteger(prefs::kVerticalTabsUncollapsedWidth);
+     }
++    // Oblada: a window restored without its sidebar's width (from a session saved
++    // before SessionServiceBase::BuildCommandsForBrowser() kept it) gets the last
++    // one used, as new windows do, rather than the default.
++    if (!restored_state_uncollapsed_width.has_value()) {
++      restored_state_uncollapsed_width =
++          profile->GetPrefs()->GetInteger(prefs::kVerticalTabsUncollapsedWidth);
++    }
+ 
+     vertical_tab_strip_state_controller_ =
+         GetUserDataFactory()

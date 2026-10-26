@@ -986,6 +986,36 @@ async function restoreChecks(o) {
   check('a discarded container tab reloads in its container', after === 'who=work|work', after);
 }
 
+// The sidebar's width in the window snapshot `file` (its .layout.txt), if it shows.
+const sidebarWidth = (file) => Number(fs.readFileSync(file.replace(/\.png$/, '.layout.txt'), 'utf8')
+  .match(/^\s*VerticalTabStripRegionView -?\d+,-?\d+ (\d+)x\d+(?!\d| hidden)/m)?.[1]);
+
+// Before a restart: the sidebar dragged narrower, then the session rebuilt from the windows
+// as they are, as Chromium does every 250 changes (here a page's history.pushState()s), which
+// once lost the width. Returns the width.
+async function widthBeforeRestart(o) {
+  const shot = path.join(tmp, 'restart');
+  await snapshot(snapshots, `${shot}-sidebar.png`, 'mode:sidebar wait:600');
+  const width = sidebarWidth(`${shot}-sidebar.png`);
+  await snapshot(snapshots, `${shot}-narrower.png`, `resize:-${width - 200} wait:400`);
+  const { targetId } = await o.send('Target.createTarget', { url: `${site}?history` });
+  const page = await o.attach(targetId);
+  await until('its page', () => o.evaluate('document.readyState === "complete"', page));
+  await o.evaluate(`for (let i = 0; i < 300; i++) history.pushState({}, '', '?history=' + i)`, page);
+  // (Saved within 2.5 s.) Then closed, so the restart restores the tabs restoreChecks() expects.
+  await sleep(4000);
+  await o.send('Target.closeTarget', { targetId });
+  return sidebarWidth(`${shot}-narrower.png`);
+}
+
+async function widthAfterRestart(o, before) {
+  const file = path.join(tmp, 'restart-after.png');
+  await snapshot(snapshots, file);
+  const after = sidebarWidth(file);
+  check('the sidebar keeps its width across restarts', before === 200 && after === before,
+    `${before} → ${after}`);
+}
+
 async function closeChecks(o) {
   // The workspace shown keeps a New Tab page in place of its last tab (⌘W), and
   // closing that closes the window, whatever tabs the other workspaces have in it.
@@ -1073,10 +1103,12 @@ try {
   await containerChecks(oblada);
   await firefoxChecks(oblada);
   if (process.env.OBLADA_SMOKE_NETWORK !== '0') await amoChecks(oblada);
+  const width = await widthBeforeRestart(oblada);
   await oblada.quit();
   // No flag asking for it: Oblada restores the last session by default.
   oblada = await launch();
   await restoreChecks(oblada);
+  await widthAfterRestart(oblada, width);
   await closeChecks(oblada);
 } catch (e) {
   check('smoke test ran', false, e.message);

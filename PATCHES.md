@@ -164,7 +164,7 @@ source adds. Each pair is listed in the entries.
 | Startup, prefs, stability | `chrome_browser_main.cc`, `browser_prefs.cc`, `session_startup_pref.cc`, `base/check.cc`, `web_ui_main_frame_observer.cc`, `startup/infobar_utils.cc` |
 | Branding | `BRANDING`, `chrome_paths_mac.mm`, `keychain_password_mac.mm`, three `icons.html.ts` |
 | Window & frame | `ui_base_features.cc`, `browser_native_widget_mac.mm`, `browser_frame_view_mac.mm`, `browser_view_layout_delegate_impl.cc`, `fullscreen_util_mac.cc`, `window_feature_controller.cc` |
-| Sidebar & compact mode | `browser_view_tabbed_layout_impl.cc`, `browser_view.cc`, `tabs/features.cc`, `vertical_tab_strip_background_blur_backdrop.cc`, `toolbar_view.cc`, `vertical_tab_strip_region_view.{h,cc}`, `vertical_tab_strip_state.h`, `vertical_tab_strip_state_controller{.h,_impl.cc}`, `tab_strip_prefs.cc`, `browser_command_controller.cc`, `vertical_tab_strip_bottom_container.cc`, `download_toolbar_ui_controller.cc` |
+| Sidebar & compact mode | `browser_view_tabbed_layout_impl.cc`, `browser_view.cc`, `tabs/features.cc`, `vertical_tab_strip_background_blur_backdrop.cc`, `toolbar_view.cc`, `vertical_tab_strip_region_view.{h,cc}`, `vertical_tab_strip_state.h`, `vertical_tab_strip_state_controller{.h,_impl.cc}`, `session_service_base.cc`, `browser_window_features.cc`, `tab_strip_prefs.cc`, `browser_command_controller.cc`, `vertical_tab_strip_bottom_container.cc`, `download_toolbar_ui_controller.cc` |
 | Horizontal tabs | `horizontal_tab_strip_region_view.{h,cc}`, `tab.{h,cc}`, `new_tab_button.{h,cc}`, `horizontal_tab_style_views.cc`, `tab_container_impl.cc`, `tab_group_header.cc` |
 | Tabs | `tab_style.cc`, `tab_hover_card_controller.cc`, `tab_strip_collection_controller.{h,cc}` |
 | Workspaces | `ui_features.cc`, `browser_commands.cc`, `browser_widget.cc`, `tab_group_header_view.{h,cc}`, `tab_group_view_layout.cc`, `tab_collection_animating_layout_manager.{h,cc}`, `vertical_tab_strip_focus_swipe_controller.cc`, `saved_tab_group_model_listener.cc`, `tab_group_sync_delegate_desktop.cc`, `session_restore.cc`, `saved_tab_groups/public/pref_names.cc`, `bookmark_utils.cc` |
@@ -475,6 +475,19 @@ so the toolbar always fits.
 - Needs: `vertical_tab_strip_state.h`.
 - Needed by: `vertical_tab_strip_region_view.cc`, `tab_group_header_view.cc`.
 
+#### `chrome/browser/sessions/session_service_base.cc` (sidebar's width)
+`chrome-browser-sessions-session_service_base.cc.patch`, which also keeps containers (see
+below). The sidebar keeps its width across restarts: `BuildCommandsForBrowser()` writes the
+vertical tab strip's state (collapsed, width) into a rebuilt session. Chromium writes it only
+as it changes, so a session rebuilt since (every 250 changes) restored windows at the default
+width.
+
+#### `chrome/browser/ui/browser_window/internal/browser_window_features.cc`
+`chrome-browser-ui-browser_window-internal-browser_window_features.cc.patch`. A window
+restored without its sidebar's width (from a session saved before the patch above) gets the
+last width used (`prefs::kVerticalTabsUncollapsedWidth`), as new windows do, rather than the
+default.
+
 #### `chrome/browser/ui/tabs/tab_strip_prefs.cc`
 `chrome-browser-ui-tabs-tab_strip_prefs.cc.patch`. Vertical tabs are on by default.
 
@@ -683,6 +696,7 @@ from a container tab stays in its container's storage partition.
 "Reopen closed tab".
 - The first two save it in the tab's extra data (`oblada.container`).
 - `browser_tabrestore.cc` creates the restored tab in it (`SiteInstanceForRestoredTab()`).
+- `session_service_base.cc` keeps the sidebar's width too (see its entry under the sidebar).
 - Oblada code: `oblada/browser/containers/containers.h`.
 
 #### `chrome/browser/resource_coordinator/tab_lifecycle_unit.cc`
