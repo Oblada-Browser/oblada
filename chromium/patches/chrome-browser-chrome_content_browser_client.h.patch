@@ -1,0 +1,18 @@
+diff --git a/chrome/browser/chrome_content_browser_client.h b/chrome/browser/chrome_content_browser_client.h
+index 1c972e4e27..77025b0a7b 100644
+--- a/chrome/browser/chrome_content_browser_client.h
++++ b/chrome/browser/chrome_content_browser_client.h
+@@ -412,6 +412,13 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
+       content::BrowserContext* browser_context,
+       const std::vector<content::GlobalRenderFrameHostId>& render_frames,
+       const blink::StorageKey& storage_key) override;
++  // Oblada
++  void GetObladaWorkerFarbling(content::BrowserContext* browser_context,
++                               content::StoragePartition* storage_partition,
++                               const blink::StorageKey& storage_key,
++                               uint64_t* token,
++                               uint32_t* exceptions,
++                               bool* reduce_language) override;
+ 
+   bool AllowWorkerWriteToClipboard(
+       const url::Origin& origin,

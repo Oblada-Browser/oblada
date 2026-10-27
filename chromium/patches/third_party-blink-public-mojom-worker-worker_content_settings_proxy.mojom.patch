@@ -1,0 +1,16 @@
+diff --git a/third_party/blink/public/mojom/worker/worker_content_settings_proxy.mojom b/third_party/blink/public/mojom/worker/worker_content_settings_proxy.mojom
+index 2583ded1a1..2bf774e5b9 100644
+--- a/third_party/blink/public/mojom/worker/worker_content_settings_proxy.mojom
++++ b/third_party/blink/public/mojom/worker/worker_content_settings_proxy.mojom
+@@ -32,4 +32,11 @@ interface WorkerContentSettingsProxy {
+   // are allowed; everything else gets false.
+   [Sync]
+   AllowWriteToClipboard() => (bool result);
++
++  // Oblada: the Barrier's fingerprinting protection for the worker
++  // (oblada/blink/farbling_settings.h): its seed (zero for none), the APIs it
++  // leaves alone, and whether the worker sees only the first language.
++  [Sync]
++  GetObladaFarbling() => (uint64 token, uint32 exceptions,
++                          bool reduce_language);
+ };

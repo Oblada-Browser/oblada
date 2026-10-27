@@ -1,0 +1,7 @@
+# The Barrier's interfaces between the browser and pages' frames
+# (oblada/browser/barrier, oblada/renderer/barrier).
+import("//mojo/public/tools/bindings/mojom.gni")
+
+mojom("mojom") {
+  sources = [ "barrier.mojom" ]
+}

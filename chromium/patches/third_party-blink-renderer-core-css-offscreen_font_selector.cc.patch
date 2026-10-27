@@ -1,0 +1,25 @@
+diff --git a/third_party/blink/renderer/core/css/offscreen_font_selector.cc b/third_party/blink/renderer/core/css/offscreen_font_selector.cc
+index d47f7ddafd..1bbd8fd89c 100644
+--- a/third_party/blink/renderer/core/css/offscreen_font_selector.cc
++++ b/third_party/blink/renderer/core/css/offscreen_font_selector.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "third_party/blink/renderer/core/css/offscreen_font_selector.h"
+ 
++#include "oblada/blink/farbling.h"  // Oblada
+ #include "build/build_config.h"
+ #include "third_party/blink/renderer/core/frame/settings.h"
+ #include "third_party/blink/renderer/platform/fonts/font_cache.h"
+@@ -51,6 +52,12 @@ const FontData* OffscreenFontSelector::GetFontData(
+   if (settings_family_name.empty()) {
+     return nullptr;
+   }
++  // Oblada: only some installed fonts, for fingerprinting protection.
++  if (!font_family.FamilyIsGeneric() &&
++      !oblada_farbling::AllowsFont(GetExecutionContext(),
++                                   settings_family_name)) {
++    return nullptr;
++  }
+ 
+   return FontCache::Get().GetFontData(font_description, settings_family_name);
+ }

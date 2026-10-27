@@ -1,0 +1,15 @@
+diff --git a/content/browser/renderer_host/render_view_host_impl.cc b/content/browser/renderer_host/render_view_host_impl.cc
+index 512116f099..ea4c867995 100644
+--- a/content/browser/renderer_host/render_view_host_impl.cc
++++ b/content/browser/renderer_host/render_view_host_impl.cc
+@@ -286,7 +286,9 @@ void RenderViewHostImpl::GetPlatformSpecificPrefs(
+       ui::Clipboard::IsSupportedClipboardBuffer(
+           ui::ClipboardBuffer::kSelection);
+ #endif
+-  prefs->is_global_privacy_control_setting_enabled =
++  // Oblada: or the embedder's setting (renderer_preferences_util.cc), which
++  // this used to overwrite.
++  prefs->is_global_privacy_control_setting_enabled |=
+       IsGlobalPrivacyControlSettingEnabled();
+ }
+ 

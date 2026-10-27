@@ -1,0 +1,17 @@
+diff --git a/third_party/blink/public/web/web_local_frame.h b/third_party/blink/public/web/web_local_frame.h
+index 3c61feac0d..732be762e4 100644
+--- a/third_party/blink/public/web/web_local_frame.h
++++ b/third_party/blink/public/web/web_local_frame.h
+@@ -992,6 +992,12 @@ class BLINK_EXPORT WebLocalFrame : public WebFrame {
+   // This should only be used for extensions and the webview tag.
+   virtual void SetAllowsCrossBrowsingInstanceFrameLookup() = 0;
+ 
++  // Oblada: the Barrier's fingerprinting protection for the frame's document
++  // (oblada/blink/farbling.h), which its dedicated workers get too.
++  virtual void SetObladaFarbling(uint64_t token,
++                                 uint32_t exceptions,
++                                 bool reduce_language) {}
++
+   virtual void SetTargetToCurrentHistoryItem(const WebString& target) = 0;
+   virtual void UpdateCurrentHistoryItem() = 0;
+   virtual PageState CurrentHistoryItemToPageState() = 0;

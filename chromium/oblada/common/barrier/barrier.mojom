@@ -1,0 +1,57 @@
+// The Barrier (oblada/browser/barrier/barrier.h) between the browser and the
+// pages' frames: what each document gets as it commits (cosmetic filters,
+// scriptlets, fingerprinting protection), and what the frame asks the browser
+// as it runs.
+module oblada.mojom;
+
+// What a document gets, from its page's (top-level) site's settings.
+struct BarrierPageSettings {
+  // Cosmetic filtering: elements the filter lists hide, and their scriptlets.
+  bool cosmetic_filtering = false;
+  // Generic rules hide the page's own elements too (aggressive blocking),
+  // not only third parties'.
+  bool aggressive = false;
+  // CSS selectors of the elements to hide.
+  array<string> hide_selectors;
+  // Procedural filters and filters with an action (`:has-text()`,
+  // `:remove()`…), each as adblock-rust's JSON.
+  array<string> procedural_actions;
+  // Classes and ids (".ad", "#banner") generic rules don't hide.
+  array<string> exceptions;
+  // No generic rules on the document ($generichide).
+  bool generic_hide = false;
+  // The scriptlets to run in the page, before its own scripts.
+  string scriptlets;
+
+  // Fingerprinting protection, for Blink (oblada/blink/farbling.h): the
+  // document's seed, its page's site's for the session (and container); the
+  // FingerprintingApi bits (barrier.h) left alone; and whether languages are
+  // reduced. A zero seed: no protection.
+  uint64 farbling_token = 0;
+  uint32 farbling_exceptions = 0;
+  bool reduce_language = false;
+};
+
+// Browser to renderer, per frame (associated with its channel, so before the
+// commit that follows).
+interface BarrierAgent {
+  // What the next document committed in the frame gets.
+  SetPageSettings(BarrierPageSettings settings);
+
+  // Lets the user pick an element of the page to hide (the element picker),
+  // whose texts are `strings` (hint, block, cancel, wider, narrower, count).
+  StartElementPicker(map<string, string> strings);
+};
+
+// Renderer to browser, per frame.
+interface BarrierHost {
+  // The generic hiding rules the classes and ids found on the page call for,
+  // but `exceptions`.
+  HiddenClassIdSelectors(array<string> classes,
+                         array<string> ids,
+                         array<string> exceptions)
+      => (array<string> selectors);
+
+  // A filter the element picker made, for the user's own (`host##selector`).
+  AddCustomFilter(string filter);
+};

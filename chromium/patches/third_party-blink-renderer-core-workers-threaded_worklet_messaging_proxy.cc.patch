@@ -1,0 +1,13 @@
+diff --git a/third_party/blink/renderer/core/workers/threaded_worklet_messaging_proxy.cc b/third_party/blink/renderer/core/workers/threaded_worklet_messaging_proxy.cc
+index 3cf2c103c9..f881df2e94 100644
+--- a/third_party/blink/renderer/core/workers/threaded_worklet_messaging_proxy.cc
++++ b/third_party/blink/renderer/core/workers/threaded_worklet_messaging_proxy.cc
+@@ -157,6 +157,8 @@ void ThreadedWorkletMessagingProxy::Initialize(
+           window->GetAgentClusterID(), ukm::kInvalidSourceId,
+           window->GetExecutionContextToken(),
+           window->CrossOriginIsolatedCapability(), window->IsIsolatedContext());
++  global_scope_creation_params->oblada_farbling =
++      window->GetObladaFarbling();  // Oblada
+ 
+   // Worklets share the pre-initialized backing thread so that we don't have to
+   // specify the backing thread startup data.

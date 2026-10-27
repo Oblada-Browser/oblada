@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.cc b/chrome/browser/ui/views/location_bar/location_bar_view.cc
-index bac174d0b2..a8151080b6 100644
+index bac174d0b2..1bc898add1 100644
 --- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
 +++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
-@@ -4,6 +4,17 @@
+@@ -4,6 +4,18 @@
  
  #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
  
@@ -15,12 +15,13 @@ index bac174d0b2..a8151080b6 100644
 +#include "oblada/browser/ui/horizontal_tabs.h"  // Oblada
 +#include "oblada/browser/ui/sidebar_layout.h"  // Oblada
 +#include "ui/gfx/color_utils.h"  // Oblada
++#include "oblada/browser/barrier/barrier_ui.h"  // Oblada
 +#include "oblada/browser/ui/site_panel.h"  // Oblada
 +
  #include <algorithm>
  #include <memory>
  #include <ranges>
-@@ -60,6 +71,7 @@
+@@ -60,6 +72,7 @@
  #include "chrome/browser/ui/views/chrome_layout_provider.h"
  #include "chrome/browser/ui/views/chrome_typography.h"
  #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -28,7 +29,7 @@ index bac174d0b2..a8151080b6 100644
  #include "chrome/browser/ui/views/location_bar/content_setting_image_view.h"
  #include "chrome/browser/ui/views/location_bar/location_bar_actions.h"
  #include "chrome/browser/ui/views/location_bar/location_bar_layout.h"
-@@ -173,6 +185,43 @@
+@@ -173,6 +186,43 @@
  
  namespace {
  
@@ -72,7 +73,7 @@ index bac174d0b2..a8151080b6 100644
  int IncrementalMinimumWidth(const views::View* view) {
    return (view && view->GetVisible()) ? view->GetMinimumSize().width() : 0;
  }
-@@ -250,6 +299,12 @@ LocationBarView::LocationBarView(BrowserWindowInterface* browser,
+@@ -250,6 +300,12 @@ LocationBarView::LocationBarView(BrowserWindowInterface* browser,
              return false;
            }
  
@@ -85,17 +86,18 @@ index bac174d0b2..a8151080b6 100644
            // Show focus ring when the Omnibox is visibly focused and the popup
            // is closed.
            return v->GetOmniboxController()->edit_model()->is_caret_visible() &&
-@@ -517,6 +572,9 @@ void LocationBarView::Init() {
+@@ -517,6 +573,10 @@ void LocationBarView::Init() {
  
    RegisterOmniboxActions(browser_);
  
 +  oblada::containers::AddContainerChip(this, browser_);  // Oblada
 +  oblada::site_panel::AddSitePanelButton(this, browser_);  // Oblada
++  oblada::barrier::AddBarrierButton(this, browser_);  // Oblada
 +
    is_initialized_ = true;
  }
  
-@@ -677,6 +735,11 @@ void LocationBarView::OnDidChangeFocus(views::View* before, views::View* now) {
+@@ -677,6 +737,11 @@ void LocationBarView::OnDidChangeFocus(views::View* before, views::View* now) {
    if (Contains(before) != Contains(now)) {
      NotifyFocusChanged();
    }
@@ -107,7 +109,7 @@ index bac174d0b2..a8151080b6 100644
  
    // TODO(crbug.com/376283383): Remove things below once Lens Overlay is
    // migrated to the new page actions design.
-@@ -833,8 +896,15 @@ void LocationBarView::Layout(PassKey) {
+@@ -833,8 +898,15 @@ void LocationBarView::Layout(PassKey) {
    // to position our child views in this case, because other things may be
    // positioned relative to them (e.g. the "bookmark added" bubble if the user
    // hits ctrl-d).
@@ -125,7 +127,7 @@ index bac174d0b2..a8151080b6 100644
    const int trailing_decorations_edge_padding = GetLayoutConstant(
        LayoutConstant::kLocationBarTrailingDecorationEdgePadding);
  
-@@ -864,12 +934,26 @@ void LocationBarView::Layout(PassKey) {
+@@ -864,12 +936,27 @@ void LocationBarView::Layout(PassKey) {
      }
    }
  
@@ -133,6 +135,7 @@ index bac174d0b2..a8151080b6 100644
 +  // Oblada: what a quiet layout hid shows again, unless this one hides it too.
 +  ShowObladaQuietView(location_icon_view_);
 +  ShowObladaQuietView(oblada::site_panel::SitePanelButtonOf(this));
++  ShowObladaQuietView(oblada::barrier::BarrierButtonOf(this));
 +  ShowObladaQuietView(page_action_container_);
 +  ShowObladaQuietView(oblada::containers::ContainerChipOf(this));
 +  const security_state::SecurityLevel oblada_security =
@@ -152,7 +155,7 @@ index bac174d0b2..a8151080b6 100644
    } else if (location_icon_view_->GetShowText() &&
               !ShouldChipOverrideLocationIcon()) {
      location_icon_view_->SetVisible(true);
-@@ -894,7 +978,35 @@ void LocationBarView::Layout(PassKey) {
+@@ -894,7 +981,46 @@ void LocationBarView::Layout(PassKey) {
      }
    };
  
@@ -166,6 +169,17 @@ index bac174d0b2..a8151080b6 100644
 +      HideObladaQuietView(site_panel);
 +    } else {
 +      add_trailing_decoration(site_panel, /*intra_item_padding=*/0,
++                              /*edge_padding=*/trailing_decorations_edge_padding);
++    }
++  }
++  // Oblada: the Barrier's button next to it, but in the sidebar (where the
++  // site panel has its controls) and on pages that aren't web pages.
++  if (views::View* barrier = oblada::barrier::BarrierButtonOf(this)) {
++    oblada::barrier::UpdateBarrierButton(this);
++    if (oblada_quiet_) {
++      HideObladaQuietView(barrier);
++    } else {
++      add_trailing_decoration(barrier, /*intra_item_padding=*/0,
 +                              /*edge_padding=*/trailing_decorations_edge_padding);
 +    }
 +  }
@@ -189,7 +203,7 @@ index bac174d0b2..a8151080b6 100644
      if (page_action_container_ && page_action_container_->GetVisible()) {
        const bool is_capsule_active = page_action_container_->IsCapsuleActive();
        const int capsule_height =
-@@ -1065,6 +1177,7 @@ void LocationBarView::Update(WebContents* contents) {
+@@ -1065,6 +1191,7 @@ void LocationBarView::Update(WebContents* contents) {
  
    RefreshContentSettingViews();
    RefreshPageActionIconViews();
@@ -197,7 +211,7 @@ index bac174d0b2..a8151080b6 100644
    location_icon_view_->Update(
        /*suppress_animations=*/contents, GetOmniboxController()->IsPopupOpen());
  
-@@ -1403,6 +1516,19 @@ void LocationBarView::RefreshBackground() {
+@@ -1403,6 +1530,19 @@ void LocationBarView::RefreshBackground() {
    SkColor hovered =
        color_provider->GetColor(kColorLocationBarBackgroundHovered);
  
@@ -217,7 +231,7 @@ index bac174d0b2..a8151080b6 100644
    background_color_ = gfx::Tween::ColorValueBetween(opacity, normal, hovered);
    if (is_caret_visible) {
      // Match the background color to the popup if the Omnibox is visibly
-@@ -1434,6 +1560,25 @@ void LocationBarView::RefreshBackground() {
+@@ -1434,6 +1574,25 @@ void LocationBarView::RefreshBackground() {
  
    if (is_popup_mode_) {
      SetBackground(views::CreateSolidBackground(background_color_));
@@ -243,7 +257,7 @@ index bac174d0b2..a8151080b6 100644
    } else {
      SetBackground(CreateRoundRectBackground(
          background_color_, border_color, size(),
-@@ -1443,7 +1588,11 @@ void LocationBarView::RefreshBackground() {
+@@ -1443,7 +1602,11 @@ void LocationBarView::RefreshBackground() {
  
    // Keep the views::Textfield in sync. It needs an opaque background to
    // correctly enable subpixel AA.
@@ -256,7 +270,7 @@ index bac174d0b2..a8151080b6 100644
  
    // The divider between indicators and request chips should have the same color
    // as the omnibox.
-@@ -2065,7 +2214,9 @@ void LocationBarView::OnOmniboxFocused() {
+@@ -2065,7 +2228,9 @@ void LocationBarView::OnOmniboxFocused() {
    // Only show hover animation in unfocused steady state.  Since focusing
    // the omnibox is intentional, snapping is better than transitioning here.
    hover_animation_.Reset();
@@ -266,7 +280,7 @@ index bac174d0b2..a8151080b6 100644
  
    // The AI mode page action should only be visible when the omnibox
    // is focused, so if there is a change in focus, refresh the icon.
-@@ -2084,7 +2235,18 @@ void LocationBarView::OnOmniboxBlurred() {
+@@ -2084,7 +2249,18 @@ void LocationBarView::OnOmniboxBlurred() {
    if (views::FocusRing::Get(this)) {
      views::FocusRing::Get(this)->Refresh();
    }
@@ -285,7 +299,7 @@ index bac174d0b2..a8151080b6 100644
  
    // The AI mode page action should only be visible when the omnibox
    // is focused, so if there is a change in focus, refresh the icon.
-@@ -2107,6 +2269,95 @@ void LocationBarView::OnOmniboxHovered(bool is_hovering) {
+@@ -2107,6 +2283,95 @@ void LocationBarView::OnOmniboxHovered(bool is_hovering) {
    } else {
      hover_animation_.Hide();
    }

@@ -1,0 +1,12 @@
+diff --git a/third_party/rust/siphasher/v1/BUILD.gn b/third_party/rust/siphasher/v1/BUILD.gn
+index 9306ac332b..0ab5c08c64 100644
+--- a/third_party/rust/siphasher/v1/BUILD.gn
++++ b/third_party/rust/siphasher/v1/BUILD.gn
+@@ -44,7 +44,6 @@ cargo_crate("lib") {
+   # //third_party/rust/chromium_crates_io/Cargo.toml to use
+   # it from first-party code.
+   visibility = [ "//third_party/rust/*" ]
+-  testonly = true
+ 
+   #####################################################################
+   # Tweaking which GN `config`s apply to this target.

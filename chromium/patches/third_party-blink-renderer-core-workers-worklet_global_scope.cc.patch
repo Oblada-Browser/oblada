@@ -1,0 +1,14 @@
+diff --git a/third_party/blink/renderer/core/workers/worklet_global_scope.cc b/third_party/blink/renderer/core/workers/worklet_global_scope.cc
+index c1cd4d778f..46addcdf1d 100644
+--- a/third_party/blink/renderer/core/workers/worklet_global_scope.cc
++++ b/third_party/blink/renderer/core/workers/worklet_global_scope.cc
+@@ -134,6 +134,9 @@ WorkletGlobalScope::WorkletGlobalScope(
+   SetOutsideContentSecurityPolicies(
+       mojo::Clone(creation_params->outside_content_security_policies));
+ 
++  // Oblada: the Barrier's fingerprinting protection, as the document has it.
++  SetObladaFarbling(creation_params->oblada_farbling);
++
+   // https://drafts.css-houdini.org/worklets/#creating-a-workletglobalscope
+   // Step 6: "Invoke the initialize a global object's CSP list algorithm given
+   // workletGlobalScope."

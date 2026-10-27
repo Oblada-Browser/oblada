@@ -1,22 +1,28 @@
 diff --git a/chrome/browser/chrome_content_browser_client_navigation_throttles.cc b/chrome/browser/chrome_content_browser_client_navigation_throttles.cc
-index dfa341dccc..11723d5404 100644
+index dfa341dccc..7bc5f9d862 100644
 --- a/chrome/browser/chrome_content_browser_client_navigation_throttles.cc
 +++ b/chrome/browser/chrome_content_browser_client_navigation_throttles.cc
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,10 @@
  
  #include "chrome/browser/chrome_content_browser_client_navigation_throttles.h"
  
++#include "oblada/browser/barrier/cosmetic_filters.h"  // Oblada
++#include "oblada/browser/barrier/de_amp.h"  // Oblada
 +#include "oblada/browser/containers/containers.h"  // Oblada
 +
  #include "base/command_line.h"
  #include "base/feature_list.h"
  #include "build/build_config.h"
-@@ -287,6 +289,8 @@ void MaybeCreateAndAddVisitedLinkNavigationThrottle(
+@@ -287,6 +291,12 @@ void MaybeCreateAndAddVisitedLinkNavigationThrottle(
  void CreateAndAddChromeThrottlesForNavigation(
      content::NavigationThrottleRegistry& registry) {
    content::NavigationHandle& handle = registry.GetNavigationHandle();
 +  // Oblada: sites that always open in a container.
 +  oblada::containers::MaybeAddNavigationThrottle(registry);
++  // Oblada: a document's cosmetic filters, before it commits.
++  oblada::barrier::MaybeAddCosmeticFiltersThrottle(registry);
++  // Oblada: AMP pages left for the original.
++  oblada::barrier::MaybeAddDeAmpThrottle(registry);
    if (handle.IsInMainFrame()) {
      // MetricsNavigationThrottle requires that it runs before
      // NavigationThrottles that may delay or cancel navigations, so only

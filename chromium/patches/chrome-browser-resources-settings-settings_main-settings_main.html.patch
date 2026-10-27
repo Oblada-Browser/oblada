@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/resources/settings/settings_main/settings_main.html b/chrome/browser/resources/settings/settings_main/settings_main.html
-index 2ef4dcad53..a401a0c6dd 100644
+index 2ef4dcad53..368cd4ab4a 100644
 --- a/chrome/browser/resources/settings/settings_main/settings_main.html
 +++ b/chrome/browser/resources/settings/settings_main/settings_main.html
-@@ -50,6 +50,15 @@
+@@ -50,6 +50,16 @@
  
  <cr-view-manager id="switcher"
      show-all$="[[shouldShowAll_(inSearchMode_, lastRoute_)]]">
@@ -10,7 +10,8 @@ index 2ef4dcad53..a401a0c6dd 100644
 +  <div slot="view" id="oblada">
 +    <template is="dom-if" if="[[renderPlugin_(
 +        routes_.OBLADA, lastRoute_, inSearchMode_)]]">
-+      <settings-oblada-page in-search-mode="[[inSearchMode_]]">
++      <settings-oblada-page in-search-mode="[[inSearchMode_]]"
++          route-path="[[lastRoute_.path]]">
 +      </settings-oblada-page>
 +    </template>
 +  </div>

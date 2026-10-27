@@ -1,0 +1,27 @@
+diff --git a/chrome/browser/ssl/https_upgrades_util.cc b/chrome/browser/ssl/https_upgrades_util.cc
+index e2722638ba..fc6309628a 100644
+--- a/chrome/browser/ssl/https_upgrades_util.cc
++++ b/chrome/browser/ssl/https_upgrades_util.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ssl/https_upgrades_util.h"
+ 
++#include "oblada/browser/barrier/barrier.h"  // Oblada
++
+ #include "base/feature_list.h"
+ #include "base/values.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -133,6 +135,13 @@ ComputeInterstitialState(content::WebContents* web_contents, const GURL& url) {
+         advanced_protection_manager->IsUnderAdvancedProtection();
+   }
+ 
++  // Oblada: strict upgrades on the sites the Barrier says, which warn before
++  // HTTP.
++  if (oblada::barrier::HttpsUpgradeFor(profile, url) ==
++      oblada::barrier::HttpsUpgrade::kStrict) {
++    interstitial_state.enabled_by_pref = true;
++  }
++
+   return interstitial_state;
+ }
+ 

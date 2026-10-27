@@ -5,6 +5,36 @@
 oblada_ui_sources = [
   "//oblada/browser/about/about_page.cc",
   "//oblada/browser/about/about_page.h",
+  "//oblada/browser/barrier/barrier.cc",
+  "//oblada/browser/barrier/barrier.h",
+  "//oblada/browser/barrier/barrier_ui.cc",
+  "//oblada/browser/barrier/barrier_ui.h",
+  "//oblada/browser/barrier/cosmetic_filters.cc",
+  "//oblada/browser/barrier/cosmetic_filters.h",
+  "//oblada/browser/barrier/data_lists.cc",
+  "//oblada/browser/barrier/data_lists.h",
+  "//oblada/browser/barrier/de_amp.cc",
+  "//oblada/browser/barrier/de_amp.h",
+  "//oblada/browser/barrier/domain_block.cc",
+  "//oblada/browser/barrier/domain_block.h",
+  "//oblada/browser/barrier/engine_host.cc",
+  "//oblada/browser/barrier/engine_host.h",
+  "//oblada/browser/barrier/farbling.cc",
+  "//oblada/browser/barrier/farbling.h",
+  "//oblada/browser/barrier/filter_lists.cc",
+  "//oblada/browser/barrier/filter_lists.h",
+  "//oblada/browser/barrier/google_sign_in.cc",
+  "//oblada/browser/barrier/google_sign_in.h",
+  "//oblada/browser/barrier/request_filter.cc",
+  "//oblada/browser/barrier/request_filter.h",
+  "//oblada/browser/barrier/sensitive_sites.cc",
+  "//oblada/browser/barrier/sensitive_sites.h",
+  "//oblada/browser/barrier/storage.cc",
+  "//oblada/browser/barrier/storage.h",
+  "//oblada/browser/barrier/tab_helper.cc",
+  "//oblada/browser/barrier/tab_helper.h",
+  "//oblada/browser/barrier/url_cleaning.cc",
+  "//oblada/browser/barrier/url_cleaning.h",
   "//oblada/browser/clean_links/clean_links.cc",
   "//oblada/browser/clean_links/clean_links.h",
   "//oblada/browser/clean_links/mozilla_list.cc",
@@ -55,6 +85,8 @@ oblada_ui_sources = [
   "//oblada/browser/peek/peek.h",
   "//oblada/browser/prefs.cc",
   "//oblada/browser/prefs.h",
+  "//oblada/browser/settings/barrier_handler.cc",
+  "//oblada/browser/settings/barrier_handler.h",
   "//oblada/browser/settings/oblada_page.cc",
   "//oblada/browser/settings/oblada_page.h",
   "//oblada/browser/ui/drag_ghost.cc",
@@ -142,12 +174,76 @@ write_file("$root_gen_dir/oblada/clean_links_lists.h",
              "#endif  // OBLADA_CLEAN_LINKS_LISTS_H_",
            ])
 
+# Brave's lists the Barrier starts from (barrier/lists), as they are, for its
+# code in "oblada/barrier_lists.h"; and the resources of its ad-blocking engine
+# (uBlock Origin's scriptlets and redirect resources, and Brave's), which
+# chromium/scripts/barrier_resources.sh puts in the checkout, in
+# "oblada/barrier_resources.h". Written when they change.
+_barrier_lists = [
+  [
+    "kListCatalog",
+    "list_catalog.json",
+  ],
+  [
+    "kQueryFilterList",
+    "query-filter.json",
+  ],
+  [
+    "kDebounceList",
+    "debounce.json",
+  ],
+  [
+    "kSensitiveSitesList",
+    "request-otr.json",
+  ],
+  [
+    "kWebcompatExceptionsList",
+    "webcompat-exceptions.json",
+  ],
+  [
+    "kHttpsUpgradeExceptionsList",
+    "https-upgrade-exceptions-list.txt",
+  ],
+]
+_barrier_lists_header = [
+  "// Generated from oblada/browser/barrier/lists by oblada/browser/sources.gni.",
+  "#ifndef OBLADA_BARRIER_LISTS_H_",
+  "#define OBLADA_BARRIER_LISTS_H_",
+  "namespace oblada::barrier {",
+]
+foreach(list, _barrier_lists) {
+  _barrier_lists_header += [
+    "inline constexpr char ${list[0]}[] = R\"list(",
+    read_file("//oblada/browser/barrier/lists/${list[1]}", "string"),
+    ")list\";",
+  ]
+}
+_barrier_lists_header += [
+  "}  // namespace oblada::barrier",
+  "#endif  // OBLADA_BARRIER_LISTS_H_",
+]
+write_file("$root_gen_dir/oblada/barrier_lists.h", _barrier_lists_header)
+write_file("$root_gen_dir/oblada/barrier_resources.h",
+           [
+             "// Generated from third_party/oblada_barrier/resources.json by oblada/browser/sources.gni.",
+             "#ifndef OBLADA_BARRIER_RESOURCES_H_",
+             "#define OBLADA_BARRIER_RESOURCES_H_",
+             "namespace oblada::barrier {",
+             "inline constexpr char kEngineResources[] = R\"resources(",
+             read_file("//third_party/oblada_barrier/resources.json", "string"),
+             ")resources\";",
+             "}  // namespace oblada::barrier",
+             "#endif  // OBLADA_BARRIER_RESOURCES_H_",
+           ])
+
 # Targets Oblada's sources above need.
 oblada_ui_deps = [
   "//components/user_data_importer/content",
   "//components/user_data_importer/utility:safari_data_importer",
   "//oblada/browser/extensions/api:api_registration",
   "//oblada/common/extensions/api",
+  "//oblada/common/barrier:mojom",
+  "//oblada/components/barrier/adblock",
   "//services/media_session/public/cpp:base_cpp",
   "//services/media_session/public/mojom",
 ]

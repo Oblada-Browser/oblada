@@ -1,0 +1,28 @@
+diff --git a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
+index e014baae31..92ac303aa9 100644
+--- a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
++++ b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
+@@ -12,6 +12,7 @@
+ #include <optional>
+ #include <utility>
+ 
++#include "oblada/blink/farbling.h"  // Oblada
+ #include "base/check.h"
+ #include "base/check_op.h"
+ #include "base/location.h"
+@@ -561,6 +562,15 @@ ImageData* BaseRenderingContext2D::getImageDataInternal(
+           snapshot->PaintImageForCurrentFrame().GetSkImageInfo().bounds();
+       DCHECK(!bounds.intersect(SkIRect::MakeXYWH(sx, sy, sw, sh)));
+     }
++    // Oblada: faint noise, for fingerprinting protection.
++    if (read_pixels_successful && image_data_pixmap.info().bytesPerPixel() == 4) {
++      oblada_farbling::NoiseImage(
++          GetTopExecutionContext(),
++          UNSAFE_BUFFERS(base::span(
++              static_cast<uint8_t*>(image_data_pixmap.writable_addr()),
++              image_data_pixmap.computeByteSize())),
++          image_data_pixmap.width(), image_data_pixmap.height());
++    }
+   }
+ 
+   return image_data;

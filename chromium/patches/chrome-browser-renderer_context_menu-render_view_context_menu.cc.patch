@@ -1,11 +1,12 @@
 diff --git a/chrome/browser/renderer_context_menu/render_view_context_menu.cc b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-index abdfdada9b..164767fe3c 100644
+index abdfdada9b..53fe178580 100644
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-@@ -4,6 +4,11 @@
+@@ -4,6 +4,12 @@
  
  #include "chrome/browser/renderer_context_menu/render_view_context_menu.h"
  
++#include "oblada/browser/barrier/cosmetic_filters.h"  // Oblada
 +#include "oblada/browser/clean_links/clean_links.h"  // Oblada
 +#include "oblada/browser/containers/containers.h"  // Oblada
 +#include "oblada/browser/containers/containers_menu_model.h"  // Oblada
@@ -14,7 +15,7 @@ index abdfdada9b..164767fe3c 100644
  #include <stddef.h>
  
  #include <algorithm>
-@@ -746,6 +751,14 @@ int CollapseCommandsForUMA(int id) {
+@@ -746,6 +752,14 @@ int CollapseCommandsForUMA(int id) {
    DCHECK(!RenderViewContextMenu::IsContentCustomCommandId(id));
    DCHECK(!ContextMenuMatcher::IsExtensionsCustomCommandId(id));
  
@@ -29,7 +30,19 @@ index abdfdada9b..164767fe3c 100644
    if (id >= IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_FIRST &&
        id <= IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_LAST) {
      return IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_FIRST;
-@@ -1992,6 +2005,15 @@ void RenderViewContextMenu::AppendLinkItems() {
+@@ -1870,6 +1884,11 @@ void RenderViewContextMenu::AppendDeveloperItems() {
+   // In the DevTools popup menu, "developer items" is normally the only
+   // section, so omit the separator there.
+   menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
++  // Oblada: the Barrier's element picker.
++  if (oblada::barrier::CanPickElement(source_web_contents_)) {
++    menu_model_.AddItem(oblada::barrier::kBlockElementMenuId,
++                        oblada::L10n("barrier.block_element"));
++  }
+   if (content_type_->SupportsGroup(ContextMenuContentType::ITEM_GROUP_PAGE)) {
+     menu_model_.AddItemWithStringId(IDC_VIEW_SOURCE,
+                                     IDS_CONTENT_CONTEXT_VIEWPAGESOURCE);
+@@ -1992,6 +2011,15 @@ void RenderViewContextMenu::AppendLinkItems() {
            IDC_CONTENT_CONTEXT_OPENLINKNEWTAB,
            in_app ? IDS_CONTENT_CONTEXT_OPENLINKNEWTAB_INAPP
                   : IDS_CONTENT_CONTEXT_OPENLINKNEWTAB);
@@ -45,7 +58,7 @@ index abdfdada9b..164767fe3c 100644
      }
  
      if (show_open_in_new_window) {
-@@ -2191,6 +2213,11 @@ void RenderViewContextMenu::AppendCopyLinkLocationItem() {
+@@ -2191,6 +2219,11 @@ void RenderViewContextMenu::AppendCopyLinkLocationItem() {
                                    params_.link_url.SchemeIs(url::kMailToScheme)
                                        ? IDS_CONTENT_CONTEXT_COPYEMAILADDRESS
                                        : IDS_CONTENT_CONTEXT_COPYLINKLOCATION);
@@ -57,7 +70,7 @@ index abdfdada9b..164767fe3c 100644
    if (features::IsMenuSimplificationEnabled() && !params_.has_image_contents) {
      menu_model_.AddItemWithStringIdAndIcon(
          IDC_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST,
-@@ -3369,6 +3396,12 @@ void RenderViewContextMenu::AppendLiveCaptionItem() {
+@@ -3369,6 +3402,15 @@ void RenderViewContextMenu::AppendLiveCaptionItem() {
  // Menu delegate functions -----------------------------------------------------
  
  bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
@@ -67,10 +80,13 @@ index abdfdada9b..164767fe3c 100644
 +  if (id == oblada::clean_links::kCopyCleanLinkMenuId) {  // Oblada
 +    return oblada::clean_links::HasTracking(params_.unfiltered_link_url);
 +  }
++  if (id == oblada::barrier::kBlockElementMenuId) {  // Oblada
++    return true;
++  }
  #if BUILDFLAG(IS_CHROMEOS)
    // Disable context menu in locked fullscreen mode to prevent users from
    // exiting this mode (the menu is not really disabled as the user can still
-@@ -3908,6 +3941,12 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
+@@ -3908,6 +3950,16 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
        WriteURLToClipboard(params_.unfiltered_link_url, id);
        break;
  
@@ -78,6 +94,10 @@ index abdfdada9b..164767fe3c 100644
 +      WriteURLToClipboard(
 +          oblada::clean_links::Clean(params_.unfiltered_link_url),
 +          IDC_CONTENT_CONTEXT_COPYLINKLOCATION);
++      break;
++
++    case oblada::barrier::kBlockElementMenuId:  // Oblada
++      oblada::barrier::StartElementPicker(source_web_contents_);
 +      break;
 +
      case IDC_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST: {

@@ -1,0 +1,14 @@
+diff --git a/third_party/blink/renderer/core/workers/shared_worker_content_settings_proxy.h b/third_party/blink/renderer/core/workers/shared_worker_content_settings_proxy.h
+index 9e0ad03081..78a322e473 100644
+--- a/third_party/blink/renderer/core/workers/shared_worker_content_settings_proxy.h
++++ b/third_party/blink/renderer/core/workers/shared_worker_content_settings_proxy.h
+@@ -32,6 +32,9 @@ class CORE_EXPORT SharedWorkerContentSettingsProxy
+   void AllowStorageAccess(StorageType storage_type,
+                           base::OnceCallback<void(bool)> callback) override;
+   bool AllowStorageAccessSync(StorageType storage_type) override;
++  bool GetObladaFarbling(uint64_t* token,
++                         uint32_t* exceptions,
++                         bool* reduce_language) override;  // Oblada
+ 
+  private:
+   mojo::Remote<mojom::blink::WorkerContentSettingsProxy>& GetService();

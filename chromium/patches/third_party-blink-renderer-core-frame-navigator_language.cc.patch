@@ -1,0 +1,24 @@
+diff --git a/third_party/blink/renderer/core/frame/navigator_language.cc b/third_party/blink/renderer/core/frame/navigator_language.cc
+index 03b1faff6b..c06a6006b9 100644
+--- a/third_party/blink/renderer/core/frame/navigator_language.cc
++++ b/third_party/blink/renderer/core/frame/navigator_language.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "third_party/blink/renderer/core/frame/navigator_language.h"
+ 
++#include "oblada/blink/farbling.h"  // Oblada
+ #include "base/command_line.h"
+ #include "services/network/public/cpp/features.h"
+ #include "third_party/blink/public/common/switches.h"
+@@ -93,6 +94,11 @@ void NavigatorLanguage::EnsureUpdatedLanguage() {
+             blink::switches::kDisableReduceAcceptLanguage)) {
+       languages_ = Vector<String>({languages_.front()});
+     }
++    // Oblada: only the first, for fingerprinting protection (as Brave).
++    if (oblada_farbling::ReducesLanguages(execution_context_) &&
++        !languages_.empty()) {
++      languages_ = Vector<String>({languages_.front()});
++    }
+     languages_dirty_ = false;
+   }
+ }

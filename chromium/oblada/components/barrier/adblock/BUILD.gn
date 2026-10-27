@@ -1,0 +1,41 @@
+# Brave's ad-blocking engine, adblock-rust (//third_party/rust/adblock, added to
+# Chromium's crates by the patch to third_party/rust/chromium_crates_io), for
+# the Barrier's C++: adblock_engine.h.
+import("//build/rust/rust_static_library.gni")
+
+source_set("adblock") {
+  sources = [
+    "adblock_engine.cc",
+    "adblock_engine.h",
+  ]
+  public_deps = [
+    "//base",
+    "//third_party/rust/cxx/v1:lib",
+  ]
+  deps = [ ":adblock_ffi" ]
+}
+
+rust_static_library("adblock_ffi") {
+  visibility = [ ":*" ]
+  allow_unsafe = true  # Needed for the FFI that underpins the `cxx` crate.
+  crate_root = "lib.rs"
+  sources = [ "lib.rs" ]
+  cxx_bindings = [ "lib.rs" ]
+  deps = [
+    ":domain_resolver",
+    "//third_party/rust/adblock/v0_13:lib",
+    "//third_party/rust/serde_json/v1:lib",
+  ]
+}
+
+source_set("domain_resolver") {
+  visibility = [ ":*" ]
+  sources = [
+    "domain_resolver.cc",
+    "domain_resolver.h",
+  ]
+  deps = [
+    "//net",
+    "//third_party/rust/cxx/v1:lib",
+  ]
+}

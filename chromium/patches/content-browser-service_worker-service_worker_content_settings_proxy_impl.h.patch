@@ -1,0 +1,12 @@
+diff --git a/content/browser/service_worker/service_worker_content_settings_proxy_impl.h b/content/browser/service_worker/service_worker_content_settings_proxy_impl.h
+index 4b6577415c..ca1eb253de 100644
+--- a/content/browser/service_worker/service_worker_content_settings_proxy_impl.h
++++ b/content/browser/service_worker/service_worker_content_settings_proxy_impl.h
+@@ -40,6 +40,7 @@ class ServiceWorkerContentSettingsProxyImpl final
+   void AllowWebLocks(AllowCacheStorageCallback callback) override;
+   void AllowFileSystem(AllowFileSystemCallback callback) override;
+   void AllowWriteToClipboard(AllowWriteToClipboardCallback callback) override;
++  void GetObladaFarbling(GetObladaFarblingCallback callback) override;  // Oblada
+ 
+  private:
+   const url::Origin origin_;

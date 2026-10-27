@@ -39,6 +39,7 @@
 #include "components/omnibox/browser/vector_icons.h"
 #include "components/security_state/core/security_state.h"
 #include "components/vector_icons/vector_icons.h"
+#include "oblada/browser/barrier/barrier_ui.h"
 #include "oblada/browser/l10n.h"
 #include "oblada/browser/ui/sidebar_layout.h"
 #include "ui/base/metadata/metadata_header_macros.h"
@@ -136,6 +137,15 @@ class SitePanelView : public views::View {
       : location_bar_(location_bar), browser_(browser) {
     SetLayoutManager(std::make_unique<views::BoxLayout>(
         views::BoxLayout::Orientation::kVertical, gfx::Insets(), 12));
+
+    // The Barrier's controls, where the address bar has no room for its button
+    // (in the sidebar).
+    if (sidebar::HasSidebarLocationBar(location_bar_->parent())) {
+      AddChildView(barrier::CreateBarrierSection(
+          browser_, base::BindRepeating(&SitePanelView::Close,
+                                        base::Unretained(this))));
+      AddChildView(std::make_unique<views::Separator>());
+    }
 
     // The page. The bookmark star and installing the site as an app are here
     // rather than in the address bar (see HidePageActionsInPanel()).
@@ -284,6 +294,8 @@ class SitePanelView : public views::View {
                                                        kIconSize));
     add(std::move(plus));
   }
+
+  void Close() { GetWidget()->Close(); }
 
   // Closes the panel, then, once it's gone, does `action` (e.g. shows a popup from
   // the button).

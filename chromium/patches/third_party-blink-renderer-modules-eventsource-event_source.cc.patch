@@ -1,0 +1,43 @@
+diff --git a/third_party/blink/renderer/modules/eventsource/event_source.cc b/third_party/blink/renderer/modules/eventsource/event_source.cc
+index de981ed409..b8b8021175 100644
+--- a/third_party/blink/renderer/modules/eventsource/event_source.cc
++++ b/third_party/blink/renderer/modules/eventsource/event_source.cc
+@@ -32,6 +32,7 @@
+ 
+ #include "third_party/blink/renderer/modules/eventsource/event_source.h"
+ 
++#include "oblada/blink/connection_pools.h"  // Oblada
+ #include <algorithm>
+ #include <memory>
+ 
+@@ -194,6 +195,14 @@ void EventSource::ScheduleReconnect() {
+ }
+ 
+ void EventSource::ConnectTimerFired(TimerBase*) {
++  // Oblada: no more than the site's share of connections (the Barrier's
++  // fingerprinting protection); it keeps its place as it reconnects.
++  if (!oblada_farbling::TakeConnection(
++          GetExecutionContext(), oblada_farbling::ConnectionPool::kEventSource,
++          &oblada_pooled_connection_)) {
++    AbortConnectionAttempt();
++    return;
++  }
+   Connect();
+ }
+ 
+@@ -224,6 +233,7 @@ void EventSource::close() {
+   }
+ 
+   state_ = kClosed;
++  oblada_pooled_connection_.reset();  // Oblada
+ 
+   if (loader_) {
+     loader_->Cancel();
+@@ -364,6 +374,7 @@ void EventSource::AbortConnectionAttempt() {
+ 
+   loader_ = nullptr;
+   state_ = kClosed;
++  oblada_pooled_connection_.reset();  // Oblada
+   NetworkRequestEnded();
+ 
+   DispatchEvent(*Event::Create(event_type_names::kError));

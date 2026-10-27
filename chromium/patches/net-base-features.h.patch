@@ -1,0 +1,18 @@
+diff --git a/net/base/features.h b/net/base/features.h
+index 96c005fd52..304727549b 100644
+--- a/net/base/features.h
++++ b/net/base/features.h
+@@ -1064,6 +1064,13 @@ NET_EXPORT BASE_DECLARE_FEATURE(kEnableWindowsTcpLoopbackFastFail);
+ NET_EXPORT BASE_DECLARE_FEATURE(kQuicSocketSendBufferSize);
+ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int, kQuicSocketSendBufferSizeParam);
+ 
++// Oblada: the Barrier's (oblada/browser/barrier/barrier.h), on unless its
++// switch was off as Oblada started: referrers never more than the origin
++// across origins (strict-origin-when-cross-origin), whatever the page's policy;
++// and cookies kept no longer than 6 months, as Brave does.
++NET_EXPORT BASE_DECLARE_FEATURE(kObladaReferrerCap);
++NET_EXPORT BASE_DECLARE_FEATURE(kObladaCookieExpiryCap);
++
+ }  // namespace net::features
+ 
+ #endif  // NET_BASE_FEATURES_H_

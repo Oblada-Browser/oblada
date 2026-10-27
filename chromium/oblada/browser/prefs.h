@@ -15,6 +15,10 @@ namespace oblada {
 void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
                           const std::string& locale);
 
+// Oblada's defaults for Chromium's own profile preferences (called from
+// browser_prefs.cc once they're registered).
+void RegisterProfilePrefDefaults(user_prefs::PrefRegistrySyncable* registry);
+
 // Oblada's browser-wide preferences, in Local State (called from browser_prefs.cc too).
 void RegisterLocalStatePrefs(PrefRegistrySimple* registry);
 

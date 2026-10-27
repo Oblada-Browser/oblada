@@ -1,0 +1,21 @@
+diff --git a/third_party/blink/renderer/modules/websockets/websocket_channel_impl.h b/third_party/blink/renderer/modules/websockets/websocket_channel_impl.h
+index 9a140e8798..6deda9dcc3 100644
+--- a/third_party/blink/renderer/modules/websockets/websocket_channel_impl.h
++++ b/third_party/blink/renderer/modules/websockets/websocket_channel_impl.h
+@@ -37,6 +37,7 @@
+ #include <memory>
+ #include <utility>
+ 
++#include "oblada/blink/connection_pools.h"  // Oblada
+ #include "base/containers/heap_array.h"
+ #include "base/containers/span.h"
+ #include "base/gtest_prod_util.h"
+@@ -426,6 +427,8 @@ class MODULES_EXPORT WebSocketChannelImpl final
+   mojo::SimpleWatcher writable_watcher_;
+   bool wait_for_writable_ = false;
+   ConnectionCountTrackerHandle connection_count_tracker_handle_;
++  // Oblada: the connection's place in its site's pool.
++  std::unique_ptr<oblada_farbling::PooledConnection> oblada_pooled_connection_;
+ 
+   const scoped_refptr<base::SingleThreadTaskRunner> file_reading_task_runner_;
+ };

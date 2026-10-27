@@ -1,0 +1,25 @@
+diff --git a/third_party/blink/renderer/core/frame/navigator_device_memory.cc b/third_party/blink/renderer/core/frame/navigator_device_memory.cc
+index 05fa33e456..264cb2b7e1 100644
+--- a/third_party/blink/renderer/core/frame/navigator_device_memory.cc
++++ b/third_party/blink/renderer/core/frame/navigator_device_memory.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "third_party/blink/renderer/core/frame/navigator_device_memory.h"
+ 
++#include "oblada/blink/farbling.h"  // Oblada
++#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"  // Oblada
+ #include "third_party/blink/public/common/device_memory/approximated_device_memory.h"
+ #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-shared.h"
+ #include "third_party/blink/renderer/core/dom/document.h"
+@@ -12,7 +14,10 @@
+ namespace blink {
+ 
+ float NavigatorDeviceMemory::deviceMemory() const {
+-  return ApproximatedDeviceMemory::GetApproximatedDeviceMemory();
++  // Oblada: less, for fingerprinting protection.
++  return oblada_farbling::DeviceMemory(
++      CurrentExecutionContext(v8::Isolate::GetCurrent()),
++      ApproximatedDeviceMemory::GetApproximatedDeviceMemory());
+ }
+ 
+ }  // namespace blink

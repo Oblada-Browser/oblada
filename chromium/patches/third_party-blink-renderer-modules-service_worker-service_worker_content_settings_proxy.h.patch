@@ -1,0 +1,14 @@
+diff --git a/third_party/blink/renderer/modules/service_worker/service_worker_content_settings_proxy.h b/third_party/blink/renderer/modules/service_worker/service_worker_content_settings_proxy.h
+index 751c1d2fe3..f96b81d05e 100644
+--- a/third_party/blink/renderer/modules/service_worker/service_worker_content_settings_proxy.h
++++ b/third_party/blink/renderer/modules/service_worker/service_worker_content_settings_proxy.h
+@@ -48,6 +48,9 @@ class MODULES_EXPORT ServiceWorkerContentSettingsProxy final
+   // Asks the browser process whether this worker may write to the system
+   // clipboard. Blocks until the response arrives.
+   bool AllowWriteToClipboard() override;
++  bool GetObladaFarbling(uint64_t* token,
++                         uint32_t* exceptions,
++                         bool* reduce_language) override;  // Oblada
+ 
+  private:
+   mojo::Remote<mojom::blink::WorkerContentSettingsProxy>& GetService();

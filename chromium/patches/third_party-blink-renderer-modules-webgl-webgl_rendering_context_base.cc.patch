@@ -1,0 +1,36 @@
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+index b17f336f90..0cbf8294a7 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+@@ -30,6 +30,7 @@
+ #include <memory>
+ #include <utility>
+ 
++#include "oblada/blink/farbling.h"  // Oblada
+ #include "base/bit_cast.h"
+ #include "base/byte_size.h"
+ #include "base/compiler_specific.h"
+@@ -4216,6 +4217,11 @@ ScriptValue WebGLRenderingContextBase::getParameter(ScriptState* script_state,
+       return ScriptValue::CreateNull(script_state->GetIsolate());
+     case WebGLDebugRendererInfo::kUnmaskedRendererWebgl:
+       if (ExtensionEnabled(kWebGLDebugRendererInfoName)) {
++        // Oblada: a generic name, for fingerprinting protection.
++        if (oblada_farbling::IsOn(GetExecutionContext(),
++                                  oblada_farbling::kWebGl)) {
++          return WebGLAny(script_state, String("WebKit WebGL"));
++        }
+         return WebGLAny(script_state,
+                         String(ContextGL()->GetString(GL_RENDERER)));
+       }
+@@ -4225,6 +4231,11 @@ ScriptValue WebGLRenderingContextBase::getParameter(ScriptState* script_state,
+       return ScriptValue::CreateNull(script_state->GetIsolate());
+     case WebGLDebugRendererInfo::kUnmaskedVendorWebgl:
+       if (ExtensionEnabled(kWebGLDebugRendererInfoName)) {
++        // Oblada: a generic name, for fingerprinting protection.
++        if (oblada_farbling::IsOn(GetExecutionContext(),
++                                  oblada_farbling::kWebGl)) {
++          return WebGLAny(script_state, String("WebKit"));
++        }
+         return WebGLAny(script_state,
+                         String(ContextGL()->GetString(GL_VENDOR)));
+       }

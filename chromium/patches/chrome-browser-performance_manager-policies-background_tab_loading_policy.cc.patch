@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/performance_manager/policies/background_tab_loading_policy.cc b/chrome/browser/performance_manager/policies/background_tab_loading_policy.cc
-index 5af2184d71..32e55b62b2 100644
+index 5af2184d71..75a40f3061 100644
 --- a/chrome/browser/performance_manager/policies/background_tab_loading_policy.cc
 +++ b/chrome/browser/performance_manager/policies/background_tab_loading_policy.cc
 @@ -31,6 +31,7 @@
@@ -26,18 +26,29 @@ index 5af2184d71..32e55b62b2 100644
  }  // namespace
  
  // static
-@@ -400,6 +410,16 @@ base::DictValue BackgroundTabLoadingPolicy::DescribeSystemNodeData(
+@@ -400,6 +410,27 @@ base::DictValue BackgroundTabLoadingPolicy::DescribeSystemNodeData(
  
  bool BackgroundTabLoadingPolicy::ShouldLoad(
      const PageNodeToLoadData& page_node_data) {
 +  // Oblada: restored tabs load when they're opened, as in Firefox and Zen.
-+  // Besides the ones showing, only pinned tabs and those that work in the
++  // Besides the ones showing, only pinned tabs and those known to work in the
 +  // background (that show notifications, or update their title or icon) load
-+  // at startup.
++  // at startup: unlike UsesBackgroundCommunication(), a site never seen
++  // doing it doesn't count.
 +  if (!page_node_data.page_node->IsVisible() &&
-+      !page_node_data.UsesBackgroundCommunication() &&
 +      !IsPinnedTab(page_node_data.page_node)) {
-+    return false;
++    const PageNode* page_node = page_node_data.page_node;
++    SiteDataReader* reader = GetSiteDataReader(page_node);
++    const bool works_in_background =
++        page_node->GetNotificationPermissionStatus() ==
++            blink::mojom::PermissionStatus::GRANTED ||
++        (reader && (reader->UpdatesFaviconInBackground() ==
++                        SiteFeatureUsage::kSiteFeatureInUse ||
++                    reader->UpdatesTitleInBackground() ==
++                        SiteFeatureUsage::kSiteFeatureInUse));
++    if (!works_in_background) {
++      return false;
++    }
 +  }
 +
    if (tab_loads_started_ < min_tabs_to_load_) {

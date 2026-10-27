@@ -1,0 +1,20 @@
+diff --git a/third_party/blink/renderer/modules/service_worker/service_worker_content_settings_proxy.cc b/third_party/blink/renderer/modules/service_worker/service_worker_content_settings_proxy.cc
+index 34f1bbfcb9..fec69bd49c 100644
+--- a/third_party/blink/renderer/modules/service_worker/service_worker_content_settings_proxy.cc
++++ b/third_party/blink/renderer/modules/service_worker/service_worker_content_settings_proxy.cc
+@@ -82,6 +82,15 @@ bool ServiceWorkerContentSettingsProxy::AllowWriteToClipboard() {
+   return result;
+ }
+ 
++// Oblada
++bool ServiceWorkerContentSettingsProxy::GetObladaFarbling(
++    uint64_t* token,
++    uint32_t* exceptions,
++    bool* reduce_language) {
++  DCHECK_CALLED_ON_VALID_THREAD(worker_thread_checker_);
++  return GetService()->GetObladaFarbling(token, exceptions, reduce_language);
++}
++
+ mojo::Remote<mojom::blink::WorkerContentSettingsProxy>&
+ ServiceWorkerContentSettingsProxy::GetService() {
+   DCHECK_CALLED_ON_VALID_THREAD(worker_thread_checker_);

@@ -1,0 +1,20 @@
+diff --git a/third_party/blink/renderer/core/workers/worker_global_scope.cc b/third_party/blink/renderer/core/workers/worker_global_scope.cc
+index 32c00e338a..b584ccf858 100644
+--- a/third_party/blink/renderer/core/workers/worker_global_scope.cc
++++ b/third_party/blink/renderer/core/workers/worker_global_scope.cc
+@@ -954,6 +954,15 @@ WorkerGlobalScope::WorkerGlobalScope(
+   SetOutsideContentSecurityPolicies(
+       std::move(creation_params->outside_content_security_policies));
+   SetWorkerSettings(std::move(creation_params->worker_settings));
++  // Oblada: the Barrier's fingerprinting protection, as the creator has it
++  // (dedicated workers) or the browser gives it (shared and service workers).
++  ObladaFarblingSettings oblada_farbling = creation_params->oblada_farbling;
++  if (WebContentSettingsClient* client = ContentSettingsClient()) {
++    client->GetObladaFarbling(&oblada_farbling.token,
++                              &oblada_farbling.exceptions,
++                              &oblada_farbling.reduce_language);
++  }
++  SetObladaFarbling(oblada_farbling);
+ 
+   // TODO(sammc): Require a valid |creation_params->browser_interface_broker|
+   // once all worker types provide a valid

@@ -1,0 +1,40 @@
+# The Barrier in pages' frames (barrier_agent.h), part of Chrome's renderer
+# (the patch to chrome/renderer/BUILD.gn).
+
+# Its scripts (resources/), as they are, for barrier_agent.cc in
+# "oblada/barrier_scripts.h". Written when they change.
+write_file("$root_gen_dir/oblada/barrier_scripts.h",
+           [
+             "// Generated from oblada/renderer/barrier/resources by oblada/renderer/barrier/BUILD.gn.",
+             "#ifndef OBLADA_BARRIER_SCRIPTS_H_",
+             "#define OBLADA_BARRIER_SCRIPTS_H_",
+             "namespace oblada::barrier {",
+             "inline constexpr char kCosmeticFiltersScript[] = R\"js(",
+             read_file("resources/cosmetic_filters.js", "string"),
+             ")js\";",
+             "inline constexpr char kElementPickerScript[] = R\"js(",
+             read_file("resources/element_picker.js", "string"),
+             ")js\";",
+             "}  // namespace oblada::barrier",
+             "#endif  // OBLADA_BARRIER_SCRIPTS_H_",
+           ])
+
+source_set("barrier") {
+  sources = [
+    "barrier_agent.cc",
+    "barrier_agent.h",
+  ]
+  deps = [
+    "//base",
+    "//chrome/common",
+    "//content/public/renderer",
+    "//gin",
+    "//mojo/public/cpp/bindings",
+    "//net",
+    "//oblada/common/barrier:mojom",
+    "//services/service_manager/public/cpp",
+    "//third_party/blink/public:blink",
+    "//url",
+    "//v8",
+  ]
+}

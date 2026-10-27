@@ -1,0 +1,44 @@
+diff --git a/third_party/blink/renderer/modules/websockets/websocket_channel_impl.cc b/third_party/blink/renderer/modules/websockets/websocket_channel_impl.cc
+index 33ca454b36..41b8e60cc9 100644
+--- a/third_party/blink/renderer/modules/websockets/websocket_channel_impl.cc
++++ b/third_party/blink/renderer/modules/websockets/websocket_channel_impl.cc
+@@ -30,6 +30,7 @@
+ 
+ #include "third_party/blink/renderer/modules/websockets/websocket_channel_impl.h"
+ 
++#include "oblada/blink/connection_pools.h"  // Oblada
+ #include <string.h>
+ 
+ #include <algorithm>
+@@ -346,6 +347,23 @@ bool WebSocketChannelImpl::Connect(
+     return true;
+   }
+ 
++  // Oblada: no more than the site's share of connections (the Barrier's
++  // fingerprinting protection), failed asynchronously as above.
++  if (!oblada_farbling::TakeConnection(
++          execution_context_, oblada_farbling::ConnectionPool::kWebSocket,
++          &oblada_pooled_connection_)) {
++    execution_context_->AddConsoleMessage(MakeGarbageCollected<ConsoleMessage>(
++        mojom::blink::ConsoleMessageSource::kNetwork,
++        mojom::blink::ConsoleMessageLevel::kError,
++        StrCat({"WebSocket connection to '", url.GetString(),
++                "' failed: too many connections for the site"})));
++    execution_context_->GetTaskRunner(TaskType::kNetworking)
++        ->PostTask(FROM_HERE,
++                   BindOnce(&WebSocketChannelImpl::TearDownFailedConnection,
++                            WrapPersistent(this)));
++    return true;
++  }
++
+   // Restrict the number of simultaneous connections to avoid a DoS attack on
+   // the browser process. Fail asynchronously, to match the behaviour when we
+   // are throttled by the network service.
+@@ -1271,6 +1289,7 @@ void WebSocketChannelImpl::OnConnectionError(const base::Location& set_from,
+ 
+ void WebSocketChannelImpl::Dispose() {
+   connection_count_tracker_handle_.Decrement();
++  oblada_pooled_connection_.reset();  // Oblada
+   message_chunks_->Reset();
+   has_initiated_opening_handshake_ = true;
+   feature_handle_for_scheduler_.reset();

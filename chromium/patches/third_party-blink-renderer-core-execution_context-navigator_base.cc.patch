@@ -1,0 +1,23 @@
+diff --git a/third_party/blink/renderer/core/execution_context/navigator_base.cc b/third_party/blink/renderer/core/execution_context/navigator_base.cc
+index 83f427c5ec..807aefd52c 100644
+--- a/third_party/blink/renderer/core/execution_context/navigator_base.cc
++++ b/third_party/blink/renderer/core/execution_context/navigator_base.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "third_party/blink/renderer/core/execution_context/navigator_base.h"
+ 
++#include "oblada/blink/farbling.h"  // Oblada
+ #include "base/feature_list.h"
+ #include "build/build_config.h"
+ #include "third_party/blink/public/common/features.h"
+@@ -90,7 +91,9 @@ unsigned int NavigatorBase::hardwareConcurrency() const {
+ 
+   probe::ApplyHardwareConcurrencyOverride(
+       probe::ToCoreProbeSink(GetExecutionContext()), hardware_concurrency);
+-  return hardware_concurrency;
++  // Oblada: fewer, for fingerprinting protection.
++  return oblada_farbling::HardwareConcurrency(GetExecutionContext(),
++                                              hardware_concurrency);
+ }
+ 
+ ExecutionContext* NavigatorBase::GetUAExecutionContext() const {

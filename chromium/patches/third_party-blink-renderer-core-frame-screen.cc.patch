@@ -1,0 +1,28 @@
+diff --git a/third_party/blink/renderer/core/frame/screen.cc b/third_party/blink/renderer/core/frame/screen.cc
+index ed5028943e..d590fff3a4 100644
+--- a/third_party/blink/renderer/core/frame/screen.cc
++++ b/third_party/blink/renderer/core/frame/screen.cc
+@@ -28,6 +28,7 @@
+ 
+ #include "third_party/blink/renderer/core/frame/screen.h"
+ 
++#include "oblada/blink/farbling.h"  // Oblada
+ #include "base/numerics/safe_conversions.h"
+ #include "services/network/public/mojom/permissions_policy/permissions_policy_feature.mojom-blink.h"
+ #include "third_party/blink/renderer/core/dom/document.h"
+@@ -172,6 +173,15 @@ bool Screen::isExtended() const {
+ gfx::Rect Screen::GetRect(bool available) const {
+   if (!DomWindow())
+     return gfx::Rect();
++  // Oblada: the window's size, plus a few pixels, for fingerprinting
++  // protection (as Brave).
++  if (oblada_farbling::IsOn(DomWindow(), oblada_farbling::kScreen)) {
++    return gfx::Rect(
++        DomWindow()->innerWidth() +
++            oblada_farbling::ScreenOffset(DomWindow(), "screen-width"),
++        DomWindow()->innerHeight() +
++            oblada_farbling::ScreenOffset(DomWindow(), "screen-height"));
++  }
+   LocalFrame* frame = DomWindow()->GetFrame();
+   const display::ScreenInfo& screen_info = GetScreenInfo();
+   gfx::Rect rect = available ? screen_info.available_rect : screen_info.rect;

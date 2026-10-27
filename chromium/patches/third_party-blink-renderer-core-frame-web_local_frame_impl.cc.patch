@@ -1,0 +1,22 @@
+diff --git a/third_party/blink/renderer/core/frame/web_local_frame_impl.cc b/third_party/blink/renderer/core/frame/web_local_frame_impl.cc
+index 97bee2c322..72b96cf32d 100644
+--- a/third_party/blink/renderer/core/frame/web_local_frame_impl.cc
++++ b/third_party/blink/renderer/core/frame/web_local_frame_impl.cc
+@@ -3354,6 +3354,17 @@ void WebLocalFrameImpl::WasShown() {
+     frame_->WasShown();
+ }
+ 
++// Oblada
++void WebLocalFrameImpl::SetObladaFarbling(uint64_t token,
++                                          uint32_t exceptions,
++                                          bool reduce_language) {
++  if (LocalDOMWindow* window = GetFrame() ? GetFrame()->DomWindow() : nullptr) {
++    window->SetObladaFarbling({.token = token,
++                               .exceptions = exceptions,
++                               .reduce_language = reduce_language});
++  }
++}
++
+ void WebLocalFrameImpl::SetAllowsCrossBrowsingInstanceFrameLookup() {
+   DCHECK(GetFrame());
+ 

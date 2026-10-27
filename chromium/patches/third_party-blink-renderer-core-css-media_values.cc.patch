@@ -1,0 +1,37 @@
+diff --git a/third_party/blink/renderer/core/css/media_values.cc b/third_party/blink/renderer/core/css/media_values.cc
+index 0d60244742..2e86e0141a 100644
+--- a/third_party/blink/renderer/core/css/media_values.cc
++++ b/third_party/blink/renderer/core/css/media_values.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "third_party/blink/renderer/core/css/media_values.h"
+ 
++#include "oblada/blink/farbling.h"  // Oblada
++#include "third_party/blink/renderer/core/frame/local_dom_window.h"  // Oblada
+ #include "third_party/blink/public/common/css/scripting.h"
+ #include "third_party/blink/renderer/core/css/css_resolution_units.h"
+ #include "third_party/blink/renderer/core/css/css_to_length_conversion_data.h"
+@@ -164,6 +166,11 @@ double MediaValues::CalculateDynamicViewportHeight(LocalFrame* frame) {
+ 
+ int MediaValues::CalculateDeviceWidth(LocalFrame* frame) {
+   DCHECK(frame && frame->View() && frame->GetSettings() && frame->GetPage());
++  // Oblada: as screen.width, for fingerprinting protection.
++  if (oblada_farbling::IsOn(frame->DomWindow(), oblada_farbling::kScreen)) {
++    return static_cast<int>(CalculateViewportWidth(frame)) +
++           oblada_farbling::ScreenOffset(frame->DomWindow(), "screen-width");
++  }
+   const display::ScreenInfo& screen_info =
+       frame->GetPage()->GetChromeClient().GetScreenInfo(*frame);
+   int device_width = screen_info.rect.width();
+@@ -176,6 +183,11 @@ int MediaValues::CalculateDeviceWidth(LocalFrame* frame) {
+ 
+ int MediaValues::CalculateDeviceHeight(LocalFrame* frame) {
+   DCHECK(frame && frame->View() && frame->GetSettings() && frame->GetPage());
++  // Oblada: as screen.height, for fingerprinting protection.
++  if (oblada_farbling::IsOn(frame->DomWindow(), oblada_farbling::kScreen)) {
++    return static_cast<int>(CalculateViewportHeight(frame)) +
++           oblada_farbling::ScreenOffset(frame->DomWindow(), "screen-height");
++  }
+   const display::ScreenInfo& screen_info =
+       frame->GetPage()->GetChromeClient().GetScreenInfo(*frame);
+   int device_height = screen_info.rect.height();

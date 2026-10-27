@@ -1,0 +1,12 @@
+diff --git a/chrome/renderer/BUILD.gn b/chrome/renderer/BUILD.gn
+index df80dfe84a..179cbafc4f 100644
+--- a/chrome/renderer/BUILD.gn
++++ b/chrome/renderer/BUILD.gn
+@@ -127,6 +127,7 @@ static_library("renderer") {
+ 
+   deps = [
+     ":process_state",
++    "//oblada/renderer/barrier",  # Oblada: the Barrier in pages' frames.
+     "//base/allocator:buildflags",
+     "//build:chromeos_buildflags",
+     "//chrome:resources",

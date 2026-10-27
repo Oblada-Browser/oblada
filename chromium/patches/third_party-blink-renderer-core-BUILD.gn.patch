@@ -1,0 +1,19 @@
+diff --git a/third_party/blink/renderer/core/BUILD.gn b/third_party/blink/renderer/core/BUILD.gn
+index 056bd22809..172cc68c87 100644
+--- a/third_party/blink/renderer/core/BUILD.gn
++++ b/third_party/blink/renderer/core/BUILD.gn
+@@ -279,6 +279,14 @@ component("core") {
+   sources += rebase_path(blink_core_sources_canvas_interventions,
+                          "",
+                          "canvas_interventions")
++  # Oblada: the Barrier's fingerprinting protection (oblada/blink).
++  sources += [
++    "//oblada/blink/connection_pools.cc",
++    "//oblada/blink/connection_pools.h",
++    "//oblada/blink/farbling.cc",
++    "//oblada/blink/farbling.h",
++    "//oblada/blink/farbling_settings.h",
++  ]
+   sources += rebase_path(blink_core_sources_clipboard, "", "clipboard")
+   sources +=
+       rebase_path(blink_core_sources_content_capture, "", "content_capture")

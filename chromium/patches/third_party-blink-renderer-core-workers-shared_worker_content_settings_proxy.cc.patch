@@ -1,0 +1,20 @@
+diff --git a/third_party/blink/renderer/core/workers/shared_worker_content_settings_proxy.cc b/third_party/blink/renderer/core/workers/shared_worker_content_settings_proxy.cc
+index 74159ada53..294fb13d8b 100644
+--- a/third_party/blink/renderer/core/workers/shared_worker_content_settings_proxy.cc
++++ b/third_party/blink/renderer/core/workers/shared_worker_content_settings_proxy.cc
+@@ -73,6 +73,15 @@ bool SharedWorkerContentSettingsProxy::AllowStorageAccessSync(
+   return result;
+ }
+ 
++// Oblada
++bool SharedWorkerContentSettingsProxy::GetObladaFarbling(
++    uint64_t* token,
++    uint32_t* exceptions,
++    bool* reduce_language) {
++  DCHECK_CALLED_ON_VALID_THREAD(worker_thread_checker_);
++  return GetService()->GetObladaFarbling(token, exceptions, reduce_language);
++}
++
+ mojo::Remote<mojom::blink::WorkerContentSettingsProxy>&
+ SharedWorkerContentSettingsProxy::GetService() {
+   DCHECK_CALLED_ON_VALID_THREAD(worker_thread_checker_);

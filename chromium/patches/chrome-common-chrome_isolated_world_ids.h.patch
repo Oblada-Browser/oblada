@@ -1,0 +1,15 @@
+diff --git a/chrome/common/chrome_isolated_world_ids.h b/chrome/common/chrome_isolated_world_ids.h
+index 846e4777c4..9dff96b488 100644
+--- a/chrome/common/chrome_isolated_world_ids.h
++++ b/chrome/common/chrome_isolated_world_ids.h
+@@ -24,6 +24,10 @@ enum ChromeIsolatedWorldIDs {
+   ISOLATED_WORLD_ID_APPLESCRIPT,
+ #endif  // BUILDFLAG(IS_MAC)
+ 
++  // Oblada: the Barrier's cosmetic filters and element picker
++  // (oblada/renderer/barrier/barrier_agent.h).
++  ISOLATED_WORLD_ID_OBLADA_BARRIER,
++
+   // Numbers for isolated worlds for extensions are set in
+   // extensions/renderer/script_injection.cc, and are are greater than or equal
+   // to this number.

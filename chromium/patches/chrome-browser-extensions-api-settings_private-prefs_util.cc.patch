@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/extensions/api/settings_private/prefs_util.cc b/chrome/browser/extensions/api/settings_private/prefs_util.cc
-index 618a67dabc..6656feb100 100644
+index 618a67dabc..efecbf541a 100644
 --- a/chrome/browser/extensions/api/settings_private/prefs_util.cc
 +++ b/chrome/browser/extensions/api/settings_private/prefs_util.cc
-@@ -314,6 +314,10 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
+@@ -314,6 +314,25 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
  
    // Appearance settings.
    (*s_allowlist)[::prefs::kCtrlTabMru] = settings_api::PrefType::kBoolean;
@@ -10,6 +10,21 @@ index 618a67dabc..6656feb100 100644
 +  (*s_allowlist)["oblada.sidebar.mode"] = settings_api::PrefType::kString;
 +  (*s_allowlist)["oblada.workspaces.show_header"] =
 +      settings_api::PrefType::kBoolean;
++  // Oblada: the Barrier (oblada/browser/barrier/barrier.h).
++  for (const char* pref :
++       {"oblada.barrier.fingerprinting", "oblada.barrier.forget",
++        "oblada.barrier.show_count", "oblada.barrier.gpc",
++        "oblada.barrier.strip_params", "oblada.barrier.debounce",
++        "oblada.barrier.de_amp", "oblada.barrier.reduce_language",
++        "oblada.barrier.facebook_embeds", "oblada.barrier.x_embeds",
++        "oblada.barrier.linkedin_embeds", "oblada.barrier.google_sign_in"}) {
++    (*s_allowlist)[pref] = settings_api::PrefType::kBoolean;
++  }
++  for (const char* pref :
++       {"oblada.barrier.ads", "oblada.barrier.https",
++        "oblada.barrier.sensitive_sites", "webrtc.ip_handling_policy"}) {
++    (*s_allowlist)[pref] = settings_api::PrefType::kString;
++  }
    (*s_allowlist)[::prefs::kCurrentThemeID] = settings_api::PrefType::kString;
    (*s_allowlist)[::prefs::kPinnedActions] = settings_api::PrefType::kList;
    (*s_allowlist)[themes::kPolicyThemeColor] = settings_api::PrefType::kNumber;

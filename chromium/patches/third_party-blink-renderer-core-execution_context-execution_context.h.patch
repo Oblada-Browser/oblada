@@ -1,0 +1,37 @@
+diff --git a/third_party/blink/renderer/core/execution_context/execution_context.h b/third_party/blink/renderer/core/execution_context/execution_context.h
+index 684d62b9cc..bdf094ea05 100644
+--- a/third_party/blink/renderer/core/execution_context/execution_context.h
++++ b/third_party/blink/renderer/core/execution_context/execution_context.h
+@@ -30,6 +30,7 @@
+ 
+ #include <memory>
+ 
++#include "oblada/blink/farbling_settings.h"  // Oblada
+ #include "base/memory/raw_ptr.h"
+ #include "base/notreached.h"
+ #include "net/storage_access_api/status.h"
+@@ -495,6 +496,15 @@ class CORE_EXPORT ExecutionContext : public Supplementable<ExecutionContext>,
+     canvas_noise_token_ = token;
+   }
+ 
++  // Oblada: the Barrier's fingerprinting protection for the context
++  // (oblada/blink/farbling.h).
++  const ObladaFarblingSettings& GetObladaFarbling() const {
++    return oblada_farbling_;
++  }
++  void SetObladaFarbling(const ObladaFarblingSettings& settings) {
++    oblada_farbling_ = settings;
++  }
++
+   // Returns the policy state for network-efficiency-guardrails in this
+   // document.
+   virtual std::optional<mojom::blink::PolicyDisposition>
+@@ -576,6 +586,8 @@ class CORE_EXPORT ExecutionContext : public Supplementable<ExecutionContext>,
+   bool require_trusted_types_ = false;
+ 
+   std::optional<NoiseToken> canvas_noise_token_;
++
++  ObladaFarblingSettings oblada_farbling_;  // Oblada
+ };
+ 
+ }  // namespace blink

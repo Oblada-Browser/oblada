@@ -1,0 +1,52 @@
+diff --git a/third_party/blink/renderer/modules/webaudio/audio_buffer.cc b/third_party/blink/renderer/modules/webaudio/audio_buffer.cc
+index 7a899b0d8c..f71e307a6c 100644
+--- a/third_party/blink/renderer/modules/webaudio/audio_buffer.cc
++++ b/third_party/blink/renderer/modules/webaudio/audio_buffer.cc
+@@ -30,6 +30,8 @@
+ 
+ #include <memory>
+ 
++#include "oblada/blink/farbling.h"  // Oblada
++#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"  // Oblada
+ #include "base/check_op.h"
+ #include "base/compiler_specific.h"
+ #include "base/containers/span.h"
+@@ -221,6 +223,7 @@ NotShared<DOMFloat32Array> AudioBuffer::getChannelData(unsigned channel_index) {
+   if (channel_index >= channels_.size()) {
+     return NotShared<DOMFloat32Array>(nullptr);
+   }
++  ObladaFarble();  // Oblada
+ 
+   return NotShared<DOMFloat32Array>(channels_[channel_index].Get());
+ }
+@@ -252,6 +255,7 @@ void AudioBuffer::copyFromChannel(NotShared<DOMFloat32Array> destination,
+     return;
+   }
+ 
++  ObladaFarble();  // Oblada
+   base::span<const float> src = channels_[channel_number].Get()->AsSpan();
+   base::span<float> dst = destination->AsSpan();
+ 
+@@ -270,6 +274,22 @@ void AudioBuffer::copyFromChannel(NotShared<DOMFloat32Array> destination,
+   dst.first(count).copy_from(src.subspan(buffer_offset, count));
+ }
+ 
++// Oblada: the samples, scaled by a hair once pages read them, for
++// fingerprinting protection (oblada/blink/farbling.h).
++void AudioBuffer::ObladaFarble() {
++  if (oblada_farbled_) {
++    return;
++  }
++  oblada_farbled_ = true;
++  ExecutionContext* context =
++      CurrentExecutionContext(v8::Isolate::GetCurrent());
++  for (const auto& channel : channels_) {
++    if (channel) {
++      oblada_farbling::FarbleAudio(context, channel->AsSpan());
++    }
++  }
++}
++
+ void AudioBuffer::copyToChannel(NotShared<DOMFloat32Array> source,
+                                 int32_t channel_number,
+                                 ExceptionState& exception_state) {

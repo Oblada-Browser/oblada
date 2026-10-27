@@ -1,0 +1,33 @@
+diff --git a/chrome/browser/metrics/chrome_feature_list_creator.cc b/chrome/browser/metrics/chrome_feature_list_creator.cc
+index 90e572fe4e..3d6edf2b7f 100644
+--- a/chrome/browser/metrics/chrome_feature_list_creator.cc
++++ b/chrome/browser/metrics/chrome_feature_list_creator.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/metrics/chrome_feature_list_creator.h"
+ 
++#include "oblada/browser/barrier/barrier.h"  // Oblada
++
+ #include <vector>
+ 
+ #include "base/command_line.h"
+@@ -238,11 +240,15 @@ void ChromeFeatureListCreator::SetUpFieldTrials() {
+ 
+   variations::VariationsService* variations_service =
+       metrics_services_manager_->GetVariationsService();
+-  variations_service->SetUpFieldTrials(
+-      variation_ids,
++  std::vector<base::FeatureList::FeatureOverrideInfo> extra_overrides =
+       content::GetSwitchDependentFeatureOverrides(
+-          *base::CommandLine::ForCurrentProcess()),
+-      std::move(feature_list), browser_field_trials_.get());
++          *base::CommandLine::ForCurrentProcess());
++  // Oblada: the Barrier's (web APIs turned off, network changes), unless its
++  // switch is off.
++  oblada::barrier::AddFeatureOverrides(local_state_.get(), extra_overrides);
++  variations_service->SetUpFieldTrials(variation_ids, extra_overrides,
++                                       std::move(feature_list),
++                                       browser_field_trials_.get());
+   variations::InitCrashKeys();
+ }
+ 

@@ -1,0 +1,36 @@
+diff --git a/third_party/blink/renderer/core/css/local_font_face_source.cc b/third_party/blink/renderer/core/css/local_font_face_source.cc
+index ab4e6a9bed..7f6f2d34a0 100644
+--- a/third_party/blink/renderer/core/css/local_font_face_source.cc
++++ b/third_party/blink/renderer/core/css/local_font_face_source.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "third_party/blink/renderer/core/css/local_font_face_source.h"
+ 
++#include "oblada/blink/farbling.h"  // Oblada
+ #include "base/metrics/histogram_functions.h"
+ #include "build/build_config.h"
+ #include "third_party/blink/renderer/core/css/css_custom_font_data.h"
+@@ -42,6 +43,11 @@ bool LocalFontFaceSource::IsLocalNonBlocking() const {
+ 
+ bool LocalFontFaceSource::IsLocalFontAvailable(
+     const FontDescription& font_description) const {
++  // Oblada: only some installed fonts, for fingerprinting protection.
++  if (!oblada_farbling::AllowsFont(font_selector_->GetExecutionContext(),
++                                   font_name_)) {
++    return false;
++  }
+   // TODO(crbug.com/1025945): Properly handle Windows prior to 10 and Android.
+   bool font_available = FontCache::Get().IsPlatformFontUniqueNameMatchAvailable(
+       font_description, font_name_);
+@@ -105,6 +111,11 @@ const SimpleFontData* LocalFontFaceSource::CreateFontData(
+   // potentially doing GMSCore lookups for fonts available through that, mainly
+   // to retrieve and get access to the SkTypeface. This may return nullptr (e.g.
+   // OOM), in which case we want to exit before creating the SkTypeface.
++  // Oblada: only some installed fonts, for fingerprinting protection.
++  if (!oblada_farbling::AllowsFont(font_selector_->GetExecutionContext(),
++                                   font_name_)) {
++    return nullptr;
++  }
+   const SimpleFontData* unique_lookup_result = FontCache::Get().GetFontData(
+       unstyled_description, font_name_, AlternateFontName::kLocalUniqueFace);
+   if (!unique_lookup_result) {

@@ -1,0 +1,24 @@
+diff --git a/third_party/blink/renderer/core/css/css_font_selector_base.cc b/third_party/blink/renderer/core/css/css_font_selector_base.cc
+index 65b35128ff..7d1bb374f9 100644
+--- a/third_party/blink/renderer/core/css/css_font_selector_base.cc
++++ b/third_party/blink/renderer/core/css/css_font_selector_base.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "third_party/blink/renderer/core/css/css_font_selector_base.h"
+ 
++#include "oblada/blink/farbling.h"  // Oblada
+ #include "build/build_config.h"
+ #include "third_party/blink/renderer/core/css/css_segmented_font_face.h"
+ #include "third_party/blink/renderer/core/frame/web_feature.h"
+@@ -30,6 +31,11 @@ bool CSSFontSelectorBase::IsPlatformFamilyMatchAvailable(
+   if (family.empty()) {
+     family = passed_family.FamilyName();
+   }
++  // Oblada: only some installed fonts, for fingerprinting protection.
++  if (!passed_family.FamilyIsGeneric() &&
++      !oblada_farbling::AllowsFont(GetExecutionContext(), family)) {
++    return false;
++  }
+   return FontCache::Get().IsPlatformFamilyMatchAvailable(font_description,
+                                                          family);
+ }

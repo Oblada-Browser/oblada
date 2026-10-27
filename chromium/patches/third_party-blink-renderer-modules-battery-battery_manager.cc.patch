@@ -1,0 +1,47 @@
+diff --git a/third_party/blink/renderer/modules/battery/battery_manager.cc b/third_party/blink/renderer/modules/battery/battery_manager.cc
+index 51cdc75cee..3812b6db5d 100644
+--- a/third_party/blink/renderer/modules/battery/battery_manager.cc
++++ b/third_party/blink/renderer/modules/battery/battery_manager.cc
+@@ -4,6 +4,9 @@
+ 
+ #include "third_party/blink/renderer/modules/battery/battery_manager.h"
+ 
++#include <limits>  // Oblada
++
++#include "oblada/blink/farbling.h"  // Oblada
+ #include "third_party/blink/public/mojom/frame/lifecycle.mojom-blink.h"
+ #include "third_party/blink/renderer/core/dom/dom_exception.h"
+ #include "third_party/blink/renderer/core/dom/events/event.h"
+@@ -79,19 +82,32 @@ ScriptPromise<BatteryManager> BatteryManager::StartRequest(
+   return battery_property_->Promise(script_state->World());
+ }
+ 
++// Oblada: always full and charging, for fingerprinting protection (as Brave).
+ bool BatteryManager::charging() {
++  if (oblada_farbling::IsOn(GetExecutionContext(), oblada_farbling::kHardware)) {
++    return true;
++  }
+   return battery_status_.Charging();
+ }
+ 
+ double BatteryManager::chargingTime() {
++  if (oblada_farbling::IsOn(GetExecutionContext(), oblada_farbling::kHardware)) {
++    return 0;
++  }
+   return battery_status_.charging_time().InSecondsF();
+ }
+ 
+ double BatteryManager::dischargingTime() {
++  if (oblada_farbling::IsOn(GetExecutionContext(), oblada_farbling::kHardware)) {
++    return std::numeric_limits<double>::infinity();
++  }
+   return battery_status_.discharging_time().InSecondsF();
+ }
+ 
+ double BatteryManager::level() {
++  if (oblada_farbling::IsOn(GetExecutionContext(), oblada_farbling::kHardware)) {
++    return 1;
++  }
+   return battery_status_.Level();
+ }
+ 

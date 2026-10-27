@@ -1,0 +1,28 @@
+{
+  "added": [
+    "The Barrier: Oblada now blocks trackers and ads with Brave's engine and its lists (EasyList, EasyPrivacy, uBlock Origin's, Brave's), including the elements they leave on pages, cookie notices and the scripts that fight ad blockers.",
+    "The Barrier's button at the end of the address bar shows how many trackers and ads it blocked on the page, and opens its controls for the site: turn it off for the site, block aggressively, upgrade to HTTPS strictly or not at all, block scripts, fingerprinting, cookies, forget the site when you close it. In the sidebar layouts, the controls are at the top of the site panel.",
+    "Fingerprinting protection: sites see slight changes to canvas and audio readouts, to your processor, memory, screen size, fonts and speech voices, and generic GPU names, the same on a site until Oblada restarts but different from site to site and from container to container, so they can't follow you around. It reaches sites' workers too, and limits how many connections a site keeps open.",
+    "Third parties' cookies are blocked, and what they store on a site is erased once you close it. Sites can be set to be forgotten when you close them.",
+    "Tracking parameters (fbclid, gclid…) are removed from the addresses you open, tracking redirects are skipped for where they lead, and AMP pages, on Google's cache or the sites' own, for the original.",
+    "Trackers hiding behind a site's own addresses (CNAME cloaking) are blocked too.",
+    "Global Privacy Control asks sites not to sell or share your data.",
+    "Sensitive sites, like those that help against domestic violence, can open in a temporary container, which keeps nothing once you close it: Oblada asks first.",
+    "Before a site lets you sign in with Google in a way that needs Google's cookies on that site, Oblada asks.",
+    "With aggressive blocking, Oblada warns before opening a tracker's address as a page.",
+    "Block an element: pick anything on a page to hide it for good, from the Barrier's controls or the page's context menu.",
+    "Settings > Oblada has the Barrier's defaults, its privacy settings (languages sites see, WebRTC's IP addresses, social media embeds, Do Not Track…), its filter lists, your own filters and lists from an address, and the sites with settings of their own.",
+    "A DANGEROUS switch in Settings > Oblada turns all of the Barrier off."
+  ],
+  "changed": [
+    "Web APIs that mostly serve to recognize you are off, as in Brave: Web Bluetooth, Web Serial, opening local files and folders from pages, FedCM, the Reporting API and others. Referrers never say more than the site across sites, and cookies last 6 months at most."
+  ],
+  "fixed": [
+    "Tabs restored at startup no longer load in the background before you open them, except those of sites known to work in the background."
+  ],
+  "obladaVersion": "0.5.0",
+  "releaseId": 11,
+  "chromiumVersion": "156.0.8078.48",
+  "releaseDate": "",
+  "released": false
+}

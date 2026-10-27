@@ -1,0 +1,31 @@
+diff --git a/third_party/blink/renderer/modules/mediastream/media_devices.cc b/third_party/blink/renderer/modules/mediastream/media_devices.cc
+index cbdf6f2c9b..74ed70b34e 100644
+--- a/third_party/blink/renderer/modules/mediastream/media_devices.cc
++++ b/third_party/blink/renderer/modules/mediastream/media_devices.cc
+@@ -7,6 +7,7 @@
+ #include <algorithm>
+ #include <utility>
+ 
++#include "oblada/blink/farbling.h"  // Oblada
+ #include "base/feature_list.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/notreached.h"
+@@ -1496,6 +1497,18 @@ void MediaDevices::DevicesEnumerated(
+   }
+ 
+   ReportCompletedEnumerateDevices(result_contains_nonempty_input_device_ids);
++  // Oblada: in another order (but the first), for fingerprinting protection
++  // (as Brave).
++  ExecutionContext* oblada_context = ExecutionContext::From(script_state);
++  if (oblada_farbling::IsOn(oblada_context, oblada_farbling::kMediaDevices)) {
++    for (wtf_size_t i = media_devices.size(); i > 2; --i) {
++      const wtf_size_t j =
++          1 + oblada_farbling::Random(oblada_context,
++                                      "media-devices-" + std::to_string(i)) %
++                  (i - 1);
++      std::swap(media_devices[i - 1], media_devices[j]);
++    }
++  }
+   result_tracker->Resolve(media_devices);
+   tracer->End();
+ }

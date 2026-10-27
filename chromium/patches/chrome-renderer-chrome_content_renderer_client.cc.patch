@@ -1,0 +1,30 @@
+diff --git a/chrome/renderer/chrome_content_renderer_client.cc b/chrome/renderer/chrome_content_renderer_client.cc
+index d460c0fb69..86dcc5704a 100644
+--- a/chrome/renderer/chrome_content_renderer_client.cc
++++ b/chrome/renderer/chrome_content_renderer_client.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/renderer/chrome_content_renderer_client.h"
+ 
++#include "oblada/renderer/barrier/barrier_agent.h"  // Oblada
++
+ #include <functional>
+ #include <memory>
+ #include <optional>
+@@ -656,6 +658,7 @@ void ChromeContentRendererClient::RenderFrameCreated(
+   service_manager::BinderRegistry* registry = render_frame_observer->registry();
+ 
+   new prerender::NoStatePrefetchRenderFrameObserver(render_frame);
++  oblada::barrier::BarrierAgent::Create(render_frame);  // Oblada
+ 
+   auto content_settings_delegate =
+       std::make_unique<ChromeContentSettingsAgentDelegate>(render_frame);
+@@ -1487,6 +1490,8 @@ ChromeContentRendererClient::CreateSpeechRecognitionClient(
+ 
+ void ChromeContentRendererClient::RunScriptsAtDocumentStart(
+     content::RenderFrame* render_frame) {
++  // Oblada: the Barrier's scriptlets and cosmetic filters, first.
++  oblada::barrier::BarrierAgent::RunScriptsAtDocumentStart(render_frame);
+ #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+   extensions::ExtensionsRendererClient::Get()->RunScriptsAtDocumentStart(
+       render_frame);

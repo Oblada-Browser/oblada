@@ -1,0 +1,33 @@
+diff --git a/third_party/blink/renderer/modules/speech/speech_synthesis.cc b/third_party/blink/renderer/modules/speech/speech_synthesis.cc
+index 891a81543b..6e0b65b08c 100644
+--- a/third_party/blink/renderer/modules/speech/speech_synthesis.cc
++++ b/third_party/blink/renderer/modules/speech/speech_synthesis.cc
+@@ -25,6 +25,8 @@
+ 
+ #include "third_party/blink/renderer/modules/speech/speech_synthesis.h"
+ 
++#include "oblada/blink/farbling.h"  // Oblada
++
+ #include <tuple>
+ 
+ #include "build/build_config.h"
+@@ -89,6 +91,19 @@ void SpeechSynthesis::OnSetVoiceList(
+     voice_list_.push_back(
+         MakeGarbageCollected<SpeechSynthesisVoice>(std::move(mojom_voice)));
+   }
++  // Oblada: one voice more, a copy of one of them under a made-up name, for
++  // fingerprinting protection (oblada/blink/farbling.h).
++  LocalDOMWindow* oblada_window = GetSupplementable();
++  const String oblada_name = oblada_farbling::ExtraVoiceName(oblada_window);
++  if (!oblada_name.empty() && !voice_list_.empty()) {
++    const SpeechSynthesisVoice* like =
++        voice_list_[oblada_farbling::Random(oblada_window, "voice") %
++                    voice_list_.size()];
++    voice_list_.push_back(MakeGarbageCollected<SpeechSynthesisVoice>(
++        mojom::blink::SpeechSynthesisVoice::New(
++            like->voiceURI(), oblada_name, like->lang(), like->localService(),
++            /*is_default=*/false)));
++  }
+   VoicesDidChange();
+ }
+ 

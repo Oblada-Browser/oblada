@@ -1,0 +1,29 @@
+diff --git a/chrome/browser/ssl/https_upgrades_interceptor.cc b/chrome/browser/ssl/https_upgrades_interceptor.cc
+index 6fff9bdd12..cb5f2eb55d 100644
+--- a/chrome/browser/ssl/https_upgrades_interceptor.cc
++++ b/chrome/browser/ssl/https_upgrades_interceptor.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ssl/https_upgrades_interceptor.h"
+ 
++#include "oblada/browser/barrier/barrier.h"  // Oblada
++
+ #include "base/functional/bind.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/strings/string_number_conversions.h"
+@@ -293,6 +295,15 @@ void HttpsUpgradesInterceptor::MaybeCreateLoader(
+       security_interstitials::https_only_mode::HttpInterstitialState>(
+       ComputeInterstitialState(web_contents, tentative_resource_request.url));
+ 
++  // Oblada: sites the Barrier doesn't upgrade (as their settings say, or
++  // Brave's list of sites that serve HTTPS badly).
++  if (oblada::barrier::HttpsUpgradeFor(profile,
++                                       tentative_resource_request.url) ==
++      oblada::barrier::HttpsUpgrade::kDisabled) {
++    std::move(callback).Run({});
++    return;
++  }
++
+   // Exclude HTTPS URLs.
+   if (tentative_resource_request.url.SchemeIs(url::kHttpsScheme)) {
+     RecordNavigationRequestSecurityLevel(

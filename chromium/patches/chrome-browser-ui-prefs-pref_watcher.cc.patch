@@ -1,0 +1,23 @@
+diff --git a/chrome/browser/ui/prefs/pref_watcher.cc b/chrome/browser/ui/prefs/pref_watcher.cc
+index 1974afa754..2bf8e139fd 100644
+--- a/chrome/browser/ui/prefs/pref_watcher.cc
++++ b/chrome/browser/ui/prefs/pref_watcher.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/prefs/pref_watcher.h"
+ 
++#include "oblada/browser/barrier/barrier.h"  // Oblada
++
+ #include <memory>
+ #include <string>
+ #include <utility>
+@@ -158,6 +160,9 @@ PrefWatcher::PrefWatcher(Profile* profile) : profile_(profile) {
+                                      renderer_callback);
+   profile_pref_change_registrar_.Add(
+       universal_optout::prefs::kUniversalOptOutEnabled, renderer_callback);
++  // Oblada: the Barrier's Global Privacy Control.
++  profile_pref_change_registrar_.Add(oblada::barrier::kGpcPref,
++                                     renderer_callback);
+   profile_pref_change_registrar_.Add(autofill::prefs::kAutofillAtMemoryShortcut,
+                                      renderer_callback);
+   profile_pref_change_registrar_.Add(

@@ -1,0 +1,18 @@
+diff --git a/third_party/rust/chromium_crates_io/Cargo.toml b/third_party/rust/chromium_crates_io/Cargo.toml
+index 1f2142d095..047e00d723 100644
+--- a/third_party/rust/chromium_crates_io/Cargo.toml
++++ b/third_party/rust/chromium_crates_io/Cargo.toml
+@@ -52,6 +52,13 @@ smallvec = "1"
+ static_assertions = "1"
+ xml = "1.4.0"
+ 
++# Oblada: Brave's ad-blocking engine, for the Barrier (oblada/components/barrier/adblock).
++# Without its own public suffix list: Oblada gives it Chromium's.
++[dependencies.adblock]
++version = "=0.13.3"
++default-features = false
++features = ["css-validation", "full-regex-handling", "single-thread", "resource-assembler"]
++
+ [dependencies.bytemuck]
+ version = "1"
+ features = ["nightly_portable_simd"]  # For std::simd coverage.

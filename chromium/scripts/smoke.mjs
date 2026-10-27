@@ -4,8 +4,10 @@
 //
 //   node chromium/scripts/smoke.mjs [path/to/Oblada.app]
 import { execFileSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
+import https from 'node:https';
 import os from 'node:os';
 import path from 'node:path';
 import { defaultApp, launch as launchOblada, silentWav, sleep, snapshot, until, watchFocus } from './lib/oblada.mjs';
@@ -45,6 +47,11 @@ fs.mkdirSync(downloads);
 fs.writeFileSync(path.join(profile, 'Default', 'Preferences'), JSON.stringify({
   download: { default_directory: downloads, prompt_for_download: false },
   savefile: { default_directory: downloads },
+  // The Barrier's settings of two test sites (see barrierChecks).
+  oblada: { barrier: { sites: {
+    'oblada-off.com': { enabled: false },
+    'oblada-forget.com': { forget: true },
+  } } },
 }));
 
 // A Firefox add-on, written the way Firefox accepts and Chromium doesn't.
@@ -77,6 +84,9 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify({ data: [{ stripList: ['oblada_mozilla_tracker'], allowList: [] }] }));
     return;
   }
+  if (req.url.startsWith('/barrier/') && barrierRoute(req, res)) {
+    return;
+  }
   if (req.url === '/?peek-from') {
     res.setHeader('Content-Type', 'text/html');
     res.end('<!doctype html><a href="/?peek" style="display:block;font-size:40px;padding:40px">peek</a>');
@@ -90,8 +100,48 @@ const server = http.createServer((req, res) => {
   res.setHeader('Content-Type', 'text/html');
   res.end('<!doctype html><title>Oblada test page</title><p>test page</p>');
 });
+// WebSocket connections are only noted (barrierChecks()), then closed; those to
+// /barrier/pool are kept open (the limits to a site's connections).
+const openSockets = [];
+server.on('upgrade', (req, socket) => {
+  barrierRequests.push(`upgrade ${req.headers.host}${req.url}`);
+  if (!req.url.startsWith('/barrier/pool')) {
+    socket.destroy();
+    return;
+  }
+  const accept = crypto.createHash('sha1')
+    .update(`${req.headers['sec-websocket-key']}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`).digest('base64');
+  socket.on('error', () => {});
+  socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n' +
+    `Sec-WebSocket-Accept: ${accept}\r\n\r\n`);
+  openSockets.push(socket);
+});
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const site = `http://127.0.0.1:${server.address().port}/`;
+
+// Google's sign-in, as accounts.google.com (mapped to 127.0.0.1, see launch()), over HTTPS
+// with a certificate of the test's own, which Oblada is told to accept.
+const certs = path.join(tmp, 'certs');
+fs.mkdirSync(certs);
+execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2',
+  '-subj', '/CN=accounts.google.com', '-keyout', path.join(certs, 'key.pem'),
+  '-out', path.join(certs, 'cert.pem')], { stdio: 'ignore' });
+const googleServer = https.createServer({
+  key: fs.readFileSync(path.join(certs, 'key.pem')),
+  cert: fs.readFileSync(path.join(certs, 'cert.pem')),
+}, (req, res) => {
+  barrierRequests.push(`google ${req.url}`);
+  if (req.url.startsWith('/o/oauth2/auth')) {
+    res.writeHead(200, { 'Content-Type': 'text/html',
+      'Set-Cookie': 'signed_in=yes; SameSite=None; Secure; Path=/' });
+    res.end('<!doctype html><title>Google</title><p>Sign in');
+    return;
+  }
+  res.writeHead(200, { 'Content-Type': 'text/html' });
+  res.end("<!doctype html><script>parent.postMessage(document.cookie || 'none', '*')</script>");
+});
+await new Promise((r) => googleServer.listen(0, '127.0.0.1', r));
+const google = `https://accounts.google.com:${googleServer.address().port}`;
 
 const addon = path.join(tmp, 'firefox-addon');
 fs.mkdirSync(addon);
@@ -185,7 +235,15 @@ const launch = (args = []) => launchOblada({
   profile,
   args: [`--load-extension=${extension}`, '--oblada-auto-confirm-addon-install',
          '--oblada-addon-update-interval=2', `--oblada-snapshot-dir=${snapshots}`,
-         `--oblada-mozilla-list-url=${site}mozilla-list.json`, ...args],
+         `--oblada-mozilla-list-url=${site}mozilla-list.json`,
+         // The Barrier's filter lists from the test's server; test sites by name.
+         `--oblada-barrier-catalog=${site}barrier/catalog.json`,
+         `--oblada-barrier-data=${site}barrier/data/`,
+         '--oblada-barrier-forget-delay=1000',
+         '--host-resolver-rules=MAP oblada-*.com 127.0.0.1, MAP go.skimresources.com 127.0.0.1, ' +
+           'MAP accounts.google.com 127.0.0.1',
+         '--ignore-certificate-errors',
+         ...args],
 });
 
 async function coreChecks(o) {
@@ -955,7 +1013,8 @@ async function restoreChecks(o) {
   const unloaded = sites.filter((t) => t.loading === 0);
   check('restored tabs in the background load only once opened',
     unloaded.some((t) => t.url === `${site}?work`) && unloaded.length >= sites.length - 1,
-    `${unloaded.length} of ${sites.length} not loaded`);
+    `${unloaded.length} of ${sites.length} not loaded; loaded: ${sites.filter((t) => t.loading !== 0)
+      .map((t) => t.url.slice(site.length - 1)).join(' ')}`);
 
   await o.send('Target.activateTarget', { targetId: restored.targetId });
   const s = await o.attach(restored.targetId);
@@ -1000,7 +1059,9 @@ async function widthBeforeRestart(o) {
   await snapshot(snapshots, `${shot}-narrower.png`, `resize:-${width - 200} wait:400`);
   const { targetId } = await o.send('Target.createTarget', { url: `${site}?history` });
   const page = await o.attach(targetId);
-  await until('its page', () => o.evaluate('document.readyState === "complete"', page));
+  // (Not the tab's first document, about:blank, already complete.)
+  await until('its page', () => o.evaluate(
+    'location.search === "?history" && document.readyState === "complete"', page));
   await o.evaluate(`for (let i = 0; i < 300; i++) history.pushState({}, '', '?history=' + i)`, page);
   // (Saved within 2.5 s.) Then closed, so the restart restores the tabs restoreChecks() expects.
   await sleep(4000);
@@ -1014,6 +1075,477 @@ async function widthAfterRestart(o, before) {
   const after = sidebarWidth(file);
   check('the sidebar keeps its width across restarts', before === 200 && after === before,
     `${before} → ${after}`);
+}
+
+// The Barrier (oblada/browser/barrier/barrier.h), with filter lists of the test's own:
+// oblada-page.com is the page (the test's own site is in a container by now), localhost a
+// third party; oblada-off.com has the Barrier down, oblada-forget.com is forgotten once
+// closed, oblada-tp.com holds a third party's frame (all mapped to 127.0.0.1, see
+// launch()).
+const barrierRequests = [];
+function barrierRoute(req, res) {
+  const url = new URL(req.url, site);
+  const port = server.address().port;
+  const third = `http://localhost:${port}/barrier`;
+  barrierRequests.push(`${req.headers.host}${req.url}`);
+  const send = (type, body, headers = {}) => {
+    res.writeHead(200, { 'Content-Type': type, 'Access-Control-Allow-Origin': '*', ...headers });
+    res.end(body);
+  };
+  switch (url.pathname) {
+    case '/barrier/catalog.json':
+      send('application/json', JSON.stringify([
+        { uuid: 'oblada-default', title: 'Default', hidden: true, default_enabled: true,
+          first_party_protections: true, permission_mask: 1, langs: [],
+          sources: [{ url: `${site}barrier/default.txt`, title: 'd', format: 'Standard' }] },
+        { uuid: 'oblada-additional', title: 'Additional', hidden: false, default_enabled: true,
+          first_party_protections: false, langs: [],
+          sources: [{ url: `${site}barrier/additional.txt`, title: 'a', format: 'Standard' }] },
+      ]));
+      return true;
+    case '/barrier/default.txt':
+      send('text/plain', '! Title: Oblada test default\n/barrier/ad.js\n/barrier/ad-first.js\n');
+      return true;
+    case '/barrier/additional.txt':
+      send('text/plain', [
+        '! Title: Oblada test additional',
+        '/barrier/tracker.png',
+        '/barrier/stand-in.js$script,redirect=noopjs',
+        '$removeparam=utm_source',
+        'oblada-page.com##.oblada-specific',
+        '##.oblada-generic',
+        '##.oblada-own',
+        'oblada-page.com##div.oblada-procedural:has-text(Sponsored)',
+        'oblada-page.com##+js(set-constant, obladaScriptlet, true)',
+        '/barrier/socket-ad$websocket',
+        // Where www.microsoft.com leads (CNAME uncloaking).
+        '||edgekey.net^$image',
+        '||akamaiedge.net^$image',
+      ].join('\n') + '\n');
+      return true;
+    case '/barrier/data/query-filter.json': {
+      // Brave's list, and a parameter of the test's own.
+      const list = JSON.parse(fs.readFileSync(new URL('../oblada/browser/barrier/lists/query-filter.json',
+        import.meta.url), 'utf8'));
+      list.push({ include: ['*://*/*'], exclude: [], params: ['oblada_click'] });
+      send('application/json', JSON.stringify(list));
+      return true;
+    }
+    case '/barrier/workers.html':
+      // The page's fingerprint, and its workers'.
+      send('text/html', `<!doctype html><title>Workers</title><script src="probe.js"></script><script>
+        const ask = (worker) => new Promise((r) => { worker.onmessage = (e) => r(e.data); });
+        window.results = (async () => {
+          const results = { page: probe() };
+          results.dedicated = await ask(new Worker('dedicated.js'));
+          const shared = new SharedWorker('shared.js');
+          results.shared = await ask(shared.port);
+          if (navigator.serviceWorker) {
+            const registration = await navigator.serviceWorker.register('sw.js');
+            await navigator.serviceWorker.ready;
+            const channel = new MessageChannel();
+            registration.active.postMessage(null, [channel.port2]);
+            results.service = await ask(channel.port1);
+          }
+          return JSON.stringify(results);
+        })();</script>`);
+      return true;
+    case '/barrier/probe.js':
+      send('text/javascript', `function probe() {
+        const canvas = new OffscreenCanvas(60, 20);
+        const c = canvas.getContext('2d');
+        const gradient = c.createLinearGradient(0, 0, 60, 20);
+        gradient.addColorStop(0, '#f60');
+        gradient.addColorStop(1, '#069');
+        c.fillStyle = gradient;
+        c.fillRect(0, 0, 60, 20);
+        let hash = 0;
+        for (const v of c.getImageData(0, 0, 60, 20).data) hash = (hash * 31 + v) >>> 0;
+        return { canvas: hash, cores: navigator.hardwareConcurrency };
+      }`);
+      return true;
+    case '/barrier/dedicated.js':
+      send('text/javascript', "importScripts('probe.js'); postMessage(probe());");
+      return true;
+    case '/barrier/shared.js':
+      send('text/javascript', "importScripts('probe.js'); onconnect = (e) => e.ports[0].postMessage(probe());");
+      return true;
+    case '/barrier/sw.js':
+      send('text/javascript', `importScripts('probe.js');
+        onmessage = (e) => e.ports[0].postMessage(probe());
+        oninstall = () => skipWaiting();
+        onactivate = (e) => e.waitUntil(clients.claim());`);
+      return true;
+    case '/barrier/events':
+      // An EventSource's stream, which stays open.
+      res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Access-Control-Allow-Origin': '*' });
+      res.write(': open\n\n');
+      openSockets.push(res.socket);
+      return true;
+    case '/barrier/amp.html':
+      send('text/html', `<!doctype html><html amp lang="en"><head><meta charset="utf-8">
+        <title>AMP</title><link rel="canonical" href="http://oblada-page.com:${port}/barrier/original.html">
+        </head><body>AMP</body></html>`);
+      return true;
+    case '/barrier/not-amp.html':
+      send('text/html', `<!doctype html><html lang="en"><head><title>Not AMP</title>
+        <link rel="canonical" href="http://oblada-page.com:${port}/barrier/original.html">
+        </head><body>Not AMP</body></html>`);
+      return true;
+    case '/barrier/google-frame.html':
+      // What Google's sign-in sees of its cookies in the site's pages.
+      send('text/html', `<!doctype html><title>Google's frame</title><script>
+        window.seen = new Promise((r) => onmessage = (e) => r(e.data));</script>
+        <iframe src="${google}/cookie.html"></iframe>`);
+      return true;
+    case '/barrier/cname.html':
+      send('text/html', `<!doctype html><title>CNAME</title>
+        <img id=cname src="https://www.microsoft.com/favicon.ico?oblada">`);
+      return true;
+    case '/barrier/page.html':
+      send('text/html', `<!doctype html><title>Barrier</title>
+        <script src="${third}/ad.js"></script>
+        <script src="/barrier/ad-first.js"></script>
+        <script src="${third}/ok.js"></script>
+        <script src="${third}/stand-in.js"></script>
+        <img id=tracker src="${third}/tracker.png">
+        <div class=oblada-specific id=specific>specific</div>
+        <div class=oblada-generic id=generic><img src="${third}/banner.png"></div>
+        <div class=oblada-own id=own>The site's own text</div>
+        <div class=oblada-procedural id=procedural>Sponsored</div>
+        <div class=oblada-procedural id=kept>News</div>
+        <script>window.scriptletSeen = window.obladaScriptlet;</script>`);
+      return true;
+    case '/barrier/data/debounce.json':
+    case '/barrier/data/request-otr.json':
+    case '/barrier/data/webcompat-exceptions.json':
+    case '/barrier/data/https-upgrade-exceptions-list.txt':
+      // Oblada keeps its own.
+      res.writeHead(404);
+      res.end();
+      return true;
+    case '/barrier/frame.html':
+      send('text/html', `<!doctype html><script>
+        parent.postMessage(localStorage.tp ?? 'empty', '*');
+        localStorage.tp = 'kept';</script>`);
+      return true;
+    case '/barrier/frames.html':
+      send('text/html', `<!doctype html><title>Third party</title><script>
+        window.seen = new Promise((r) => onmessage = (e) => r(e.data));</script>
+        <iframe src="${third}/frame.html"></iframe>`);
+      return true;
+  }
+  if (url.pathname.endsWith('.js')) {
+    send('text/javascript', `window.loaded = (window.loaded || []).concat(${JSON.stringify(url.pathname)});`);
+    return true;
+  }
+  if (url.pathname.endsWith('.png')) {
+    send('image/png', Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64'));
+    return true;
+  }
+  return false;
+}
+
+// What a page can tell a device by.
+const FINGERPRINT = `(() => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 80;
+  canvas.height = 30;
+  const c = canvas.getContext('2d');
+  c.fillStyle = '#f60';
+  c.fillRect(0, 0, 80, 30);
+  c.fillStyle = '#069';
+  c.font = '15px Arial';
+  c.fillText('Oblada, Procida', 2, 20);
+  return JSON.stringify({
+    canvas: canvas.toDataURL(),
+    cores: navigator.hardwareConcurrency,
+    screen: screen.width - innerWidth,
+    languages: navigator.languages.length,
+  });
+})()`;
+
+// Speech synthesis's voices' names, once it has them.
+const VOICES = `new Promise((r) => {
+  const names = () => speechSynthesis.getVoices().map((v) => v.name);
+  if (names().length) r(names());
+  speechSynthesis.onvoiceschanged = () => r(names());
+  setTimeout(() => r(names()), 3000);
+})`;
+
+async function barrierChecks(o) {
+  const port = server.address().port;
+  const pageSite = `http://oblada-page.com:${port}/`;
+  const load = async (url) => {
+    const { targetId } = await o.send('Target.createTarget', { url });
+    const s = await o.attach(targetId);
+    // (Not the tab's first document, about:blank, already complete.)
+    await until(`${url} loaded`, () => o.evaluate(
+      'location.href !== "about:blank" && document.readyState === "complete"', s));
+    return { s, targetId };
+  };
+  await until('the Barrier\'s lists', () => barrierRequests.some((r) => r.includes('additional.txt')), 30000);
+  // The engines are compiled from them in the background.
+  await sleep(3000);
+
+  // Blocking.
+  const { s: page, targetId: pageId } = await load(`${pageSite}barrier/page.html`);
+  const loaded = await o.evaluate('window.loaded ?? []', page);
+  check('the Barrier blocks third parties\' trackers and ads', !loaded.includes('/barrier/ad.js') &&
+    loaded.includes('/barrier/ok.js'), loaded.join(' '));
+  check('…but not the site\'s own, out of aggressive blocking', loaded.includes('/barrier/ad-first.js'));
+  check('…answers some with a stand-in', !barrierRequests.some((r) => r.includes('stand-in.js')));
+  check('…blocks images', await o.evaluate('document.getElementById("tracker").naturalWidth === 0', page));
+  const hidden = await o.evaluate(`Object.fromEntries(['specific', 'generic', 'own', 'procedural', 'kept']
+    .map((id) => [id, getComputedStyle(document.getElementById(id)).display === 'none']))`, page);
+  check('the Barrier hides what filters select (specific, generic, procedural)',
+    hidden.specific && hidden.generic && hidden.procedural && !hidden.kept, JSON.stringify(hidden));
+  check('…but not the site\'s own content, out of aggressive blocking', !hidden.own);
+  check('the Barrier runs filters\' scriptlets before the page\'s scripts',
+    await o.evaluate('window.scriptletSeen', page) === true);
+  await o.evaluate(`fetch('http://localhost:${port}/barrier/data.js?utm_source=x&keep=1')`, page);
+  check('the Barrier strips parameters $removeparam names',
+    barrierRequests.some((r) => r.endsWith('/barrier/data.js?keep=1')));
+  check('Global Privacy Control is on', await o.evaluate('navigator.globalPrivacyControl', page) === true);
+  await o.evaluate(`['ad', 'ok'].forEach((s) => new WebSocket('ws://localhost:${port}/barrier/socket-' + s))`, page);
+  const sockets = await until('the WebSocket connections', () =>
+    barrierRequests.some((r) => r.endsWith('/barrier/socket-ok')), 10000).then(() => sleep(500))
+    .then(() => barrierRequests.filter((r) => r.startsWith('upgrade')), () => []);
+  check('the Barrier blocks WebSocket connections too', sockets.length === 1 &&
+    sockets[0].endsWith('/barrier/socket-ok'), sockets.join(' '));
+  await o.send('Target.closeTarget', { targetId: pageId });
+
+  // Addresses.
+  {
+    const { s, targetId } = await load(`${pageSite}barrier/x.html?fbclid=abc&keep=1`);
+    const href = await o.evaluate('location.href', s);
+    check('the Barrier strips tracking parameters from addresses', href.endsWith('/barrier/x.html?keep=1'), href);
+    await o.send('Target.closeTarget', { targetId });
+  }
+  {
+    const target = `${pageSite}barrier/debounced.html`;
+    const { s, targetId } = await load(`http://go.skimresources.com:${port}/?id=1&url=${encodeURIComponent(target)}`);
+    const href = await o.evaluate('location.href', s);
+    check('the Barrier skips tracking redirects', href === target &&
+      !barrierRequests.some((r) => r.startsWith('go.skimresources.com')), href);
+    await o.send('Target.closeTarget', { targetId });
+  }
+  {
+    // Brave's lists, from the test's server, with a parameter of its own.
+    await until('Brave\'s lists downloaded', () =>
+      barrierRequests.some((r) => r.includes('/barrier/data/query-filter.json')), 30000).catch(() => {});
+    await sleep(500);
+    const { s, targetId } = await load(`${pageSite}barrier/x.html?oblada_click=1&keep=1`);
+    const href = await o.evaluate('location.href', s);
+    check('the Barrier keeps Brave\'s lists up to date', href.endsWith('/barrier/x.html?keep=1'), href);
+    await o.send('Target.closeTarget', { targetId });
+  }
+  {
+    const amp = await load(`http://oblada-news.com:${port}/barrier/amp.html`);
+    const href = await o.evaluate('location.href', amp.s);
+    check('the Barrier leaves sites\' own AMP pages for the original',
+      href === `${pageSite}barrier/original.html`, href);
+    await o.send('Target.closeTarget', { targetId: amp.targetId });
+    const other = await load(`http://oblada-news.com:${port}/barrier/not-amp.html`);
+    const kept = await o.evaluate('location.href', other.s);
+    check('…but not other pages with a canonical link', kept.endsWith('/barrier/not-amp.html'), kept);
+    await o.send('Target.closeTarget', { targetId: other.targetId });
+  }
+
+  // Fingerprinting protection.
+  const fingerprint = async (url) => {
+    const { s, targetId } = await load(url);
+    const value = JSON.parse(await o.evaluate(FINGERPRINT, s));
+    value.voices = await o.evaluate(VOICES, s);
+    await o.send('Target.closeTarget', { targetId });
+    return value;
+  };
+  const here = await fingerprint(`${pageSite}barrier/fp.html`);
+  const again = await fingerprint(`${pageSite}barrier/fp.html?again`);
+  const there = await fingerprint(`http://localhost:${port}/barrier/fp.html`);
+  const real = await fingerprint(`http://oblada-off.com:${port}/barrier/fp.html`);
+  check('fingerprinting protection: a canvas reads the same on a site, another way on another',
+    here.canvas === again.canvas && here.canvas !== there.canvas && here.canvas !== real.canvas);
+  check('…fewer cores, up to the real ones', here.cores <= real.cores && here.cores >= Math.min(4, real.cores),
+    `${here.cores} of ${real.cores}`);
+  check('…the screen is the window, give or take a few pixels', here.screen >= 0 && here.screen <= 8,
+    `${here.screen}`);
+  check('…one language', here.languages === 1, `${here.languages} (${real.languages} for real)`);
+  const extra = here.voices.filter((v) => !real.voices.includes(v));
+  check('…one voice more, made up', real.voices.length === 0 ||
+    (here.voices.length === real.voices.length + 1 && extra.length === 1),
+    `${extra.join(', ')}, ${real.voices.length} real ones`);
+  {
+    const { s, targetId } = await load(`http://oblada-off.com:${port}/barrier/page.html`);
+    check('a site with the Barrier down gets everything',
+      (await o.evaluate('window.loaded ?? []', s)).includes('/barrier/ad.js'));
+    await o.send('Target.closeTarget', { targetId });
+  }
+  {
+    // localhost: service workers need a secure context.
+    const workers = async (url) => {
+      const { s, targetId } = await load(url);
+      const value = JSON.parse(await o.evaluate('window.results', s));
+      await o.send('Target.closeTarget', { targetId });
+      return value;
+    };
+    const farbled = await workers(`http://localhost:${port}/barrier/workers.html`);
+    const real = await workers(`http://oblada-off.com:${port}/barrier/workers.html`);
+    const same = (a, b) => !!a && !!b && a.canvas === b.canvas && a.cores === b.cores;
+    check('fingerprinting protection reaches workers: dedicated, shared, service workers',
+      same(farbled.page, farbled.dedicated) && same(farbled.page, farbled.shared) &&
+      same(farbled.page, farbled.service) && farbled.page.canvas !== real.page.canvas &&
+      same(real.page, real.shared), JSON.stringify({ farbled, real }));
+  }
+  {
+    const { s, targetId } = await load(`http://localhost:${port}/barrier/x.html`);
+    const sockets = await o.evaluate(`new Promise((resolve) => {
+      const states = [];
+      const sockets = [];
+      const done = () => {
+        sockets.forEach((ws) => ws.close());
+        resolve(states);
+      };
+      for (let i = 0; i < 31; i++) {
+        const ws = new WebSocket('ws://localhost:${port}/barrier/pool');
+        sockets.push(ws);
+        const settle = (state) => {
+          states[i] = state;
+          if (states.filter(Boolean).length === 31) done();
+        };
+        ws.onopen = () => settle('open');
+        ws.onerror = () => settle('error');
+      }
+      setTimeout(done, 10000);
+    })`, s);
+    const open = sockets.filter((state) => state === 'open').length;
+    check('a site may have 30 WebSockets open at once, no more', open === 30 &&
+      sockets.filter((state) => state === 'error').length === 1, `${open} open`);
+    const events = await o.evaluate(`new Promise((resolve) => {
+      const sources = [];
+      for (let i = 0; i < 251; i++) {
+        sources.push(new EventSource('http://oblada-events.com:${port}/barrier/events'));
+      }
+      setTimeout(() => {
+        const states = sources.map((source) => source.readyState);
+        sources.forEach((source) => source.close());
+        resolve(states);
+      }, 2000);
+    })`, s);
+    const refused = events.filter((state) => state === 2).length;
+    check('…and 250 EventSource connections', refused === 1 && events[250] === 2,
+      `${refused} refused`);
+    await o.send('Target.closeTarget', { targetId });
+  }
+  {
+    // Google sign-in on other sites: asked about first.
+    const auth = `${google}/o/oauth2/auth?client_id=oblada&redirect_uri=storagerelay%3A%2F%2Fhttp%2Fsite`;
+    const signIn = async (from) => {
+      const { s, targetId } = await load(from);
+      await o.evaluate(`location.href = ${JSON.stringify(auth)}`, s);
+      await until('the sign-in', () => o.evaluate(
+        'location.host.startsWith("accounts.google.com") && document.readyState === "complete"', s), 10000)
+        .catch(() => {});
+      return { s, targetId };
+    };
+    const title = (s) => until('a title', () => o.evaluate('document.title', s), 5000).catch(() => '');
+    const allowed = await signIn(`${pageSite}barrier/x.html`);
+    const asked = await o.evaluate('!!document.getElementById("allow") && document.title', allowed.s);
+    await o.evaluate('document.getElementById("allow").click()', allowed.s);
+    await until('Google', () => o.evaluate('document.title === "Google"', allowed.s), 10000).catch(() => {});
+    check('Google sign-in on another site: asked about, then allowed',
+      !!asked && asked.includes('oblada-page.com') && await title(allowed.s) === 'Google', asked);
+    await o.send('Target.closeTarget', { targetId: allowed.targetId });
+    const cookies = async (url) => {
+      const { s, targetId } = await load(url);
+      const seen = await o.evaluate('window.seen', s);
+      await o.send('Target.closeTarget', { targetId });
+      return seen;
+    };
+    const here = await cookies(`${pageSite}barrier/google-frame.html`);
+    const elsewhere = await cookies(`http://oblada-tp.com:${port}/barrier/google-frame.html`);
+    check('…and gets Google\'s cookies in that site\'s pages only', here === 'signed_in=yes' &&
+      elsewhere === 'none', `${here}, ${elsewhere} elsewhere`);
+    const blocked = await signIn(`http://oblada-tp.com:${port}/barrier/x.html`);
+    await o.evaluate('document.getElementById("block").click()', blocked.s);
+    await sleep(1000);
+    await o.send('Target.closeTarget', { targetId: blocked.targetId });
+    const before = barrierRequests.filter((r) => r.startsWith('google /o/oauth2')).length;
+    const again = await signIn(`http://oblada-tp.com:${port}/barrier/x.html`);
+    const page = await o.evaluate('[!!document.getElementById("block"), document.title]', again.s);
+    check('…or refused, then blocked without asking', !page[0] && /oblada-tp\.com/.test(page[1]) &&
+      barrierRequests.filter((r) => r.startsWith('google /o/oauth2')).length === before, page[1]);
+    await o.send('Target.closeTarget', { targetId: again.targetId });
+  }
+  if (process.env.OBLADA_SMOKE_NETWORK !== '0') {
+    // www.microsoft.com is an alias of Akamai's hosts, which the test's list blocks.
+    const image = async (url) => {
+      const { s, targetId } = await load(url);
+      const width = await o.evaluate('document.getElementById("cname").naturalWidth', s);
+      await o.send('Target.closeTarget', { targetId });
+      return width;
+    };
+    const cloaked = await image(`${pageSite}barrier/cname.html`);
+    const real = await image(`http://oblada-off.com:${port}/barrier/cname.html`);
+    check('the Barrier blocks trackers behind other names (CNAME uncloaking)', cloaked === 0 && real > 0,
+      `${cloaked}, ${real} without the Barrier`);
+  }
+
+  // Storage.
+  {
+    const frames = `http://oblada-tp.com:${port}/barrier/frames.html`;
+    const first = await load(frames);
+    const before = await o.evaluate('window.seen', first.s);
+    // Kept while the site is open…
+    const second = await load(frames);
+    const meanwhile = await o.evaluate('window.seen', second.s);
+    await o.send('Target.closeTarget', { targetId: first.targetId });
+    await o.send('Target.closeTarget', { targetId: second.targetId });
+    await sleep(3000);
+    // …and gone once it's closed.
+    const third = await load(frames);
+    const after = await o.evaluate('window.seen', third.s);
+    await o.send('Target.closeTarget', { targetId: third.targetId });
+    check('third parties\' storage goes once their site is closed',
+      before === 'empty' && meanwhile === 'kept' && after === 'empty', `${before} → ${meanwhile} → ${after}`);
+  }
+  {
+    const forget = `http://oblada-forget.com:${port}/barrier/x.html`;
+    const first = await load(forget);
+    await o.evaluate('localStorage.kept = "yes"', first.s);
+    await o.send('Target.closeTarget', { targetId: first.targetId });
+    // Kept while another of its tabs is open…
+    const second = await load(forget);
+    const meanwhile = await o.evaluate('localStorage.kept ?? "gone"', second.s);
+    await o.send('Target.closeTarget', { targetId: second.targetId });
+    await sleep(3000);
+    // …and gone once the last one closes.
+    const third = await load(forget);
+    const kept = await o.evaluate('localStorage.kept ?? "gone"', third.s);
+    await o.send('Target.closeTarget', { targetId: third.targetId });
+    check('a site set to be forgotten is, once closed', meanwhile === 'yes' && kept === 'gone',
+      `${meanwhile} → ${kept}`);
+  }
+
+  // Settings > Oblada, and its switch that turns the Barrier off.
+  {
+    const { s, targetId } = await load('chrome://settings/oblada');
+    const text = await until('Settings > Oblada', async () => {
+      const t = await o.text(s);
+      return t.includes('DANGEROUS') && t;
+    }, 10000).catch(() => o.text(s));
+    check('Settings > Oblada has the Barrier, its privacy settings and its switch',
+      /Barrier/.test(text) && /Global Privacy Control/.test(text) && text.includes('DANGEROUS'));
+    const send = (...args) => o.evaluate(`import('chrome://resources/js/cr.js').then((cr) =>
+      cr.sendWithPromise(${args.map((a) => JSON.stringify(a)).join(', ')}))`, s);
+    await send('obladaBarrierSetEnabled', false);
+    const off = await load(`${pageSite}barrier/page.html?off`);
+    check('the switch turns the Barrier off at once',
+      (await o.evaluate('window.loaded ?? []', off.s)).includes('/barrier/ad.js'));
+    await o.send('Target.closeTarget', { targetId: off.targetId });
+    await send('obladaBarrierSetEnabled', true);
+    await o.send('Target.closeTarget', { targetId });
+  }
 }
 
 async function closeChecks(o) {
@@ -1093,6 +1625,12 @@ async function firstRunChecks() {
 const focus = watchFocus();
 let oblada;
 try {
+  // OBLADA_SMOKE_ONLY=barrier: only the Barrier's checks.
+  if (process.env.OBLADA_SMOKE_ONLY === 'barrier') {
+    oblada = await launch();
+    await barrierChecks(oblada);
+    throw new Error('only the Barrier\'s checks ran');
+  }
   await firstRunChecks();
   oblada = await launch();
   await coreChecks(oblada);
@@ -1102,6 +1640,7 @@ try {
   await mediaChecks(oblada);
   await containerChecks(oblada);
   await firefoxChecks(oblada);
+  await barrierChecks(oblada);
   if (process.env.OBLADA_SMOKE_NETWORK !== '0') await amoChecks(oblada);
   const width = await widthBeforeRestart(oblada);
   await oblada.quit();
@@ -1118,7 +1657,9 @@ try {
   await oblada?.kill();
   const { names, tookFocus } = focus.stop();
   check('never took focus', !tookFocus, names.join(', '));
+  openSockets.forEach((socket) => socket.destroy());
   server.close();
+  googleServer.close();
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 process.exit(results.every(Boolean) ? 0 : 1);

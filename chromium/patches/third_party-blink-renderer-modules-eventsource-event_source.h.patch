@@ -1,0 +1,21 @@
+diff --git a/third_party/blink/renderer/modules/eventsource/event_source.h b/third_party/blink/renderer/modules/eventsource/event_source.h
+index 7cc2c1ff4a..b17092fe25 100644
+--- a/third_party/blink/renderer/modules/eventsource/event_source.h
++++ b/third_party/blink/renderer/modules/eventsource/event_source.h
+@@ -32,6 +32,7 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_EVENTSOURCE_EVENT_SOURCE_H_
+ #define THIRD_PARTY_BLINK_RENDERER_MODULES_EVENTSOURCE_EVENT_SOURCE_H_
+ 
++#include "oblada/blink/connection_pools.h"  // Oblada
+ #include "base/memory/scoped_refptr.h"
+ #include "third_party/blink/renderer/bindings/core/v8/active_script_wrappable.h"
+ #include "third_party/blink/renderer/core/dom/events/event_target.h"
+@@ -128,6 +129,8 @@ class MODULES_EXPORT EventSource final
+   KURL current_url_;
+   bool with_credentials_;
+   State state_;
++  // Oblada: the connection's place in its site's pool.
++  std::unique_ptr<oblada_farbling::PooledConnection> oblada_pooled_connection_;
+ 
+   Member<EventSourceParser> parser_;
+   Member<ThreadableLoader> loader_;

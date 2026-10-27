@@ -1,0 +1,14 @@
+diff --git a/third_party/blink/renderer/core/frame/web_local_frame_impl.h b/third_party/blink/renderer/core/frame/web_local_frame_impl.h
+index c8806c6e84..fe009687d5 100644
+--- a/third_party/blink/renderer/core/frame/web_local_frame_impl.h
++++ b/third_party/blink/renderer/core/frame/web_local_frame_impl.h
+@@ -368,6 +368,9 @@ class CORE_EXPORT WebLocalFrameImpl final
+   void WasHidden() override;
+   void WasShown() override;
+   void SetAllowsCrossBrowsingInstanceFrameLookup() override;
++  void SetObladaFarbling(uint64_t token,
++                         uint32_t exceptions,
++                         bool reduce_language) override;  // Oblada
+   void NotifyUserActivation(
+       mojom::blink::UserActivationNotificationType notification_type) override;
+   bool HasStickyUserActivation() override;

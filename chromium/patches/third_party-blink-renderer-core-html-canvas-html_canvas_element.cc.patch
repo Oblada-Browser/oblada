@@ -1,0 +1,51 @@
+diff --git a/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc b/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
+index 2a5404e4cf..df9a64bf38 100644
+--- a/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
++++ b/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
+@@ -33,6 +33,7 @@
+ #include <memory>
+ #include <utility>
+ 
++#include "oblada/blink/farbling.h"  // Oblada
+ #include "base/auto_reset.h"
+ #include "base/feature_list.h"
+ #include "base/functional/callback_helpers.h"
+@@ -140,6 +141,7 @@
+ #include "ui/gfx/geometry/rect_conversions.h"
+ #include "ui/gfx/geometry/rect_f.h"
+ #include "ui/gfx/geometry/size_conversions.h"
++#include "third_party/skia/include/core/SkBitmap.h"  // Oblada
+ #include "ui/gfx/geometry/skia_conversions.h"
+ #include "v8/include/v8.h"
+ 
+@@ -1459,8 +1461,28 @@ String HTMLCanvasElement::ToDataURLInternal(
+ 
+   scoped_refptr<StaticBitmapImage> image_bitmap = Snapshot(source_buffer);
+   if (image_bitmap) {
+-    std::unique_ptr<ImageDataBuffer> data_buffer =
+-        ImageDataBuffer::Create(image_bitmap);
++    std::unique_ptr<ImageDataBuffer> data_buffer;
++    // Oblada: faint noise, for fingerprinting protection, on a copy.
++    SkBitmap oblada_bitmap;
++    if (oblada_farbling::IsOn(GetExecutionContext(), oblada_farbling::kCanvas)) {
++      sk_sp<SkImage> image =
++          image_bitmap->PaintImageForCurrentFrame().GetSwSkImage();
++      if (image &&
++          oblada_bitmap.tryAllocPixels(image->imageInfo().makeColorType(
++              kRGBA_8888_SkColorType)) &&
++          image->readPixels(oblada_bitmap.pixmap(), 0, 0)) {
++        oblada_farbling::NoiseImage(
++            GetExecutionContext(),
++            UNSAFE_BUFFERS(
++                base::span(static_cast<uint8_t*>(oblada_bitmap.getPixels()),
++                           oblada_bitmap.computeByteSize())),
++            oblada_bitmap.width(), oblada_bitmap.height());
++        data_buffer = ImageDataBuffer::Create(oblada_bitmap.pixmap());
++      }
++    }
++    if (!data_buffer) {
++      data_buffer = ImageDataBuffer::Create(image_bitmap);
++    }
+     if (!data_buffer)
+       return String("data:,");
+ 

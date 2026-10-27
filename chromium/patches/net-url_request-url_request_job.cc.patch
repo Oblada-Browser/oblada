@@ -1,0 +1,20 @@
+diff --git a/net/url_request/url_request_job.cc b/net/url_request/url_request_job.cc
+index 80a9c132c2..2eedc426ba 100644
+--- a/net/url_request/url_request_job.cc
++++ b/net/url_request/url_request_job.cc
+@@ -346,6 +346,15 @@ GURL URLRequestJob::ComputeReferrerForPolicy(
+       original_referrer.SchemeIsCryptographic() &&
+       !destination.SchemeIsCryptographic();
+ 
++  // Oblada: policies that send more than the origin across origins send only
++  // it (strict-origin-when-cross-origin), as Brave does.
++  if (base::FeatureList::IsEnabled(features::kObladaReferrerCap) &&
++      (policy == ReferrerPolicy::CLEAR_ON_TRANSITION_FROM_SECURE_TO_INSECURE ||
++       policy == ReferrerPolicy::ORIGIN_ONLY_ON_TRANSITION_CROSS_ORIGIN ||
++       policy == ReferrerPolicy::NEVER_CLEAR)) {
++    policy = ReferrerPolicy::REDUCE_GRANULARITY_ON_TRANSITION_CROSS_ORIGIN;
++  }
++
+   switch (policy) {
+     case ReferrerPolicy::CLEAR_ON_TRANSITION_FROM_SECURE_TO_INSECURE:
+       if (secure_referrer_but_insecure_destination)

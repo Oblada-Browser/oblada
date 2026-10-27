@@ -1,0 +1,19 @@
+diff --git a/third_party/blink/renderer/modules/webaudio/audio_buffer.h b/third_party/blink/renderer/modules/webaudio/audio_buffer.h
+index 0dd11f830e..5936658230 100644
+--- a/third_party/blink/renderer/modules/webaudio/audio_buffer.h
++++ b/third_party/blink/renderer/modules/webaudio/audio_buffer.h
+@@ -118,11 +118,14 @@ class MODULES_EXPORT AudioBuffer final : public ScriptWrappable {
+ 
+  private:
+   bool CreatedSuccessfully(unsigned desired_number_of_channels) const;
++  void ObladaFarble();  // Oblada
+ 
+   float sample_rate_;
+   uint32_t length_;
+ 
+   HeapVector<Member<DOMFloat32Array>> channels_;
++  // Oblada: its samples were scaled, for fingerprinting protection (once).
++  bool oblada_farbled_ = false;
+ };
+ 
+ // Shared data that audio threads can hold onto.

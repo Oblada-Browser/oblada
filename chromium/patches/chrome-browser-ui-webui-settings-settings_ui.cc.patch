@@ -1,18 +1,29 @@
 diff --git a/chrome/browser/ui/webui/settings/settings_ui.cc b/chrome/browser/ui/webui/settings/settings_ui.cc
-index c1bb5d445e..1e6e948bff 100644
+index c1bb5d445e..3b3db1e274 100644
 --- a/chrome/browser/ui/webui/settings/settings_ui.cc
 +++ b/chrome/browser/ui/webui/settings/settings_ui.cc
-@@ -4,6 +4,9 @@
+@@ -4,6 +4,10 @@
  
  #include "chrome/browser/ui/webui/settings/settings_ui.h"
  
 +#include "oblada/browser/about/about_page.h"  // Oblada
++#include "oblada/browser/settings/barrier_handler.h"  // Oblada
 +#include "oblada/browser/settings/oblada_page.h"  // Oblada
 +
  #include <stddef.h>
  
  #include <memory>
-@@ -482,6 +485,8 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
+@@ -242,6 +246,9 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
+       "worker-src blob: chrome://resources 'self';");
+ 
+   AddSettingsPageUIHandler(std::make_unique<AppearanceHandler>(web_ui));
++  // Oblada: Settings > Oblada's Barrier.
++  web_ui->AddMessageHandler(
++      std::make_unique<oblada::settings::BarrierHandler>(profile));
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+   AddSettingsPageUIHandler(std::make_unique<LanguagesHandler>(profile));
+@@ -482,6 +489,8 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
  #endif
  
    AddLocalizedStrings(html_source, profile, web_ui->GetWebContents());
@@ -21,7 +32,7 @@ index c1bb5d445e..1e6e948bff 100644
    AddSecurityData(html_source);
  
    ManagedUIHandler::Initialize(web_ui, html_source);
-@@ -658,9 +663,12 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
+@@ -658,9 +667,12 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
    // Within the AI subpage are separate sections for Glic, for GEIC, and for all
    // other AI features. The visibility of these is separately controlled, but
    // we want to show the subpage if any of them are enabled.
@@ -36,7 +47,7 @@ index c1bb5d445e..1e6e948bff 100644
    html_source->AddBoolean("showAiPageAiFeatureSection",
                            show_ai_features_section);
  
-@@ -914,9 +922,7 @@ void SettingsUI::UpdateShowGlicState() {
+@@ -914,9 +926,7 @@ void SettingsUI::UpdateShowGlicState() {
    base::DictValue update;
    update.Set("showGlicSettings", show_glic);
    update.Set("glicDisallowedByAdmin", enablement.DisallowedByAdmin());

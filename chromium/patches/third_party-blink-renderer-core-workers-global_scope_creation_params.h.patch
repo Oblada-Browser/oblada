@@ -1,0 +1,22 @@
+diff --git a/third_party/blink/renderer/core/workers/global_scope_creation_params.h b/third_party/blink/renderer/core/workers/global_scope_creation_params.h
+index d5a652b33a..1a17106d37 100644
+--- a/third_party/blink/renderer/core/workers/global_scope_creation_params.h
++++ b/third_party/blink/renderer/core/workers/global_scope_creation_params.h
+@@ -36,6 +36,7 @@
+ #include "third_party/blink/renderer/platform/loader/fetch/https_state.h"
+ #include "third_party/blink/renderer/platform/weborigin/kurl.h"
+ #include "third_party/blink/renderer/platform/wtf/forward.h"
++#include "oblada/blink/farbling_settings.h"  // Oblada
+ 
+ namespace blink {
+ 
+@@ -291,6 +292,9 @@ struct CORE_EXPORT GlobalScopeCreationParams final {
+   mojo::PendingReceiver<mojom::blink::ReportingObserver>
+       coep_reporting_observer;
+   mojo::PendingReceiver<mojom::blink::ReportingObserver> dip_reporting_observer;
++
++  // Oblada: the creator's fingerprinting protection (oblada/blink/farbling.h).
++  ObladaFarblingSettings oblada_farbling;
+ };
+ 
+ }  // namespace blink

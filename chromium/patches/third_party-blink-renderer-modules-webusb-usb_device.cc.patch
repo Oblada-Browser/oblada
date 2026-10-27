@@ -1,0 +1,26 @@
+diff --git a/third_party/blink/renderer/modules/webusb/usb_device.cc b/third_party/blink/renderer/modules/webusb/usb_device.cc
+index 198d7c5e70..f3c453a458 100644
+--- a/third_party/blink/renderer/modules/webusb/usb_device.cc
++++ b/third_party/blink/renderer/modules/webusb/usb_device.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "third_party/blink/renderer/modules/webusb/usb_device.h"
+ 
++#include "oblada/blink/farbling.h"  // Oblada
++
+ #include <limits>
+ #include <optional>
+ #include <utility>
+@@ -183,6 +185,12 @@ USBDevice::~USBDevice() {
+   DCHECK(device_requests_.empty());
+ }
+ 
++// Oblada: made up, for fingerprinting protection (oblada/blink/farbling.h).
++String USBDevice::serialNumber() const {
++  return oblada_farbling::UsbSerialNumber(GetExecutionContext(),
++                                          Info().serial_number);
++}
++
+ bool USBDevice::IsInterfaceClaimed(wtf_size_t configuration_index,
+                                    wtf_size_t interface_index) const {
+   return configuration_index_ != kNotFound &&

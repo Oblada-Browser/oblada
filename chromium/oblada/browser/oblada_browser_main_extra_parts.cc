@@ -4,6 +4,7 @@
 #include "chrome/browser/chrome_browser_main_extra_parts.h"
 #include "chrome/common/pref_names.h"
 #include "components/prefs/pref_service.h"
+#include "oblada/browser/barrier/barrier.h"
 #include "oblada/browser/clean_links/mozilla_list.h"
 #include "oblada/browser/debug/window_snapshots.h"
 #include "oblada/browser/firefox_addons/firefox_addons.h"
@@ -28,6 +29,7 @@ class ObladaBrowserMainExtraParts : public ChromeBrowserMainExtraParts {
   }
 
   void PostBrowserStart() override {
+    barrier::Init();
     firefox_addons::Init();
     workspaces::Init();
     peek::Init();

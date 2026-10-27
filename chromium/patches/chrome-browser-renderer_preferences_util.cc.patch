@@ -1,0 +1,24 @@
+diff --git a/chrome/browser/renderer_preferences_util.cc b/chrome/browser/renderer_preferences_util.cc
+index 680a3df2d5..e4166bd5dc 100644
+--- a/chrome/browser/renderer_preferences_util.cc
++++ b/chrome/browser/renderer_preferences_util.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/renderer_preferences_util.h"
+ 
++#include "oblada/browser/barrier/barrier.h"  // Oblada
++
+ #include <stdint.h>
+ 
+ #include <string>
+@@ -164,6 +166,10 @@ void UpdateFromSystemSettings(blink::RendererPreferences* prefs,
+     prefs->is_global_privacy_control_setting_enabled = pref_service->GetBoolean(
+         universal_optout::prefs::kUniversalOptOutEnabled);
+   }
++  // Oblada: Global Privacy Control, as the Barrier says (Settings > Oblada >
++  // Privacy).
++  prefs->is_global_privacy_control_setting_enabled =
++      oblada::barrier::IsPrivacyOn(profile, oblada::barrier::kGpcPref);
+   prefs->enable_encrypted_media =
+       pref_service->GetBoolean(prefs::kEnableEncryptedMedia);
+ 

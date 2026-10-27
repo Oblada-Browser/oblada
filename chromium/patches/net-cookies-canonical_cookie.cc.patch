@@ -1,0 +1,25 @@
+diff --git a/net/cookies/canonical_cookie.cc b/net/cookies/canonical_cookie.cc
+index 6d4f43c1cb..bfe56cce8a 100644
+--- a/net/cookies/canonical_cookie.cc
++++ b/net/cookies/canonical_cookie.cc
+@@ -44,6 +44,8 @@
+ 
+ #include "net/cookies/canonical_cookie.h"
+ 
++#include <algorithm>  // Oblada
++
+ #include <limits>
+ #include <optional>
+ #include <string_view>
+@@ -287,6 +289,11 @@ base::Time CanonicalCookie::ValidateAndAdjustExpiryDate(
+   } else {
+     maximum_expiry_date = fixed_creation_date + base::Hours(3);
+   }
++  // Oblada: no longer than 6 months, as Brave keeps them.
++  if (base::FeatureList::IsEnabled(features::kObladaCookieExpiryCap)) {
++    maximum_expiry_date =
++        std::min(maximum_expiry_date, fixed_creation_date + base::Days(183));
++  }
+   if (expiry_date > maximum_expiry_date) {
+     return maximum_expiry_date;
+   }

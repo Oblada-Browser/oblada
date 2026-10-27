@@ -1,0 +1,261 @@
+diff --git a/third_party/rust/chromium_crates_io/gnrt_config.toml b/third_party/rust/chromium_crates_io/gnrt_config.toml
+index 1a7fbb295e..934d39af5c 100644
+--- a/third_party/rust/chromium_crates_io/gnrt_config.toml
++++ b/third_party/rust/chromium_crates_io/gnrt_config.toml
+@@ -113,6 +113,9 @@ removed_librs_template = "removed_lib.rs.hbs"
+ remove_crates = []
+ root = "chromium"
+ 
++[crate.adblock]
++extra_kv = { allow_unsafe = true }
++
+ [crate.addr2line]
+ allow_first_party_usage = false
+ extra_kv = { allow_unsafe = true }
+@@ -128,7 +131,9 @@ extra_kv = { allow_unsafe = true }
+ [crate.aho-corasick]
+ group = 'safe'
+ allow_first_party_usage = false
+-extra_kv = { allow_unsafe = false }
++# Oblada: its SIMD code (on arm64 too) is unsafe; Chromium built it for x86 tests
++# only, through regex, which Oblada ships (adblock, Brave's ad-blocking engine).
++extra_kv = { allow_unsafe = true }
+ 
+ [crate.android_system_properties]
+ extra_kv = { allow_unsafe = true }
+@@ -157,6 +162,9 @@ multiversion_cleanup_bug = "https://crbug.com/493648954"
+ [crate.array-init]
+ extra_kv = { allow_unsafe = true }
+ 
++[crate.arrayvec]
++extra_kv = { allow_unsafe = true }
++
+ [crate.autocfg.extra_kv]
+ allow_unsafe = false
+ 
+@@ -265,6 +273,12 @@ allow_unsafe = false
+ [crate.crc32fast.extra_kv]
+ allow_unsafe = true
+ 
++[crate.cssparser]
++extra_kv = { allow_unsafe = true }
++
++[crate.cssparser-macros]
++extra_kv = { allow_unsafe = false }
++
+ [crate.ctor]
+ extra_kv = { allow_unsafe = false }
+ 
+@@ -291,6 +305,14 @@ allow_unsafe = false
+ [crate.cxxbridge-macro.extra_kv]
+ allow_unsafe = false
+ 
++[crate.derive_more]
++extra_kv = { allow_unsafe = false }
++
++[crate.derive_more-impl]
++# Oblada: its docs are included in the macros' documentation.
++extra_input_roots = ['../README.md', '../doc']
++extra_kv = { allow_unsafe = false }
++
+ [crate.derivre.extra_kv]
+ allow_unsafe = false
+ 
+@@ -322,6 +344,12 @@ multiversion_cleanup_bug = "https://crbug.com/482994758"
+ [crate.displaydoc.extra_kv]
+ allow_unsafe = false
+ 
++[crate.dtoa]
++extra_kv = { allow_unsafe = true }
++
++[crate.dtoa-short]
++extra_kv = { allow_unsafe = true }
++
+ [crate.dtor]
+ extra_input_roots = ["../README.md"]
+ extra_kv = { allow_unsafe = false }
+@@ -362,6 +390,12 @@ allow_unsafe = false
+ [crate.fixed_decimal.extra_kv]
+ allow_unsafe = false
+ 
++# Oblada: for adblock (Brave's ad-blocking engine). Its build script only
++# detects nightly compilers, for features Oblada doesn't use.
++[crate.flatbuffers]
++remove_build_rs = true
++extra_kv = { allow_unsafe = true }
++
+ [crate.flate2]
+ ban_features = [
+     # `any_zlib` feature is banned because Chromium does not use the `zlib`
+@@ -384,6 +418,9 @@ allow_unsafe = true
+ [crate.font-types.extra_kv]
+ allow_unsafe = true
+ 
++[crate.form_urlencoded]
++extra_kv = { allow_unsafe = true }
++
+ [crate.fs2]
+ group = 'test'
+ allow_first_party_usage = false
+@@ -552,6 +589,12 @@ group = 'safe'
+ allow_first_party_usage = true
+ extra_kv = { allow_unsafe = false }
+ 
++[crate.idna]
++extra_kv = { allow_unsafe = true }
++
++[crate.idna_adapter]
++extra_kv = { allow_unsafe = false }
++
+ [crate.image]
+ extra_input_roots = ['../README.md']
+ extra_kv = { allow_unsafe = true }
+@@ -688,6 +731,9 @@ extra_kv = { allow_unsafe = true }
+ [crate.murmur3]
+ extra_kv = { allow_unsafe = false }
+ 
++[crate.new_debug_unreachable]
++extra_kv = { allow_unsafe = true }
++
+ [crate.nix]
+ group = 'test'
+ allow_first_party_usage = false
+@@ -739,6 +785,24 @@ extra_kv = { allow_unsafe = true }
+ [crate.parking_lot_core]
+ extra_kv = { allow_unsafe = true }
+ 
++[crate.percent-encoding]
++extra_kv = { allow_unsafe = true }
++
++[crate.phf]
++extra_kv = { allow_unsafe = false }
++
++[crate.phf_codegen]
++extra_kv = { allow_unsafe = false }
++
++[crate.phf_generator]
++extra_kv = { allow_unsafe = false }
++
++[crate.phf_macros]
++extra_kv = { allow_unsafe = false }
++
++[crate.phf_shared]
++extra_kv = { allow_unsafe = false }
++
+ [crate.png.extra_kv]
+ allow_unsafe = false
+ # Web tests (aka WPT tests, also formerly known as Layout Tests) require fast
+@@ -756,6 +820,9 @@ extra_kv = { allow_unsafe = true }
+ [crate.potential_utf.extra_kv]
+ allow_unsafe = true
+ 
++[crate.precomputed-hash]
++extra_kv = { allow_unsafe = false }
++
+ [crate.primal-check]
+ extra_kv = { allow_unsafe = false }
+ 
+@@ -781,8 +848,11 @@ cpp_api_from_rust = true
+ [crate.quote.extra_kv]
+ allow_unsafe = false
+ 
++[crate.rand]
++extra_kv = { allow_unsafe = true }
++
+ [crate.rand_core]
+-extra_kv = { allow_unsafe = false }
++extra_kv = { allow_unsafe = true }
+ 
+ [crate.read-fonts]
+ extra_input_roots = ['../generated', '../data/generated']
+@@ -796,7 +866,7 @@ extra_kv = { allow_unsafe = true }
+ extra_kv = { allow_unsafe = false }
+ 
+ [crate.regex]
+-group = 'test'
++# Oblada: adblock (Brave's ad-blocking engine) uses it, in the browser.
+ allow_first_party_usage = false
+ extra_kv = { allow_unsafe = true }
+ 
+@@ -819,6 +889,12 @@ allow_unsafe = false
+ extra_kv = { allow_unsafe = true }
+ shipped = false
+ 
++[crate.rustc-hash]
++extra_kv = { allow_unsafe = false }
++
++[crate.rustc_version]
++extra_kv = { allow_unsafe = false }
++
+ [crate.rustfft]
+ extra_kv = { allow_unsafe = true }
+ 
+@@ -838,6 +914,18 @@ extra_kv = { allow_unsafe = true }
+ [crate.scopeguard]
+ extra_kv = { allow_unsafe = true }
+ 
++[crate.seahash]
++extra_kv = { allow_unsafe = true }
++
++# Oblada: for adblock's css-validation (Brave's ad-blocking engine, the
++# procedural filters). Its build script writes a set of HTML attribute names.
++[crate.selectors]
++build_script_outputs = [ "ascii_case_insensitive_html_attributes.rs" ]
++extra_kv = { allow_unsafe = true }
++
++[crate.semver]
++extra_kv = { allow_unsafe = true }
++
+ [crate.serde]
+ build_script_outputs = [ "private.rs" ]
+ extra_kv = { allow_unsafe = false }
+@@ -861,6 +949,9 @@ extra_kv = { allow_unsafe = false }
+ [crate.serial_test_derive]
+ extra_kv = { allow_unsafe = false }
+ 
++[crate.servo_arc]
++extra_kv = { allow_unsafe = true }
++
+ [crate.sfv]
+ extra_kv = { allow_unsafe = false }
+ 
+@@ -874,7 +965,7 @@ allow_unsafe = true
+ allow_unstable_features = ["stdarch_arm_neon_intrinsics"]
+ 
+ [crate.siphasher]
+-group = 'test'
++# Oblada: phf uses it, for adblock's css-validation (Brave's ad-blocking engine).
+ allow_first_party_usage = false
+ extra_input_roots = ["../README.md"]
+ extra_kv = { allow_unsafe = true }
+@@ -975,11 +1066,17 @@ allow_unsafe = false
+ [crate.termcolor.extra_kv]
+ allow_unsafe = false
+ 
+-[crate.thiserror]
+-build_script_outputs = [ "private.rs" ]
++[crate.thiserror-impl]
+ extra_kv = { allow_unsafe = false }
+ 
+-[crate.thiserror-impl]
++# Oblada: for adblock (Brave's ad-blocking engine). Its build script only probes
++# for nightly backtrace support, which Oblada doesn't need.
++[crate."thiserror@v1"]
++remove_build_rs = true
++extra_kv = { allow_unsafe = false }
++
++[crate."thiserror@v2"]
++build_script_outputs = [ "private.rs" ]
+ extra_kv = { allow_unsafe = false }
+ 
+ [crate.timezone_provider]
+@@ -1039,6 +1136,9 @@ extra_kv = { allow_unsafe = false }
+ allow_first_party_usage = false
+ extra_kv = { allow_unsafe = true }
+ 
++[crate.url]
++extra_kv = { allow_unsafe = true }
++
+ [crate.utf16_iter]
+ license_files = ["LICENSE-APACHE"]
+ 

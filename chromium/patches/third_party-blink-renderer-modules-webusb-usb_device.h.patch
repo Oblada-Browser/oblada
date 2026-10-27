@@ -1,0 +1,13 @@
+diff --git a/third_party/blink/renderer/modules/webusb/usb_device.h b/third_party/blink/renderer/modules/webusb/usb_device.h
+index 1aa3303591..6cceea2e43 100644
+--- a/third_party/blink/renderer/modules/webusb/usb_device.h
++++ b/third_party/blink/renderer/modules/webusb/usb_device.h
+@@ -67,7 +67,7 @@ class USBDevice : public ScriptWrappable,
+   }
+   String manufacturerName() const { return Info().manufacturer_name; }
+   String productName() const { return Info().product_name; }
+-  String serialNumber() const { return Info().serial_number; }
++  String serialNumber() const;  // Oblada: in usb_device.cc
+   USBConfiguration* configuration() const;
+   HeapVector<Member<USBConfiguration>> configurations() const;
+   bool opened() const { return opened_; }

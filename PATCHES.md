@@ -21,7 +21,7 @@ Two kinds of changes are not patches:
 - **Logo images:** they are copied over Chromium's from `chromium/overrides/`, which
   `branding/export.sh` makes.
 
-There are 169 patches for Chromium 156 (`chromium/CHROMIUM_VERSION`). This file describes
+There are 251 patches for Chromium 156 (`chromium/CHROMIUM_VERSION`). This file describes
 each one, and how they depend on each other and on Oblada's code. Update it when a patch
 is added, removed or changes purpose.
 
@@ -57,11 +57,23 @@ source adds. Each pair is listed in the entries.
 | `chrome/browser/ui/views/tabs/common/tab_view.cc` | `chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h` (and `.cc`) | `CloseTabOrSelection()` |
 | `chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h` | `chrome/browser/ui/views/tabs/dragging/tab_drag_target.h` | overrides `GetInitiallyActiveTab()` |
 | `chrome/browser/ui/views/frame/multi_contents_view_drop_target_controller.cc` | `tab_drag_target.h`, `tab_drag_controller.h` and `.cc` | `GetInitiallyActiveTab()` (its default definition is in `tab_drag_controller.cc`) |
+| Blink's fingerprinting hooks (`canvas`, `webaudio`, `navigator_*`, `screen.cc`…) | `third_party/blink/renderer/core/execution_context/execution_context.h`, `third_party/blink/renderer/core/BUILD.gn` | `GetObladaFarbling()`, which `oblada/blink/farbling.h` reads, compiled into Blink's core |
+| `third_party/blink/renderer/core/frame/web_local_frame_impl.h` (and `.cc`) | `third_party/blink/public/web/web_local_frame.h` | overrides `SetObladaFarbling()` |
+| `third_party/blink/renderer/core/workers/dedicated_worker.cc`, `worker_global_scope.cc`, `worklet_global_scope.cc`, `threaded_worklet_messaging_proxy.cc`, `paint_worklet_global_scope_proxy.cc`, `layout_worklet_global_scope_proxy.cc` | `third_party/blink/renderer/core/workers/global_scope_creation_params.h` | `oblada_farbling` |
+| `shared_worker_content_settings_proxy.{h,cc}` (Blink's and content's), `service_worker_content_settings_proxy.{h,cc}` (Blink's and content's), `worker_global_scope.cc` | `third_party/blink/public/mojom/worker/worker_content_settings_proxy.mojom`, `third_party/blink/public/platform/web_content_settings_client.h` | `GetObladaFarbling()` |
+| content's `shared_worker_content_settings_proxy_impl.cc`, `service_worker_content_settings_proxy_impl.cc`; `chrome/browser/chrome_content_browser_client.{h,cc}` | `content/public/browser/content_browser_client.h` | `GetObladaWorkerFarbling()` |
+| `third_party/blink/renderer/modules/websockets/websocket_channel_impl.{h,cc}`, `modules/eventsource/event_source.{h,cc}` | `third_party/blink/renderer/core/BUILD.gn` | `oblada/blink/connection_pools.h`, compiled into Blink's core |
+| `net/url_request/url_request_job.cc`, `net/cookies/canonical_cookie.cc`, `third_party/blink/renderer/platform/weborigin/security_policy.cc` | `net/base/features.h` (and `.cc`) | `kObladaReferrerCap`, `kObladaCookieExpiryCap` |
+| `chrome/renderer/chrome_content_renderer_client.cc` | `chrome/renderer/BUILD.gn` | `//oblada/renderer/barrier` |
 
 **Oblada code that needs a patch to compile.**
-`chromium/oblada/browser/workspaces/workspace_slider.cc` calls
-`TabCollectionAnimatingLayoutManager::SnapToTarget()`, which the
-`tab_collection_animating_layout_manager` patches add.
+- `chromium/oblada/browser/workspaces/workspace_slider.cc` calls
+  `TabCollectionAnimatingLayoutManager::SnapToTarget()`, which the
+  `tab_collection_animating_layout_manager` patches add.
+- The Barrier's agent (`oblada/renderer/barrier`) calls `WebLocalFrame::SetObladaFarbling()`
+  (`web_local_frame.h`) and runs in `ISOLATED_WORLD_ID_OBLADA_BARRIER`
+  (`chrome_isolated_world_ids.h`); its engine's bridge (`oblada/components/barrier/adblock`)
+  needs the `adblock` crate (the `third_party/rust` patches).
 
 **Patches that only work together**, though each compiles alone:
 
@@ -173,6 +185,7 @@ source adds. Each pair is listed in the entries.
 | Split view | `multi_contents_view.{h,cc}`, `multi_contents_drop_target_view.cc`, `multi_contents_view_drop_target_controller.{h,cc}`, `multi_contents_resize_area.h`, `contents_container_view.cc`, `contents_container_outline.{h,cc}`, `split_tab_view.{h,cc}`, `tab_view_vertical_layout.cc`, `tab_drag_controller.{h,cc}`, `tab_drag_target.h` |
 | Peek | `web_contents_delegate.{h,cc}` (content), `render_widget_host_view_mac.mm`, `browser_web_contents_delegate.{h,cc}`, `tab_helpers.h` |
 | Clean links | `omnibox_context_menu_mixin.cc`, `link_to_text_menu_observer.cc`, `render_view_context_menu.cc`, `browser_commands.cc` |
+| Barrier | `chrome_content_browser_client.cc`, `location_bar_view.cc`, `render_view_context_menu.cc`, `browser_prefs.cc`, `settings_ui.cc`, `route.ts`, `router.ts`, `settings_main.html`, `prefs_util.cc`, `chrome_content_browser_client_navigation_throttles.cc`, `chrome_browser_interface_binders.cc`, `tab_helpers.cc`, `chrome_content_renderer_client.cc`, `chrome/renderer/BUILD.gn`, `chrome_isolated_world_ids.h`, `chrome_feature_list_creator.cc`, `renderer_preferences_util.cc`, `pref_watcher.cc`, `render_view_host_impl.cc`, `https_upgrades_interceptor.cc`, `https_upgrades_util.cc`, `net/base/features.{h,cc}`, `url_request_job.cc`, `canonical_cookie.cc`, `security_policy.cc`, `content_browser_client.h`, `chrome_content_browser_client.h`, the worker settings' proxies in content (4), Blink's fingerprinting protection (46), the Rust crates' (`Cargo.toml`, `Cargo.lock`, `gnrt_config.toml`, 10 `BUILD.gn`/`README.chromium`) |
 | Performance | `background_tab_loading_policy.cc`, `user_tuning/prefs.cc`, `download_features.cc`, `history_clusters/core/features.cc`, `chrome_browser_main_extra_parts_performance_manager.cc`, `soda_installer.cc`, `wasm_tts_engine_component_installer.{h,cc}`, `read_anything_service.cc`, `soda_component_installer.h`, `soda_language_pack_component_installer.h`, `screen_ai_component_installer.h` |
 | New Tab & welcome | `search.cc`, `contents_web_view.{h,cc}`, `startup_browser_creator_impl.cc` |
 | Extensions & Firefox add-ons | `chrome_download_manager_delegate.cc`, `cookies_api.cc`, `tabs_api.{h,cc}`, `tabs.json`, `extension_tab_util.cc`, `chrome_extensions_browser_api_provider.cc`, `chrome_extensions_api_provider.cc`, `manifest_v2_handler.cc`, `extensions_toolbar_desktop.cc` |
@@ -221,8 +234,10 @@ peek and the updater.
 `chrome-browser-prefs-browser_prefs.cc.patch`. `RegisterProfilePrefs()` calls
 `oblada::RegisterProfilePrefs()`, which registers the prefs of the containers, Firefox
 add-ons, New Tab page and workspaces; `RegisterLocalState()` calls
-`oblada::RegisterLocalStatePrefs()`, for the updater's. New Oblada prefs go in
-`oblada/browser/prefs.cc`, not here.
+`oblada::RegisterLocalStatePrefs()`, for the updater's. At the end of
+`RegisterProfilePrefs()`, `oblada::RegisterProfilePrefDefaults()` changes Chromium's own
+defaults, once they're registered (third-party cookies blocked, the Barrier's). New Oblada
+prefs go in `oblada/browser/prefs.cc`, not here.
 - Oblada code: `oblada/browser/prefs.h`.
 
 #### `chrome/browser/prefs/session_startup_pref.cc`
@@ -713,8 +728,11 @@ temporary container whose last tab was discarded was removed with its data.
 - "Copy Clean Link" after "Copy link address", for web links, enabled when the link has
   tracking parameters; counted in Chromium's metrics as the link copied. "Copy Clean Link
   to Highlight" (`link_to_text_menu_observer.cc`) is counted as "Copy link to highlight".
+- "Block an element", first among the developer items, on sites where the Barrier is up:
+  its element picker.
 - Oblada code: `oblada/browser/containers/containers.h`, `containers_menu_model.h`,
-  `oblada/browser/clean_links/clean_links.h`, `oblada/browser/l10n.h`.
+  `oblada/browser/clean_links/clean_links.h`, `oblada/browser/barrier/cosmetic_filters.h`,
+  `oblada/browser/l10n.h`.
 
 #### `chrome/browser/ui/views/tabs/shared/new_tab_button.h`, `.cc`
 `chrome-browser-ui-views-tabs-shared-new_tab_button.{h,cc}.patch`. A long press on the New
@@ -741,7 +759,9 @@ tab ▸" in the New Tab button's context menu.
 the sidebar, and over the active tab in horizon compact mode, which is the same kind
 (`oblada::sidebar::HasSidebarLocationBar()`).
 - **Look:** a translucent rounded rectangle without a focus ring.
-- **Additions:** the container chip and the site panel's button.
+- **Additions:** the container chip, the site panel's button and the Barrier's
+  (`oblada::barrier::AddBarrierButton()`, out of the sidebar, whose site panel has the
+  Barrier's controls instead), quiet like the site panel's.
 - **The site panel** has the bookmark star and the app's install instead
   (`HidePageActionsInPanel()`), and the site's information: no location icon for a site
   without warnings while the bar isn't edited (`IsObladaSiteInfoInPanel()`).
@@ -753,7 +773,8 @@ the sidebar, and over the active tab in horizon compact mode, which is the same 
   the focus, with the whole URL however it got the focus (Chromium leaves a click with the
   site alone, which is what the sidebar shows).
 - Oblada code: `oblada/browser/ui/floating_location_bar.h`, `sidebar_layout.h`,
-  `site_panel.h`, `oblada/browser/containers/container_chip.h`.
+  `site_panel.h`, `oblada/browser/containers/container_chip.h`,
+  `oblada/browser/barrier/barrier_ui.h`.
 
 #### `chrome/browser/ui/views/frame/top_container_view.cc`
 `chrome-browser-ui-views-frame-top_container_view.cc.patch`. Clicks on the floating address
@@ -892,6 +913,166 @@ selector, in the fragment, kept). Enabled once the link is made, if the page's a
 tracking parameters, as in Firefox.
 - Oblada code: `oblada/browser/clean_links/clean_links.h`, `oblada/browser/l10n.h`.
 
+### Barrier
+
+The Barrier ("Barriera"), Brave's protections of privacy in Oblada
+(`chromium/oblada/browser/barrier/barrier.h`): blocking trackers and ads with Brave's engine
+(adblock-rust), cosmetic filters and scriptlets in pages, fingerprinting protection in Blink,
+upgrading to HTTPS, third parties' storage forgotten, tracking parameters and redirects
+skipped, Global Privacy Control, web APIs turned off; its switch ("DANGEROUS") turns it all
+off. Its button in the address bar is in `location_bar_view.cc`, its controls in the site
+panel are Oblada's own, Settings' in `settings_ui.cc`, `route.ts`, `router.ts`,
+`settings_main.html` and `prefs_util.cc` (their entries under Internal pages). Its own code is
+in four places: `oblada/browser/barrier` (the browser), `oblada/renderer/barrier` (pages'
+frames), `oblada/common/barrier` (the interfaces between them), `oblada/blink` (Blink's side
+of fingerprinting protection), and `oblada/components/barrier/adblock` (the engine's
+bridge).
+
+#### `third_party/rust/chromium_crates_io/Cargo.toml`, `Cargo.lock`, `gnrt_config.toml`, and the `BUILD.gn`/`README.chromium` of `regex`, `aho_corasick`, `bitflags`, `serde`, `serde_core`, `siphasher`, `rand_core`, `stable_deref_trait`
+`third_party-rust-….patch`. Brave's ad-blocking engine, the `adblock` crate (0.13.3, MPL-2.0,
+with `css-validation` for procedural filters), among Chromium's crates, with what it needs
+that Chromium doesn't ship: `url`, `idna`, `flatbuffers`, `seahash`, `thiserror` 1,
+`cssparser`, `selectors` and their own. `regex` and `siphasher` were for tests only
+(`group = 'test'`); `aho-corasick` and `rand_core` may use `unsafe`, as their code does on
+arm64; `flatbuffers`' and `thiserror` 1's build scripts only probe for nightly compilers
+(`remove_build_rs`); `selectors`' writes a set of attribute names (`build_script_outputs`).
+The other `BUILD.gn` changes are gnrt's, from the crates' new features and groups.
+- The crates' sources aren't patches: `chromium/scripts/crates.sh` downloads them with
+  gnrt (`run_gnrt.py vendor` and `gen`), as Chromium imports crates, when the lock file
+  changes. The licenses three crates don't publish are gnrt's own patches, in
+  `chromium/crates/patches`.
+- Oblada code: `oblada/components/barrier/adblock` (`rust_static_library` with cxx).
+- To update the engine: change its version in `Cargo.toml`, run `crates.sh`, and fix what
+  gnrt asks for in `gnrt_config.toml`; then `filter_lists.cc`'s `kEngineVersion`.
+
+#### `chrome/browser/chrome_content_browser_client.cc`
+`chrome-browser-chrome_content_browser_client.cc.patch`. `WillCreateURLLoaderFactory()`
+puts the Barrier between pages and the network first, before extensions' WebRequest
+(`oblada::barrier::MaybeProxyURLLoaderFactory()`): requests blocked, answered with stand-ins,
+stripped of tracking parameters, past tracking redirects, with `$csp` rules' policies.
+Its requests are also checked under their hosts' canonical names (CNAME uncloaking),
+through the resolver of the process's storage partition (the container), which is why it
+gets `render_process_id`. Pages' own navigations may get the Barrier's question about Google
+sign-in on another site (`oblada/browser/barrier/google_sign_in.h`).
+`WillInterceptWebSocket()` and `CreateWebSocket()` check frames' WebSocket connections
+(`oblada::barrier::WillFilterWebSocket()`, `FilterWebSocket()`), which then go on to
+extensions' WebRequest, as Chromium has them, or to the network.
+With `chrome/browser/chrome_content_browser_client.h`
+(`chrome-browser-chrome_content_browser_client.h.patch`), it also overrides
+`GetObladaWorkerFarbling()`: shared and service workers' fingerprinting protection, from
+their storage key's top-level site and their container
+(`oblada::barrier::GetWorkerFarbling()`).
+- Needs: `content_browser_client.h` (`GetObladaWorkerFarbling()`).
+- Oblada code: `oblada/browser/barrier/request_filter.h`, `oblada/browser/barrier/farbling.h`.
+
+#### `chrome/browser/chrome_content_browser_client_navigation_throttles.cc`
+(Its entry under Containers.) Also holds documents' responses until their cosmetic filters
+are there (`MaybeAddCosmeticFiltersThrottle()`), and reads the start of pages' HTML for AMP
+pages, which it leaves for the original (`MaybeAddDeAmpThrottle()`).
+- Oblada code: `oblada/browser/barrier/cosmetic_filters.h`, `oblada/browser/barrier/de_amp.h`.
+
+#### `chrome/browser/chrome_browser_interface_binders.cc`
+`chrome-browser-chrome_browser_interface_binders.cc.patch`. Binds frames'
+`oblada.mojom.BarrierHost` (the generic rules their classes and ids call for, the element
+picker's filters).
+- Oblada code: `oblada/browser/barrier/cosmetic_filters.h`, `oblada/common/barrier`.
+
+#### `chrome/browser/ui/tab_helpers.cc`
+(Its entry under Containers.) Also attaches the Barrier's tab helper: what the tab
+blocked, the settings sent to its documents, the sites it leaves.
+- Oblada code: `oblada/browser/barrier/tab_helper.h`.
+
+#### `chrome/renderer/chrome_content_renderer_client.cc`, `chrome/renderer/BUILD.gn`
+`chrome-renderer-chrome_content_renderer_client.cc.patch`, `chrome-renderer-BUILD.gn.patch`.
+Each frame gets the Barrier's agent (`RenderFrameCreated()`), which runs the scriptlets and
+cosmetic filters once scripts may run in a new document (`RunScriptsAtDocumentStart()`,
+before extensions' document_start scripts, as Brave's).
+- Oblada code: `oblada/renderer/barrier/barrier_agent.h`.
+
+#### `chrome/common/chrome_isolated_world_ids.h`
+`chrome-common-chrome_isolated_world_ids.h.patch`. The Barrier's isolated world
+(`ISOLATED_WORLD_ID_OBLADA_BARRIER`), where its cosmetic filters and element picker run,
+before extensions' worlds.
+
+#### `chrome/browser/metrics/chrome_feature_list_creator.cc`
+`chrome-browser-metrics-chrome_feature_list_creator.cc.patch`. The Barrier's changes to
+Chromium's features, when it's on at startup (`oblada::barrier::AddFeatureOverrides()`):
+web APIs Brave turns off (Web Bluetooth, local File System Access, Web Serial, FedCM,
+WebOTP, Digital Credentials, getInstalledRelatedApps, Fenced Frames, FLEDGE, Topics,
+Attribution Reporting, the Reporting API and NEL), connections partitioned by site, HSTS
+for pages themselves only (`kHstsTopLevelNavigationsOnly`), and
+Global Privacy Control; when it's off, Oblada's own network features off. The command line
+still overrides them.
+- Oblada code: `oblada/browser/barrier/barrier.h`.
+
+#### `chrome/browser/renderer_preferences_util.cc`, `chrome/browser/ui/prefs/pref_watcher.cc`, `content/browser/renderer_host/render_view_host_impl.cc`
+`chrome-browser-renderer_preferences_util.cc.patch`, `chrome-browser-ui-prefs-pref_watcher.cc.patch`,
+`content-browser-renderer_host-render_view_host_impl.cc.patch`. Global Privacy Control
+(`Sec-GPC`, `navigator.globalPrivacyControl`) as `oblada.barrier.gpc` says, updated as it
+changes. Content overwrote the setting with its DevTools override for frames (it's
+Chromium's work in progress, "Universal Opt-Out"): it now adds the override to it.
+- Needs: `chrome_feature_list_creator.cc` (`GlobalPrivacyControlTest`, which Blink checks).
+- Oblada code: `oblada/browser/barrier/barrier.h`.
+
+#### `chrome/browser/ssl/https_upgrades_interceptor.cc`, `chrome/browser/ssl/https_upgrades_util.cc`
+`chrome-browser-ssl-https_upgrades_interceptor.cc.patch`,
+`chrome-browser-ssl-https_upgrades_util.cc.patch`. Upgrades to HTTPS as the Barrier says
+for the site (`oblada::barrier::HttpsUpgradeFor()`): not at all when they're off (or the
+Barrier down, or Brave lists the site), with HTTPS-First's warning before HTTP when strict.
+- Oblada code: `oblada/browser/barrier/barrier.h`.
+
+#### `net/base/features.{h,cc}`, `net/url_request/url_request_job.cc`, `net/cookies/canonical_cookie.cc`, `third_party/blink/renderer/platform/weborigin/security_policy.cc`
+`net-base-features.{h,cc}.patch`, `net-url_request-url_request_job.cc.patch`,
+`net-cookies-canonical_cookie.cc.patch`,
+`third_party-blink-renderer-platform-weborigin-security_policy.cc.patch`. Two of Brave's
+changes to the network, as features of Oblada's on by default (and off when the Barrier
+was off at startup): referrers never more than the origin across origins
+(`kObladaReferrerCap`: Blink computes them so, and the network service on redirects, or
+they would differ and be dropped), and cookies kept 6 months at most
+(`kObladaCookieExpiryCap`).
+- Needs: `chrome_feature_list_creator.cc`.
+
+#### `content/public/browser/content_browser_client.h`, content's `shared_worker_content_settings_proxy_impl.{h,cc}` and `service_worker_content_settings_proxy_impl.{h,cc}`
+`content-public-browser-content_browser_client.h.patch`,
+`content-browser-worker_host-shared_worker_content_settings_proxy_impl.{h,cc}.patch`,
+`content-browser-service_worker-service_worker_content_settings_proxy_impl.{h,cc}.patch`.
+Shared and service workers ask the browser for their fingerprinting protection as they start
+(`WorkerContentSettingsProxy::GetObladaFarbling()`, a synchronous call, like the proxy's
+others): content asks the embedder, `ContentBrowserClient::GetObladaWorkerFarbling()`, with
+the worker's storage partition (its container) and storage key; by default, none.
+- Needs: `worker_content_settings_proxy.mojom` (under Blink, below).
+
+#### Blink: fingerprinting protection
+`third_party-blink-….patch` (46). The settings of each document (`ExecutionContext`'s
+`ObladaFarblingSettings`: the seed, the APIs left alone, fewer languages), set as it's
+created through `WebLocalFrame::SetObladaFarbling()` (`web_local_frame.h`,
+`web_local_frame_impl.{h,cc}`); passed on to dedicated workers
+(`global_scope_creation_params.h`, `dedicated_worker.cc`, `worker_global_scope.cc`) and
+worklets (`worklet_global_scope.cc`, from `threaded_worklet_messaging_proxy.cc`,
+`paint_worklet_global_scope_proxy.cc`, `layout_worklet_global_scope_proxy.cc`); asked for by
+shared and service workers (`worker_content_settings_proxy.mojom`'s `GetObladaFarbling()`,
+through `web_content_settings_client.h`, implemented by
+`shared_worker_content_settings_proxy.{h,cc}` and
+`service_worker_content_settings_proxy.{h,cc}`, called by `worker_global_scope.cc`); the
+Oblada code, in Blink's core (`core/BUILD.gn`); and a hook for each API:
+- canvas readouts: `base_rendering_context_2d.cc` (getImageData), `html_canvas_element.cc`
+  (toDataURL), `canvas_async_blob_creator.cc` (toBlob, convertToBlob), with Chromium's own
+  leftover noise (`canvas_interventions/noise_helper.h`);
+- audio: `audio_buffer.{h,cc}`, `analyser_node.cc`;
+- GPUs' names: `webgl_rendering_context_base.cc`, `gpu_adapter.cc`;
+- hardware: `navigator_base.cc` (hardwareConcurrency), `navigator_device_memory.cc`,
+  `battery_manager.cc`;
+- the screen and the window: `screen.cc`, `local_dom_window.cc`, `media_values.cc`;
+- fonts: `css_font_selector.cc`, `css_font_selector_base.cc` (document.fonts.check),
+  `offscreen_font_selector.cc` (workers), `local_font_face_source.cc` (`local()`);
+- `media_devices.cc` (enumerateDevices), `speech_synthesis.cc` (a voice more),
+  `usb_device.{h,cc}` (serial numbers), `keyboard.cc`, `navigator_language.cc`;
+- a site's connections: `websocket_channel_impl.{h,cc}` (30 WebSockets at most),
+  `event_source.{h,cc}` (250 EventSource connections), counted by
+  `oblada/blink/connection_pools.h`.
+- Oblada code: `oblada/blink/farbling.h`, `oblada/blink/farbling_settings.h`,
+  `oblada/blink/connection_pools.h`.
+
 ### Performance
 
 Chromium defaults that other Chromium browsers change too, to start faster and work less in
@@ -900,8 +1081,10 @@ the background.
 #### `chrome/browser/performance_manager/policies/background_tab_loading_policy.cc`
 `chrome-browser-performance_manager-policies-background_tab_loading_policy.cc.patch`. Tabs
 restored at startup load once opened, as in Firefox and Zen: `ShouldLoad()` only lets the
-policy load those showing, pinned tabs (the Essentials) and those that work in the background
-(notifications, or a title or icon changing while hidden). The others load when activated.
+policy load those showing, pinned tabs (the Essentials) and those known to work in the
+background (notifications, or a title or icon seen changing while hidden; Chromium's own
+`UsesBackgroundCommunication()` also counts sites it knows nothing about, which would load
+the first few restored tabs). The others load when activated.
 
 #### `components/performance_manager/user_tuning/prefs.cc`
 `components-performance_manager-user_tuning-prefs.cc.patch`. Memory Saver is on by default.
@@ -1117,9 +1300,11 @@ Their hosts must not clash with Chrome's.
 - Hides the Settings page about Google's AI features.
 - The About page has Oblada's version (with Chromium's), its copyright and a link to its
   source code.
-- Serves Settings > Oblada, its module and its strings (`AddObladaPage()`).
+- Serves Settings > Oblada, its module and its strings (`AddObladaPage()`), and the
+  Barrier's messages (`oblada::settings::BarrierHandler`: its switch, filter lists and
+  sites).
 - Oblada code: `oblada/browser/about/about_page.h`,
-  `oblada/browser/settings/oblada_page.h`.
+  `oblada/browser/settings/oblada_page.h`, `oblada/browser/settings/barrier_handler.h`.
 
 #### `chrome/browser/ui/webui/settings/about_handler.cc`
 `chrome-browser-ui-webui-settings-about_handler.cc.patch`. The About page's update status
@@ -1151,18 +1336,21 @@ oblada_page.h`) as a module rather than built with Settings, as Oblada adds no f
 Chromium's tree: `settings_main.ts` imports `/oblada/oblada_page.js`, which `BUILD.gn` maps
 to a declaration for the compiler (`oblada/browser/settings/oblada_page.d.ts`, as Chromium
 does for `/strings.m.js`) and leaves out of the bundle (`optimize_webui_excludes`), and
-`settings_main.html` shows it, as a view of its own.
+`settings_main.html` shows it, as a view of its own, with the route it's on
+(`route-path`), for its subpages.
 - Needs: `route.ts`, `router.ts`, `prefs_util.cc` (its preferences), `settings_ui.cc` (the
   module and its strings).
 
 #### `chrome/browser/resources/settings/route.ts`, `router.ts`
 `chrome-browser-resources-settings-{route,router}.ts.patch`. The route of Settings > Oblada,
-`routes.OBLADA`.
+`routes.OBLADA`, and of its subpages, the Barrier's filter lists (`OBLADA_FILTERS`,
+`/oblada/filters`) and sites with settings of their own (`OBLADA_SITES`, `/oblada/sites`).
 
 #### `chrome/browser/extensions/api/settings_private/prefs_util.cc`
 `chrome-browser-extensions-api-settings_private-prefs_util.cc.patch`. Lets Settings change
-Oblada's preferences (`oblada.sidebar.mode`, `oblada.workspaces.show_header`), named as
-strings: the file's target can't include Oblada's code.
+Oblada's preferences (`oblada.sidebar.mode`, `oblada.workspaces.show_header`, the Barrier's
+`oblada.barrier.*`) and WebRTC's IP handling (`webrtc.ip_handling_policy`, which Chromium
+has no setting for), named as strings: the file's target can't include Oblada's code.
 
 #### `chrome/browser/ui/chrome_pages.cc`
 `chrome-browser-ui-chrome_pages.cc.patch`.

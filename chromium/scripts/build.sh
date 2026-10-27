@@ -15,6 +15,8 @@ if [ "${1:-}" = --release ]; then
 fi
 
 "$HERE/scripts/patches.sh" apply
+"$HERE/scripts/crates.sh"
+"$HERE/scripts/barrier_resources.sh"
 "$HERE/scripts/sparkle.sh"
 mkdir -p "$OUT"
 cat "${ARGS[@]}" | cmp -s - "$OUT/args.gn" || cat "${ARGS[@]}" > "$OUT/args.gn"

@@ -40,5 +40,7 @@ gclient sync --nohooks --no-history --delete_unversioned_trees
 python3 "$HERE/scripts/deps.py" prune "$OBLADA_CHROMIUM"
 gclient runhooks
 "$HERE/scripts/patches.sh" apply
+"$HERE/scripts/crates.sh"
+"$HERE/scripts/barrier_resources.sh"
 "$HERE/scripts/sparkle.sh"
 echo "Chromium $CHROMIUM_VERSION is ready in $SRC"

@@ -1,0 +1,12 @@
+diff --git a/third_party/blink/renderer/core/layout/custom/layout_worklet_global_scope_proxy.cc b/third_party/blink/renderer/core/layout/custom/layout_worklet_global_scope_proxy.cc
+index 450a8d27e3..a946992a7c 100644
+--- a/third_party/blink/renderer/core/layout/custom/layout_worklet_global_scope_proxy.cc
++++ b/third_party/blink/renderer/core/layout/custom/layout_worklet_global_scope_proxy.cc
+@@ -58,6 +58,7 @@ LayoutWorkletGlobalScopeProxy::LayoutWorkletGlobalScopeProxy(
+       nullptr /* parent_permissions_policy */, window->GetAgentClusterID(),
+       ukm::kInvalidSourceId, window->GetExecutionContextToken(),
+       window->CrossOriginIsolatedCapability(), window->IsIsolatedContext());
++  creation_params->oblada_farbling = window->GetObladaFarbling();  // Oblada
+   global_scope_ = LayoutWorkletGlobalScope::Create(
+       frame, std::move(creation_params), *reporting_proxy_,
+       pending_layout_registry);

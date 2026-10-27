@@ -1,0 +1,37 @@
+diff --git a/third_party/blink/renderer/platform/weborigin/security_policy.cc b/third_party/blink/renderer/platform/weborigin/security_policy.cc
+index d7acbca46b..b7e8027003 100644
+--- a/third_party/blink/renderer/platform/weborigin/security_policy.cc
++++ b/third_party/blink/renderer/platform/weborigin/security_policy.cc
+@@ -33,11 +33,13 @@
+ 
+ #include "base/command_line.h"
+ #include "base/compiler_specific.h"
++#include "base/feature_list.h"  // Oblada
+ #include "base/no_destructor.h"
+ #include "base/strings/pattern.h"
+ #include "base/strings/string_split.h"
+ #include "base/synchronization/lock.h"
+ #include "build/build_config.h"
++#include "net/base/features.h"  // Oblada
+ #include "services/network/public/cpp/cors/origin_access_list.h"
+ #include "services/network/public/mojom/referrer_policy.mojom-blink.h"
+ #include "third_party/blink/public/common/loader/referrer_utils.h"
+@@ -110,6 +112,18 @@ Referrer SecurityPolicy::GenerateReferrer(
+ 
+   network::mojom::ReferrerPolicy referrer_policy_no_default =
+       ReferrerUtils::MojoReferrerPolicyResolveDefault(referrer_policy);
++  // Oblada: policies that send more than the origin across origins send only
++  // it, as Brave does (and as the network service, url_request_job.cc).
++  if (base::FeatureList::IsEnabled(net::features::kObladaReferrerCap) &&
++      (referrer_policy_no_default ==
++           network::mojom::ReferrerPolicy::kAlways ||
++       referrer_policy_no_default ==
++           network::mojom::ReferrerPolicy::kNoReferrerWhenDowngrade ||
++       referrer_policy_no_default ==
++           network::mojom::ReferrerPolicy::kOriginWhenCrossOrigin)) {
++    referrer_policy_no_default =
++        network::mojom::ReferrerPolicy::kStrictOriginWhenCrossOrigin;
++  }
+ 
+   if (!referrer_url.IsValid())
+     return Referrer(Referrer::NoReferrer(), referrer_policy_no_default);

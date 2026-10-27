@@ -1,0 +1,60 @@
+diff --git a/third_party/blink/renderer/core/frame/local_dom_window.cc b/third_party/blink/renderer/core/frame/local_dom_window.cc
+index 8285e37689..66d83537a3 100644
+--- a/third_party/blink/renderer/core/frame/local_dom_window.cc
++++ b/third_party/blink/renderer/core/frame/local_dom_window.cc
+@@ -30,6 +30,7 @@
+ #include <optional>
+ #include <utility>
+ 
++#include "oblada/blink/farbling.h"  // Oblada
+ #include "base/command_line.h"
+ #include "base/metrics/histogram_macros.h"
+ #include "base/task/single_thread_task_runner.h"
+@@ -1684,6 +1685,11 @@ int LocalDOMWindow::outerHeight() const {
+   if (frame->IsInFencedFrameTree()) {
+     return innerHeight();
+   }
++  // Oblada: the inner height, plus a few pixels, for fingerprinting
++  // protection (as Brave).
++  if (oblada_farbling::IsOn(this, oblada_farbling::kScreen)) {
++    return innerHeight() + oblada_farbling::ScreenOffset(this, "outer-height");
++  }
+ 
+   Page* page = frame->GetPage();
+   if (!page) {
+@@ -1716,6 +1722,11 @@ int LocalDOMWindow::outerWidth() const {
+   if (frame->IsInFencedFrameTree()) {
+     return innerWidth();
+   }
++  // Oblada: the inner width, plus a few pixels, for fingerprinting
++  // protection (as Brave).
++  if (oblada_farbling::IsOn(this, oblada_farbling::kScreen)) {
++    return innerWidth() + oblada_farbling::ScreenOffset(this, "outer-width");
++  }
+ 
+   Page* page = frame->GetPage();
+   if (!page) {
+@@ -1792,6 +1803,11 @@ int LocalDOMWindow::screenX() const {
+   if (!frame) {
+     return 0;
+   }
++  // Oblada: at the screen's corner, give or take a few pixels, for
++  // fingerprinting protection (as Brave).
++  if (oblada_farbling::IsOn(this, oblada_farbling::kScreen)) {
++    return oblada_farbling::ScreenOffset(this, "screen-x");
++  }
+ 
+   Page* page = frame->GetPage();
+   if (!page) {
+@@ -1817,6 +1833,11 @@ int LocalDOMWindow::screenY() const {
+   if (!frame) {
+     return 0;
+   }
++  // Oblada: at the screen's corner, give or take a few pixels, for
++  // fingerprinting protection (as Brave).
++  if (oblada_farbling::IsOn(this, oblada_farbling::kScreen)) {
++    return oblada_farbling::ScreenOffset(this, "screen-y");
++  }
+ 
+   Page* page = frame->GetPage();
+   if (!page) {

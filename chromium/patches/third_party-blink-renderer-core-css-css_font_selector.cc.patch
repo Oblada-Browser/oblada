@@ -1,0 +1,25 @@
+diff --git a/third_party/blink/renderer/core/css/css_font_selector.cc b/third_party/blink/renderer/core/css/css_font_selector.cc
+index d185bb02fe..ef29e540ca 100644
+--- a/third_party/blink/renderer/core/css/css_font_selector.cc
++++ b/third_party/blink/renderer/core/css/css_font_selector.cc
+@@ -26,6 +26,7 @@
+ 
+ #include "third_party/blink/renderer/core/css/css_font_selector.h"
+ 
++#include "oblada/blink/farbling.h"  // Oblada
+ #include "build/build_config.h"
+ #include "third_party/blink/renderer/core/animation/interpolable_color.h"
+ #include "third_party/blink/renderer/core/css/css_segmented_font_face.h"
+@@ -251,6 +252,12 @@ const FontData* CSSFontSelector::GetFontData(
+   if (settings_family_name.empty()) {
+     return nullptr;
+   }
++  // Oblada: only some installed fonts, for fingerprinting protection.
++  if (!font_family.FamilyIsGeneric() &&
++      !oblada_farbling::AllowsFont(GetExecutionContext(),
++                                   settings_family_name)) {
++    return nullptr;
++  }
+ 
+   const SimpleFontData* font_data =
+       FontCache::Get().GetFontData(request_description, settings_family_name);

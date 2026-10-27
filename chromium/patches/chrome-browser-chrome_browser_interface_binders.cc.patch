@@ -1,0 +1,23 @@
+diff --git a/chrome/browser/chrome_browser_interface_binders.cc b/chrome/browser/chrome_browser_interface_binders.cc
+index 455cbfb53c..dde3260a62 100644
+--- a/chrome/browser/chrome_browser_interface_binders.cc
++++ b/chrome/browser/chrome_browser_interface_binders.cc
+@@ -4,6 +4,9 @@
+ 
+ #include "chrome/browser/chrome_browser_interface_binders.h"
+ 
++#include "oblada/browser/barrier/cosmetic_filters.h"  // Oblada
++#include "oblada/common/barrier/barrier.mojom.h"  // Oblada
++
+ #include <utility>
+ 
+ #include "base/feature_list.h"
+@@ -461,6 +464,8 @@ void PopulateChromeFrameBinders(
+     map->Add<pwc::mojom::PrivilegedBridge>(&pwc::BindPrivilegedBridge);
+   }
+   map->Add<image_annotation::mojom::Annotator>(&BindImageAnnotator);
++  // Oblada: the Barrier's questions from pages' frames.
++  map->Add<oblada::mojom::BarrierHost>(&oblada::barrier::BindBarrierHost);
+ 
+   map->Add<blink::mojom::ScriptToolHost>(
+       &actor::ActorScriptToolReceiver::Create);

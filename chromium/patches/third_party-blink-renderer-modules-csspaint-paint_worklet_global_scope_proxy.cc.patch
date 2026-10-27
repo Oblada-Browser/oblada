@@ -1,0 +1,12 @@
+diff --git a/third_party/blink/renderer/modules/csspaint/paint_worklet_global_scope_proxy.cc b/third_party/blink/renderer/modules/csspaint/paint_worklet_global_scope_proxy.cc
+index 6acafbe531..1a1761c573 100644
+--- a/third_party/blink/renderer/modules/csspaint/paint_worklet_global_scope_proxy.cc
++++ b/third_party/blink/renderer/modules/csspaint/paint_worklet_global_scope_proxy.cc
+@@ -57,6 +57,7 @@ PaintWorkletGlobalScopeProxy::PaintWorkletGlobalScopeProxy(
+       nullptr /* parent_permissions_policy */, window->GetAgentClusterID(),
+       ukm::kInvalidSourceId, window->GetExecutionContextToken(),
+       window->CrossOriginIsolatedCapability(), window->IsIsolatedContext());
++  creation_params->oblada_farbling = window->GetObladaFarbling();  // Oblada
+   global_scope_ = PaintWorkletGlobalScope::Create(
+       frame, std::move(creation_params), *reporting_proxy_);
+ }
