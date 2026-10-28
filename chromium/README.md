@@ -49,6 +49,7 @@ make dmg                           # dmg.sh: Oblada-silicon.dmg (and the .aar), 
 make bump TO=0.1.1                 # raise chromium/oblada/VERSION, then commit and push it
 make release NOTES=/tmp/notes.md   # release.sh: build (out/Release), pack and publish the commit
 make symbolicate IPS=<report.ips>  # symbolicate.py: Oblada's functions in a release's crash report
+make free-space DRY=1              # free_space.sh: lists (then without DRY, removes) what tests leave outside the builds
 ```
 
 Releases are official builds, as Chromium wants for any build that ships to users:

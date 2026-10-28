@@ -29,9 +29,10 @@ NOTES ?=
 TO ?=
 FILE ?=
 IPS ?=
+DRY ?=
 
 .PHONY: help sync build patches apply reset test test-updates screenshot dmg release version \
-        bump update-key safe-browsing-key import-update-key symbolicate icons dmg-background run run-fresh
+        bump update-key safe-browsing-key import-update-key free-space symbolicate icons dmg-background run run-fresh
 
 help: ## this list
 	@echo "Oblada $(VERSION), based on Chromium $(CHROMIUM_VERSION)"
@@ -101,6 +102,9 @@ import-update-key: ## put the key releases are signed with in your keychain, fro
 	  echo "$$key" > $(UPDATE_KEY); \
 	  echo "imported; its public half is in $(UPDATE_KEY): commit it"; \
 	fi
+
+free-space: ## free what development leaves outside the builds: tests' profiles and leftovers, unused code-sign clones, /tmp/oblada* (DRY=1 lists them)
+	$(SCRIPTS)/free_space.sh $(if $(DRY),--dry-run)
 
 dmg: ## pack the build into Oblada-silicon.dmg (and the update archive), in its directory (RELEASE=1)
 	$(SCRIPTS)/dmg.sh $(if $(RELEASE),--release)
