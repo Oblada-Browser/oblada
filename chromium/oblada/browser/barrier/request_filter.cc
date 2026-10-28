@@ -1,19 +1,24 @@
 #include "oblada/browser/barrier/request_filter.h"
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
 #include "base/byte_size.h"
+#include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/no_destructor.h"
 #include "base/strings/strcat.h"
 #include "base/scoped_observation.h"
 #include "base/supports_user_data.h"
 #include "base/task/single_thread_task_runner.h"
+#include "base/time/time.h"
 #include "base/types/pass_key.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/net/proxy_service_factory.h"
@@ -109,6 +114,8 @@ struct FilterContext {
   // The container's resolver, which hosts' canonical names come from (CNAME
   // uncloaking); unbound when they aren't checked.
   mojo::PendingRemote<network::mojom::HostResolver> resolver;
+  // The container's storage partition, which the names are kept for.
+  base::FilePath partition;
   net::NetworkAnonymizationKey network_anonymization_key;
   // Secure DNS only: the names come from DNS over HTTPS, not the system's.
   bool secure_dns_only = false;
@@ -686,11 +693,12 @@ struct PendingRequest {
 };
 
 // Asks a resolver for the names a host is an alias of (its CNAME chain, or
-// the end of it), and answers with them: none when it has none, or the
-// resolver can't say.
+// the end of it), and answers with them (none when it has none), or with the
+// error that kept the resolver from saying.
 class CanonicalNameClient : public network::mojom::ResolveHostClient {
  public:
-  using Callback = base::OnceCallback<void(std::vector<std::string>)>;
+  using Callback =
+      base::OnceCallback<void(int error, std::vector<std::string> names)>;
 
   static void Resolve(network::mojom::HostResolver* resolver,
                       const GURL& url,
@@ -715,7 +723,7 @@ class CanonicalNameClient : public network::mojom::ResolveHostClient {
                           client->receiver_.BindNewPipeAndPassRemote());
     client->receiver_.set_disconnect_handler(
         base::BindOnce(&CanonicalNameClient::Answer, base::Unretained(client),
-                       std::vector<std::string>()));
+                       net::ERR_ABORTED, std::vector<std::string>()));
   }
 
   // network::mojom::ResolveHostClient:
@@ -724,8 +732,18 @@ class CanonicalNameClient : public network::mojom::ResolveHostClient {
       const net::ResolveErrorInfo& resolve_error_info,
       const net::AddressList& resolved_addresses,
       const net::HostResolverEndpointResults& alternative_endpoints) override {
-    Answer(result == net::OK ? resolved_addresses.dns_aliases()
-                             : std::vector<std::string>());
+    if (result == net::OK) {
+      Answer(net::OK, resolved_addresses.dns_aliases());
+      return;
+    }
+    // The resolver says ERR_NAME_NOT_RESOLVED whatever failed: what did is in
+    // the error info (ERR_NETWORK_CHANGED, ERR_DNS_TIMED_OUT…).
+    const int error = resolve_error_info.error != net::OK
+                          ? resolve_error_info.error
+                          : result;
+    // A host that doesn't exist has no other names.
+    Answer(error == net::ERR_NAME_NOT_RESOLVED ? net::OK : error,
+           std::vector<std::string>());
   }
   void OnTextResults(const std::vector<std::string>& text_results) override {}
   void OnHostnameResults(const std::vector<net::HostPortPair>& hosts) override {}
@@ -734,13 +752,127 @@ class CanonicalNameClient : public network::mojom::ResolveHostClient {
   explicit CanonicalNameClient(Callback callback)
       : callback_(std::move(callback)) {}
 
-  void Answer(std::vector<std::string> names) {
-    std::move(callback_).Run(std::move(names));
+  void Answer(int error, std::vector<std::string> names) {
+    std::move(callback_).Run(error, std::move(names));
     delete this;
   }
 
   Callback callback_;
   mojo::Receiver<network::mojom::ResolveHostClient> receiver_{this};
+};
+
+// Hosts' canonical names, as the resolver last gave them, for each container
+// and top-level site (as Chromium's host cache keeps addresses). Chromium's
+// cache forgets everything whenever the system's DNS configuration changes,
+// which on some networks is several times a second: every request to another
+// site would then wait for the system's resolver. A host's names are used for
+// an hour after they last came, and asked for again in the background once
+// they're a minute old; requests wait only for hosts not known yet. On the
+// engines' sequence.
+class CanonicalNames {
+ public:
+  using Names = std::vector<std::string>;
+  // The names, or the error that kept the resolver from saying.
+  using Callback = base::OnceCallback<void(int error, Names names)>;
+
+  static CanonicalNames& Get() {
+    static base::NoDestructor<CanonicalNames> names;
+    return *names;
+  }
+
+  // Answers with `url`'s host's names, now if they're known.
+  void Find(network::mojom::HostResolver* resolver,
+            const base::FilePath& partition,
+            const net::NetworkAnonymizationKey& network_anonymization_key,
+            const GURL& url,
+            bool secure_dns_only,
+            Callback callback) {
+    const base::TimeTicks now = base::TimeTicks::Now();
+    Key key{partition, network_anonymization_key, url.host()};
+    auto it = entries_.find(key);
+    if (it == entries_.end()) {
+      Prune(now);
+      it = entries_.emplace(std::move(key), Entry()).first;
+    }
+    Entry& entry = it->second;
+    const bool known = entry.known && now - entry.came < kForgotten;
+    if (!entry.asking && (!known || now - entry.came >= kFresh)) {
+      entry.asking = true;
+      CanonicalNameClient::Resolve(
+          resolver, url, network_anonymization_key, secure_dns_only,
+          base::BindOnce(&CanonicalNames::OnAnswer, base::Unretained(this),
+                         it->first));
+    }
+    if (known) {
+      std::move(callback).Run(net::OK, entry.names);
+      return;
+    }
+    entry.waiting.push_back(std::move(callback));
+  }
+
+ private:
+  using Key = std::tuple<base::FilePath, net::NetworkAnonymizationKey,
+                         std::string>;
+
+  struct Entry {
+    Names names;
+    // There are names (perhaps none), which came then.
+    bool known = false;
+    base::TimeTicks came;
+    // The resolver is being asked.
+    bool asking = false;
+    // Requests waiting for the names, which aren't known yet.
+    std::vector<Callback> waiting;
+  };
+
+  static constexpr base::TimeDelta kFresh = base::Minutes(1);
+  static constexpr base::TimeDelta kForgotten = base::Hours(1);
+  static constexpr size_t kMaxEntries = 4096;
+
+  void OnAnswer(const Key& key, int error, Names names) {
+    auto it = entries_.find(key);
+    if (it == entries_.end()) {
+      return;
+    }
+    Entry& entry = it->second;
+    entry.asking = false;
+    if (error == net::OK) {
+      entry.names = std::move(names);
+      entry.known = true;
+      entry.came = base::TimeTicks::Now();
+    }
+    // Those waiting go on with what's known (if only from over an hour ago),
+    // or the error.
+    std::vector<Callback> waiting = std::move(entry.waiting);
+    const int answer_error = entry.known ? net::OK : error;
+    const Names answer = entry.known ? entry.names : Names();
+    if (!entry.known) {
+      entries_.erase(it);
+    }
+    for (Callback& callback : waiting) {
+      std::move(callback).Run(answer_error, answer);
+    }
+  }
+
+  // Room for one more: the forgotten ones go, then if needed all but those
+  // being asked for.
+  void Prune(base::TimeTicks now) {
+    if (entries_.size() < kMaxEntries) {
+      return;
+    }
+    auto idle = [](const Entry& entry) {
+      return !entry.asking && entry.waiting.empty();
+    };
+    std::erase_if(entries_, [&](const auto& item) {
+      return idle(item.second) && now - item.second.came >= kForgotten;
+    });
+    if (entries_.size() >= kMaxEntries) {
+      std::erase_if(entries_,
+                    [&](const auto& item) { return idle(item.second); });
+    }
+  }
+
+  std::map<Key, Entry> entries_;
 };
 
 // The factory in front of the network, on the engines' sequence.
@@ -917,12 +1049,8 @@ class RequestFilter : public network::SelfDeletingURLLoaderFactory {
     if (!decision.block && !main_frame &&
         ShouldUncloak(request.url, engine_request.page_host,
                       page.aggressive)) {
-      CanonicalNameClient::Resolve(
-          resolver_.get(), request.url, context_.network_anonymization_key,
-          context_.secure_dns_only,
-          base::BindOnce(&RequestFilter::OnCanonicalName,
-                         weak_factory_.GetWeakPtr(), std::move(pending),
-                         std::move(engine_request), decision));
+      Uncloak(std::move(pending), std::move(engine_request), decision,
+              /*attempt=*/1);
       return;
     }
     Finish(std::move(pending), decision, page.aggressive);
@@ -950,10 +1078,35 @@ class RequestFilter : public network::SelfDeletingURLLoaderFactory {
     return site(url.host()) != site(page_host);
   }
 
+  // Checks the request again under its host's canonical names, once known.
+  void Uncloak(PendingRequest pending,
+               EngineHost::Request engine_request,
+               EngineHost::Decision decision,
+               int attempt) {
+    const GURL url = pending.request.url;
+    CanonicalNames::Get().Find(
+        resolver_.get(), context_.partition, context_.network_anonymization_key,
+        url, context_.secure_dns_only,
+        base::BindOnce(&RequestFilter::OnCanonicalName,
+                       weak_factory_.GetWeakPtr(), std::move(pending),
+                       std::move(engine_request), decision, attempt));
+  }
+
   void OnCanonicalName(PendingRequest pending,
                        EngineHost::Request engine_request,
                        EngineHost::Decision decision,
+                       int attempt,
+                       int error,
                        std::vector<std::string> names) {
+    // Chromium stops every lookup when the system's DNS configuration
+    // changes, which on some networks is several times a second: asked again,
+    // a few times. Otherwise the request goes on as the lists let it.
+    constexpr int kMaxAttempts = 3;
+    if (error == net::ERR_NETWORK_CHANGED && attempt < kMaxAttempts) {
+      Uncloak(std::move(pending), std::move(engine_request), decision,
+              attempt + 1);
+      return;
+    }
     // A few links of the chain at most.
     constexpr size_t kMaxNames = 4;
     for (size_t i = 0; i < names.size() && i < kMaxNames; ++i) {
@@ -1239,6 +1392,7 @@ void MaybeProxyURLLoaderFactory(content::BrowserContext* browser_context,
                 : browser_context->GetDefaultStoragePartition();
     partition->GetNetworkContext()->CreateHostResolver(
         std::nullopt, context.resolver.InitWithNewPipeAndPassReceiver());
+    context.partition = partition->GetPath();
     context.network_anonymization_key =
         isolation_info.network_anonymization_key();
     context.secure_dns_only =

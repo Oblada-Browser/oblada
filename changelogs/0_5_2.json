@@ -1,0 +1,10 @@
+{
+  "fixed": [
+    "YouTube and other sites no longer lag with the Barrier on, on networks whose DNS settings keep changing (as some routers' do): requests to other sites waited for the DNS each time, to check whether they were trackers in disguise."
+  ],
+  "obladaVersion": "0.5.2",
+  "releaseId": 13,
+  "chromiumVersion": "156.0.8078.48",
+  "releaseDate": "",
+  "released": false
+}
