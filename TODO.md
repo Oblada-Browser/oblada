@@ -64,3 +64,16 @@ package; then Windows.
   and Oblada has no field trials that might turn it on, as Chrome's may. Check
   `oblada://gpu` on the Linux build before deciding whether to turn it on, with GPU drivers'
   blocklist still applying.
+
+## Safe Browsing v5, before 2027-03-31
+
+Google ends support for the Safe Browsing APIs v4 on 2027-03-31 (they may keep
+working after). Chromium 156 still downloads its local lists with v4
+(`kLocalListsUseSBv5`, off by default); Brave tracks the same switch
+(brave/brave-browser#56023). The key releases have (`make safe-browsing-key`) is for
+the same service, `safebrowsing.googleapis.com`, and works for v5 too: when a newer
+Chromium turns v5 on, or before the date, turn `kLocalListsUseSBv5` on and check
+that v5's requests (`v5_update_protocol_manager.cc`, `v5_search_hashes_util.cc`) get
+Oblada's key rather than `google_apis::GetAPIKey()`: today only
+`GetSBProtocolConfig()` gives it (`sb_protocol_config.cc`'s patch), and v5's code reads
+`google_apis` directly.

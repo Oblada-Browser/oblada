@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "base/command_line.h"
+#include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
 #include "base/logging.h"
@@ -14,6 +15,7 @@
 #include "base/strings/escape.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/supports_user_data.h"
+#include "base/task/thread_pool.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "base/values.h"
@@ -55,13 +57,6 @@ constexpr net::NetworkTrafficAnnotationTag kTrafficAnnotation =
         setting: "Removing the add-on stops its updates."
         policy_exception_justification: "Not implemented."
       })");
-
-// An update manifest may only point to plain http on this machine (tests).
-bool IsAllowed(const GURL& url) {
-  return url.SchemeIs(url::kHttpsScheme) ||
-         (url.SchemeIs(url::kHttpScheme) &&
-          (url.host() == "127.0.0.1" || url.host() == "localhost"));
-}
 
 std::unique_ptr<network::SimpleURLLoader> CreateLoader(const GURL& url) {
   auto request = std::make_unique<network::ResourceRequest>();
@@ -143,13 +138,14 @@ class AddonUpdater : public base::SupportsUserData::Data {
 
   void Check() {
     for (InstalledAddon& addon : GetInstalledAddons(profile_)) {
-      const bool from_amo = addon.update_url.is_empty();
+      // From addons.mozilla.org, where add-ons come from (an update_url
+      // elsewhere, which addons.mozilla.org's add-ons don't have, is ignored),
+      // or from the tests' server.
+      const bool from_amo =
+          addon.update_url.is_empty() || !IsAddonSource(addon.update_url);
       const GURL url =
           from_amo ? GURL(kAmoApi + base::EscapeAllExceptUnreserved(addon.gecko_id) + "/")
                    : addon.update_url;
-      if (!IsAllowed(url)) {
-        continue;
-      }
       std::unique_ptr<network::SimpleURLLoader> loader = CreateLoader(url);
       network::SimpleURLLoader* raw = loader.get();
       raw->DownloadToString(
@@ -167,7 +163,7 @@ class AddonUpdater : public base::SupportsUserData::Data {
     std::optional<Release> release =
         json ? ParseRelease(*json, addon.gecko_id, from_amo) : std::nullopt;
     if (!release || !release->version.IsValid() || !addon.version.IsValid() ||
-        release->version <= addon.version || !IsAllowed(release->xpi)) {
+        release->version <= addon.version || !IsAddonSource(release->xpi)) {
       return;
     }
     LOG(WARNING) << "Updating Firefox add-on " << addon.gecko_id << " to "
@@ -183,9 +179,16 @@ class AddonUpdater : public base::SupportsUserData::Data {
   void OnDownloaded(std::unique_ptr<network::SimpleURLLoader> loader,
                     std::string gecko_id,
                     base::FilePath xpi) {
-    if (!xpi.empty()) {
-      InstallUpdate(profile_, xpi, gecko_id);
+    if (xpi.empty()) {
+      return;
     }
+    // Redirected elsewhere: not addons.mozilla.org's.
+    if (!IsAddonSource(loader->GetFinalURL())) {
+      base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()},
+                                 base::GetDeleteFileCallback(xpi));
+      return;
+    }
+    InstallUpdate(profile_, xpi, gecko_id);
   }
 
   network::mojom::URLLoaderFactory* Factory() {

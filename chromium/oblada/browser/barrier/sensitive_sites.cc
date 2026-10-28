@@ -1,5 +1,6 @@
 #include "oblada/browser/barrier/sensitive_sites.h"
 
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -28,7 +29,7 @@ namespace oblada::barrier {
 
 namespace {
 
-// The page's answer: the session's token, then ".here" or ".temporary".
+// The page's answer (AnswerUrl()): ".here" or ".temporary".
 constexpr char kAnswerParam[] = "oblada-barrier-sensitive";
 
 struct SensitiveRule {
@@ -136,11 +137,10 @@ SensitiveSiteDecision CheckSensitiveSite(content::WebContents* contents,
     return decision;
   }
   // The question's answer.
-  std::string answer;
-  if (net::GetValueForKeyInQuery(url, kAnswerParam, &answer) &&
-      !SessionToken().empty() && answer.starts_with(SessionToken())) {
-    const GURL original = WithoutQueryParameter(url, kAnswerParam);
-    if (answer == SessionToken() + ".temporary") {
+  GURL original;
+  if (std::optional<std::string> answer =
+          TakeAnswer(url, kAnswerParam, &original)) {
+    if (*answer == ".temporary") {
       ReopenInTemporaryContainer(contents, original);
       decision.action = SensitiveSiteDecision::Action::kStop;
     } else {
@@ -172,8 +172,7 @@ std::string SensitiveSitePage(const GURL& url) {
     return base::EscapeForHTML(L10nUTF8(key));
   };
   const auto answer = [&](const char* choice) {
-    return JavaScriptUrl(net::AppendOrReplaceQueryParameter(
-        url, kAnswerParam, base::StrCat({SessionToken(), choice})));
+    return JavaScriptUrl(AnswerUrl(url, kAnswerParam, choice));
   };
   return base::StrCat({
       R"(<!doctype html><html><head><meta charset="utf-8">

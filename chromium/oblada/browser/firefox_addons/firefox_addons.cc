@@ -1,9 +1,13 @@
 #include "oblada/browser/firefox_addons/firefox_addons.h"
 
+#include <algorithm>
+#include <atomic>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "base/base64.h"
 #include "base/command_line.h"
@@ -11,7 +15,9 @@
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
+#include "base/functional/callback_helpers.h"
 #include "base/logging.h"
+#include "base/memory/ref_counted.h"
 #include "base/no_destructor.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -24,6 +30,9 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "components/crx_file/id_util.h"
 #include "components/download/public/common/download_item.h"
+#include "components/services/unzip/content/unzip_service.h"
+#include "components/services/unzip/public/cpp/unzip.h"
+#include "components/services/unzip/public/mojom/unzipper.mojom.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
@@ -46,6 +55,8 @@
 #include "oblada/browser/l10n.h"
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
 #include "url/gurl.h"
+#include "url/origin.h"
+#include "url/url_constants.h"
 
 namespace oblada::firefox_addons {
 
@@ -57,13 +68,35 @@ constexpr char kKeysPref[] = "oblada.firefox_addons.keys";
 // Firefox add-on id → where it looks for new versions, if not on addons.mozilla.org.
 constexpr char kUpdateUrlsPref[] = "oblada.firefox_addons.update_urls";
 
-// For tests: install without asking.
+#if !defined(OFFICIAL_BUILD)
+// For tests, which official builds ignore (whoever could start Oblada with them
+// could have it install anything): install without asking, and take add-ons
+// from the tests' server as from addons.mozilla.org.
 constexpr char kAutoConfirmSwitch[] = "oblada-auto-confirm-addon-install";
+constexpr char kTestSourceSwitch[] = "oblada-addon-test-source";
+#endif
 
 constexpr char kAmoHost[] = "addons.mozilla.org";
+// Where addons.mozilla.org's files may come from.
+constexpr char kAmoCdnHost[] = "addons.cdn.mozilla.net";
 constexpr char kFirefoxUserAgent[] =
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:150.0) Gecko/20100101 "
     "Firefox/150.0";
+
+// An .xpi's limits once unpacked, against archives made to fill the disk.
+constexpr uint64_t kMaxUnpackedSize = 512 * 1024 * 1024;
+constexpr int kMaxFiles = 20000;
+
+std::optional<url::Origin> TestSource() {
+#if !defined(OFFICIAL_BUILD)
+  const GURL url(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+      kTestSourceSwitch));
+  if (url.is_valid()) {
+    return url::Origin::Create(url);
+  }
+#endif
+  return std::nullopt;
+}
 
 bool IsXpi(const download::DownloadItem& item) {
   return item.GetMimeType() == "application/x-xpinstall" ||
@@ -90,15 +123,40 @@ struct Prepared {
   // Base64 public key to give the add-on if it doesn't have one yet.
   std::string new_key;
 };
+using PreparedCallback = base::OnceCallback<void(Prepared)>;
 
-Prepared Prepare(base::FilePath xpi, std::string fallback_id) {
-  Prepared prepared{base::unexpected("Couldn't unpack the add-on")};
-  if (!base::CreateNewTempDirectory(FILE_PATH_LITERAL("oblada-xpi"), &prepared.dir)) {
-    return prepared;
+// What an .xpi being unpacked has written so far. Its filter may run on another
+// sequence than its progress.
+struct UnpackState : base::RefCountedThreadSafe<UnpackState> {
+  std::atomic<int> files = 0;
+  std::atomic<bool> too_big = false;
+  uint64_t bytes = 0;
+  // Stops the unpacking.
+  base::OnceClosure cancel;
+
+ private:
+  friend class base::RefCountedThreadSafe<UnpackState>;
+  ~UnpackState() = default;
+};
+
+void PrepareFailed(const base::FilePath& dir,
+                   std::string error,
+                   PreparedCallback done) {
+  if (!dir.empty()) {
+    base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()},
+                               base::GetDeletePathRecursivelyCallback(dir));
   }
-  prepared.addon = UnpackAndConvert(xpi, prepared.dir, fallback_id);
+  std::move(done).Run(Prepared{base::unexpected(std::move(error))});
+}
+
+// Makes the unpacked add-on in `dir` an extension, with a key in case it's new.
+// Blocking.
+Prepared ConvertUnpacked(base::FilePath xpi,
+                         base::FilePath dir,
+                         std::string fallback_id) {
+  Prepared prepared{Convert(dir, fallback_id), dir};
   if (!prepared.addon.has_value()) {
-    base::DeletePathRecursively(prepared.dir);
+    base::DeletePathRecursively(dir);
     return prepared;
   }
   prepared.new_key = base::Base64Encode(
@@ -108,20 +166,121 @@ Prepared Prepare(base::FilePath xpi, std::string fallback_id) {
   return prepared;
 }
 
-content::WebContents* ActiveTab() {
+void OnUnpacked(base::FilePath xpi,
+                base::FilePath dir,
+                std::string fallback_id,
+                scoped_refptr<UnpackState> state,
+                PreparedCallback done,
+                bool ok) {
+  state->cancel.Reset();
+  if (!ok || state->too_big) {
+    PrepareFailed(dir,
+                  state->too_big ? "The add-on is too big"
+                                 : "The add-on file is damaged",
+                  std::move(done));
+    return;
+  }
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+      base::BindOnce(&ConvertUnpacked, std::move(xpi), std::move(dir),
+                     std::move(fallback_id)),
+      std::move(done));
+}
+
+void Unpack(base::FilePath xpi,
+            std::string fallback_id,
+            PreparedCallback done,
+            base::FilePath dir,
+            unzip::mojom::InfoPtr info) {
+  if (!info || !info->size_is_valid || info->is_encrypted) {
+    PrepareFailed(dir, "The add-on file is damaged", std::move(done));
+    return;
+  }
+  if (info->size > kMaxUnpackedSize) {
+    PrepareFailed(dir, "The add-on is too big", std::move(done));
+    return;
+  }
+  auto state = base::MakeRefCounted<UnpackState>();
+  state->cancel = unzip::Unzip(
+      unzip::LaunchUnzipper(), xpi, dir, unzip::mojom::UnzipOptions::New(),
+      base::BindRepeating(
+          [](scoped_refptr<UnpackState> state, const base::FilePath& path) {
+            if (++state->files > kMaxFiles) {
+              state->too_big = true;
+              return false;
+            }
+            return ShouldUnpack(path);
+          },
+          state),
+      base::BindRepeating(
+          [](scoped_refptr<UnpackState> state, uint64_t bytes) {
+            state->bytes += bytes;
+            // Its size as the archive says may be a lie.
+            if (state->bytes > kMaxUnpackedSize && state->cancel) {
+              state->too_big = true;
+              std::move(state->cancel).Run();
+            }
+          },
+          state),
+      base::BindOnce(&OnUnpacked, xpi, dir, std::move(fallback_id), state,
+                     std::move(done)));
+}
+
+// Unpacks the .xpi with Chromium's unzip service, in a sandboxed process, then
+// makes it an extension.
+void Prepare(base::FilePath xpi, std::string fallback_id, PreparedCallback done) {
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+      base::BindOnce([] {
+        base::FilePath dir;
+        return base::CreateNewTempDirectory(FILE_PATH_LITERAL("oblada-xpi"), &dir)
+                   ? dir
+                   : base::FilePath();
+      }),
+      base::BindOnce(
+          [](base::FilePath xpi, std::string fallback_id, PreparedCallback done,
+             base::FilePath dir) {
+            if (dir.empty()) {
+              PrepareFailed(dir, "Couldn't unpack the add-on", std::move(done));
+              return;
+            }
+            unzip::GetExtractedInfo(
+                unzip::LaunchUnzipper(), xpi,
+                base::BindOnce(&Unpack, xpi, std::move(fallback_id),
+                               std::move(done), dir));
+          },
+          std::move(xpi), std::move(fallback_id), std::move(done)));
+}
+
+// The active tab of `profile`'s last active window, to ask in.
+content::WebContents* ActiveTab(Profile* profile) {
   BrowserWindowInterface* browser = GetLastActiveBrowserWindowInterfaceWithAnyProfile();
-  return browser ? browser->GetTabStripModel()->GetActiveWebContents() : nullptr;
+  return browser && browser->GetProfile() == profile
+             ? browser->GetTabStripModel()->GetActiveWebContents()
+             : nullptr;
 }
 
 // Installs a converted add-on, after the usual confirmation listing what it can do, or
 // silently for an update (whose new permissions, if any, wait for the user's approval
-// as for any extension).
+// as for any extension). An update must be the add-on it updates (`expected_id`).
 void Install(base::WeakPtr<Profile> profile,
              base::WeakPtr<content::WebContents> web_contents,
+             std::string expected_id,
              bool silent,
              base::OnceCallback<void(bool)> done,
              Prepared prepared) {
-  content::WebContents* contents = web_contents ? web_contents.get() : ActiveTab();
+  content::WebContents* contents =
+      web_contents ? web_contents.get()
+                   : (profile ? ActiveTab(profile.get()) : nullptr);
+  if (prepared.addon.has_value() && !expected_id.empty() &&
+      prepared.addon->gecko_id != expected_id) {
+    LOG(ERROR) << "Firefox add-on update refused: it's " << prepared.addon->gecko_id
+               << ", not " << expected_id;
+    prepared.addon = base::unexpected("The update is another add-on");
+    base::ThreadPool::PostTask(
+        FROM_HERE, {base::MayBlock()},
+        base::GetDeletePathRecursivelyCallback(prepared.dir));
+  }
   if (!profile || (!contents && !silent) || !prepared.addon.has_value()) {
     if (!prepared.addon.has_value()) {
       LOG(ERROR) << "Firefox add-on not installed: " << prepared.addon.error();
@@ -142,28 +301,12 @@ void Install(base::WeakPtr<Profile> profile,
     LOG(WARNING) << "Firefox add-on " << prepared.addon->gecko_id << ": " << warning;
   }
 
-  std::string key;
-  {
-    ScopedDictPrefUpdate keys(profile->GetPrefs(), kKeysPref);
-    if (const std::string* existing = keys->FindString(prepared.addon->gecko_id)) {
-      key = *existing;
-    } else {
-      key = prepared.new_key;
-      keys->Set(prepared.addon->gecko_id, key);
-    }
-  }
+  const std::string* existing_key =
+      profile->GetPrefs()->GetDict(kKeysPref).FindString(prepared.addon->gecko_id);
+  const std::string key = existing_key ? *existing_key : prepared.new_key;
   const std::optional<std::vector<uint8_t>> public_key = base::Base64Decode(key);
   const extensions::ExtensionId id =
       crx_file::id_util::GenerateId(public_key.value_or(std::vector<uint8_t>()));
-
-  {
-    ScopedDictPrefUpdate update_urls(profile->GetPrefs(), kUpdateUrlsPref);
-    if (prepared.addon->update_url.empty()) {
-      update_urls->Remove(prepared.addon->gecko_id);
-    } else {
-      update_urls->Set(prepared.addon->gecko_id, prepared.addon->update_url);
-    }
-  }
 
   scoped_refptr<extensions::CrxInstaller> installer =
       silent ? extensions::CrxInstaller::CreateSilent(profile.get())
@@ -179,14 +322,26 @@ void Install(base::WeakPtr<Profile> profile,
   installer->set_expected_id(id);
   installer->AddInstallerCallback(base::BindOnce(
       [](scoped_refptr<extensions::CrxInstaller> installer,
-         base::OnceCallback<void(bool)> done,
+         base::WeakPtr<Profile> profile, std::string gecko_id, std::string key,
+         std::string update_url, base::OnceCallback<void(bool)> done,
          const std::optional<extensions::CrxInstallError>& error) {
         if (error) {
           LOG(ERROR) << "Firefox add-on not installed: " << error->message();
+        } else if (profile) {
+          // Only once it's installed: an add-on the user said no to changes
+          // nothing.
+          ScopedDictPrefUpdate(profile->GetPrefs(), kKeysPref)->Set(gecko_id, key);
+          ScopedDictPrefUpdate update_urls(profile->GetPrefs(), kUpdateUrlsPref);
+          if (update_url.empty()) {
+            update_urls->Remove(gecko_id);
+          } else {
+            update_urls->Set(gecko_id, update_url);
+          }
         }
         std::move(done).Run(!error.has_value());
       },
-      installer, std::move(done)));
+      installer, profile, prepared.addon->gecko_id, key,
+      prepared.addon->update_url, std::move(done)));
   // Installing it again (e.g. a new version from addons.mozilla.org) updates it.
   if (extensions::ExtensionRegistry::Get(profile.get())->GetInstalledExtension(id)) {
     installer->UpdateExtensionFromUnpackedCrx(id, key, prepared.dir);
@@ -276,32 +431,50 @@ std::vector<InstalledAddon> GetInstalledAddons(Profile* profile) {
   return addons;
 }
 
+bool IsAddonSource(const GURL& url) {
+  if (url.SchemeIs(url::kHttpsScheme) &&
+      (url.host() == kAmoHost || url.host() == kAmoCdnHost)) {
+    return true;
+  }
+  const std::optional<url::Origin> test = TestSource();
+  return test && test->IsSameOriginWith(url);
+}
+
 void InstallUpdate(Profile* profile,
                    const base::FilePath& xpi,
                    const std::string& gecko_id) {
-  base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::MayBlock(), base::TaskPriority::BEST_EFFORT},
-      base::BindOnce(&Prepare, xpi, gecko_id),
-      base::BindOnce(&Install, profile->GetWeakPtr(),
-                     base::WeakPtr<content::WebContents>(), /*silent=*/true,
-                     base::BindOnce([](bool installed) {})));
+  Prepare(xpi, gecko_id,
+          base::BindOnce(&Install, profile->GetWeakPtr(),
+                         base::WeakPtr<content::WebContents>(), gecko_id,
+                         /*silent=*/true, base::DoNothingAs<void(bool)>()));
 }
 
 bool IsAddonDownload(Profile* profile, const download::DownloadItem& item) {
-  return IsXpi(item) && !profile->IsOffTheRecord();
+  if (!IsXpi(item) || profile->IsOffTheRecord()) {
+    return false;
+  }
+  // Only from addons.mozilla.org, which reviews and signs add-ons, as Chrome
+  // takes extensions from its Web Store only, and only started there or by the
+  // user: an .xpi from anywhere else is just a file.
+  const std::optional<url::Origin>& initiator = item.GetRequestInitiator();
+  if (initiator && !IsAddonSource(initiator->GetURL())) {
+    return false;
+  }
+  const std::vector<GURL>& chain = item.GetUrlChain();
+  return !chain.empty() && std::ranges::all_of(chain, [](const GURL& url) {
+    return IsAddonSource(url);
+  });
 }
 
 void InstallDownload(Profile* profile,
                      download::DownloadItem* item,
                      base::OnceCallback<void(bool)> done) {
   content::WebContents* contents = content::DownloadItemUtils::GetWebContents(item);
-  base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
-      base::BindOnce(&Prepare, item->GetFullPath(), FallbackId(*item)),
-      base::BindOnce(&Install, profile->GetWeakPtr(),
-                     contents ? contents->GetWeakPtr()
-                              : base::WeakPtr<content::WebContents>(),
-                     /*silent=*/false, std::move(done)));
+  Prepare(item->GetFullPath(), FallbackId(*item),
+          base::BindOnce(&Install, profile->GetWeakPtr(),
+                         contents ? contents->GetWeakPtr()
+                                  : base::WeakPtr<content::WebContents>(),
+                         std::string(), /*silent=*/false, std::move(done)));
 }
 
 void AttachTabHelpers(content::WebContents* contents) {
@@ -312,10 +485,12 @@ void AttachTabHelpers(content::WebContents* contents) {
 
 void Init() {
   StartContextualIdentitiesEvents();
+#if !defined(OFFICIAL_BUILD)
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(kAutoConfirmSwitch)) {
     static base::NoDestructor<extensions::ScopedTestDialogAutoConfirm> confirm(
         extensions::ScopedTestDialogAutoConfirm::ACCEPT);
   }
+#endif
 }
 
 }  // namespace oblada::firefox_addons

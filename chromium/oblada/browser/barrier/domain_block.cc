@@ -1,5 +1,8 @@
 #include "oblada/browser/barrier/domain_block.h"
 
+#include <algorithm>
+#include <map>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -7,6 +10,8 @@
 #include "base/strings/escape.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
+#include "base/synchronization/lock.h"
+#include "base/time/time.h"
 #include "base/unguessable_token.h"
 #include "net/base/url_util.h"
 #include "oblada/browser/barrier/barrier.h"
@@ -17,13 +22,27 @@ namespace oblada::barrier {
 
 namespace {
 
-// The query parameter the warning's "Open anyway" adds, with a token of the
-// session's, which pages can't guess.
+// The query parameter the warning's "Open anyway" adds (AnswerUrl()).
 constexpr char kProceedParam[] = "oblada-barrier-proceed";
+constexpr char kProceedAnswer[] = "proceed";
 
-std::string& Token() {
-  static base::NoDestructor<std::string> token;
-  return *token;
+// The answers AnswerUrl() made, by token, until they're taken or too old.
+struct Answer {
+  GURL page;
+  std::string answer;
+  base::TimeTicks made;
+};
+constexpr base::TimeDelta kAnswerLifetime = base::Hours(1);
+constexpr size_t kMaxAnswers = 1000;
+
+base::Lock& AnswersLock() {
+  static base::NoDestructor<base::Lock> lock;
+  return *lock;
+}
+
+std::map<std::string, Answer>& Answers() {
+  static base::NoDestructor<std::map<std::string, Answer>> answers;
+  return *answers;
 }
 
 // The page, with $HOST and $PROCEED to fill in.
@@ -40,7 +59,6 @@ std::set<std::string>& Proceeded() {
 }  // namespace
 
 void InitDomainBlock() {
-  Token() = base::UnguessableToken::Create().ToString();
   const auto text = [](const char* key) {
     return base::EscapeForHTML(L10nUTF8(key));
   };
@@ -84,8 +102,41 @@ document.getElementById('proceed').onclick = () => location.replace($PROCEED);
   });
 }
 
-const std::string& SessionToken() {
-  return Token();
+GURL AnswerUrl(const GURL& url, std::string_view param, std::string_view answer) {
+  const GURL page = WithoutQueryParameter(url, param);
+  const std::string token = base::UnguessableToken::Create().ToString();
+  const base::TimeTicks now = base::TimeTicks::Now();
+  base::AutoLock lock(AnswersLock());
+  std::map<std::string, Answer>& answers = Answers();
+  std::erase_if(answers, [&](const auto& entry) {
+    return now - entry.second.made > kAnswerLifetime;
+  });
+  if (answers.size() >= kMaxAnswers) {
+    answers.erase(std::ranges::min_element(
+        answers, {}, [](const auto& entry) { return entry.second.made; }));
+  }
+  answers.emplace(token, Answer{page, std::string(answer), now});
+  return net::AppendOrReplaceQueryParameter(page, param, token);
+}
+
+std::optional<std::string> TakeAnswer(const GURL& url,
+                                      std::string_view param,
+                                      GURL* original) {
+  std::string token;
+  if (!net::GetValueForKeyInQuery(url, param, &token)) {
+    return std::nullopt;
+  }
+  const GURL page = WithoutQueryParameter(url, param);
+  base::AutoLock lock(AnswersLock());
+  const auto it = Answers().find(token);
+  if (it == Answers().end() || it->second.page != page ||
+      base::TimeTicks::Now() - it->second.made > kAnswerLifetime) {
+    return std::nullopt;
+  }
+  std::string answer = std::move(it->second.answer);
+  Answers().erase(it);
+  *original = page;
+  return answer;
 }
 
 std::string JavaScriptUrl(const GURL& url) {
@@ -118,20 +169,15 @@ std::string DomainBlockPage(const GURL& url) {
       &page, 0, "$HOST", base::EscapeForHTML(url.host()));
   base::ReplaceFirstSubstringAfterOffset(
       &page, 0, "$PROCEED",
-      JavaScriptUrl(
-          net::AppendOrReplaceQueryParameter(url, kProceedParam, Token())));
+      JavaScriptUrl(AnswerUrl(url, kProceedParam, kProceedAnswer)));
   return page;
 }
 
 bool IsProceeding(const GURL& url, GURL* original) {
-  std::string token;
-  if (Token().empty() ||
-      !net::GetValueForKeyInQuery(url, kProceedParam, &token) ||
-      token != Token()) {
+  if (TakeAnswer(url, kProceedParam, original) != kProceedAnswer) {
     return false;
   }
-  *original = WithoutQueryParameter(url, kProceedParam);
-  Proceeded().insert(SiteOf(url));
+  Proceeded().insert(SiteOf(*original));
   return true;
 }
 

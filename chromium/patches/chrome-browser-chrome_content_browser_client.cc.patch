@@ -1,18 +1,19 @@
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
-index 2e0f287290..3a0e47771a 100644
+index 2e0f287290..289de96cac 100644
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -4,6 +4,9 @@
+@@ -4,6 +4,10 @@
  
  #include "chrome/browser/chrome_content_browser_client.h"
  
 +#include "oblada/browser/barrier/farbling.h"  // Oblada
 +#include "oblada/browser/barrier/request_filter.h"  // Oblada
++#include "oblada/browser/containers/containers.h"  // Oblada
 +
  #include <algorithm>
  #include <iterator>
  #include <map>
-@@ -3696,6 +3699,19 @@ bool ChromeContentBrowserClient::AllowWorkerCacheStorage(
+@@ -3696,6 +3700,19 @@ bool ChromeContentBrowserClient::AllowWorkerCacheStorage(
        url, render_frames, cookie_settings.get(), storage_key);
  }
  
@@ -32,7 +33,7 @@ index 2e0f287290..3a0e47771a 100644
  bool ChromeContentBrowserClient::AllowWorkerWebLocks(
      const GURL& url,
      content::BrowserContext* browser_context,
-@@ -6798,6 +6814,10 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -6798,6 +6815,10 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
      network::mojom::URLLoaderFactoryOverridePtr* factory_override,
      scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner,
      bool is_for_network_service) {
@@ -43,7 +44,33 @@ index 2e0f287290..3a0e47771a 100644
  #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
    auto* web_request_api =
        extensions::BrowserContextKeyedAPIFactory<extensions::WebRequestAPI>::Get(
-@@ -6949,6 +6969,10 @@ ChromeContentBrowserClient::
+@@ -6907,8 +6928,12 @@ ChromeContentBrowserClient::WillCreateURLLoaderRequestInterceptors(
+   }
+ #endif
+ 
+-  interceptors.push_back(std::make_unique<SearchPrefetchURLLoaderInterceptor>(
+-      frame_tree_node_id, navigation_id, navigation_response_task_runner));
++  // Oblada: searches prefetched in the profile's own storage aren't served to
++  // containers' tabs.
++  if (!oblada::containers::IsContainerFrame(frame_tree_node_id)) {
++    interceptors.push_back(std::make_unique<SearchPrefetchURLLoaderInterceptor>(
++        frame_tree_node_id, navigation_id, navigation_response_task_runner));
++  }
+ 
+   if (!force_no_https_upgrade) {
+     auto https_upgrades_interceptor =
+@@ -6934,6 +6959,10 @@ ChromeContentBrowserClient::
+   // in scope for Connection Allowlist intervention. However, if we ever intend
+   // to create a loader in this function on behalf of a specific context, then
+   // that loader must respect the Connection Allowlist of that context.
++  // Oblada: not in containers' tabs (see WillCreateURLLoaderRequestInterceptors).
++  if (oblada::containers::IsContainerFrame(frame_tree_node_id)) {
++    return {};
++  }
+   SearchPrefetchURLLoader::RequestHandler prefetch_handler =
+       SearchPrefetchURLLoaderInterceptor::MaybeCreateLoaderForRequest(
+           resource_request, frame_tree_node_id, navigation_id);
+@@ -6949,6 +6978,10 @@ ChromeContentBrowserClient::
  
  bool ChromeContentBrowserClient::WillInterceptWebSocket(
      content::RenderFrameHost* frame) {
@@ -54,7 +81,7 @@ index 2e0f287290..3a0e47771a 100644
  #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
    if (!frame) {
      return false;
-@@ -6994,6 +7018,15 @@ void ChromeContentBrowserClient::CreateWebSocket(
+@@ -6994,6 +7027,15 @@ void ChromeContentBrowserClient::CreateWebSocket(
      mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
          handshake_client,
      content::ContentBrowserClient::WebSocketOptions options) {

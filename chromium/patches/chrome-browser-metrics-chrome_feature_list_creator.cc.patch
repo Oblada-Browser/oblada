@@ -1,17 +1,18 @@
 diff --git a/chrome/browser/metrics/chrome_feature_list_creator.cc b/chrome/browser/metrics/chrome_feature_list_creator.cc
-index 90e572fe4e..3d6edf2b7f 100644
+index 90e572fe4e..aa23547d7b 100644
 --- a/chrome/browser/metrics/chrome_feature_list_creator.cc
 +++ b/chrome/browser/metrics/chrome_feature_list_creator.cc
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,9 @@
  
  #include "chrome/browser/metrics/chrome_feature_list_creator.h"
  
++#include "chrome/browser/browser_features.h"  // Oblada
 +#include "oblada/browser/barrier/barrier.h"  // Oblada
 +
  #include <vector>
  
  #include "base/command_line.h"
-@@ -238,11 +240,15 @@ void ChromeFeatureListCreator::SetUpFieldTrials() {
+@@ -238,11 +241,21 @@ void ChromeFeatureListCreator::SetUpFieldTrials() {
  
    variations::VariationsService* variations_service =
        metrics_services_manager_->GetVariationsService();
@@ -22,6 +23,12 @@ index 90e572fe4e..3d6edf2b7f 100644
 -          *base::CommandLine::ForCurrentProcess()),
 -      std::move(feature_list), browser_field_trials_.get());
 +          *base::CommandLine::ForCurrentProcess());
++  // Oblada: Certificate Transparency, as Chrome has it (Chromium leaves it to
++  // Chrome-branded builds): certificates must be in public logs, whose list
++  // the PKIMetadata component keeps up to date.
++  extra_overrides.emplace_back(
++      std::cref(features::kCertificateTransparencyAskBeforeEnabling),
++      base::FeatureList::OVERRIDE_ENABLE_FEATURE);
 +  // Oblada: the Barrier's (web APIs turned off, network changes), unless its
 +  // switch is off.
 +  oblada::barrier::AddFeatureOverrides(local_state_.get(), extra_overrides);

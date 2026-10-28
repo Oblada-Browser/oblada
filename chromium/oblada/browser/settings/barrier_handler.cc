@@ -78,10 +78,24 @@ void BarrierHandler::RegisterMessages() {
 void BarrierHandler::OnJavascriptAllowed() {
   lists_subscription_ = barrier::filter_lists::ObserveLists(base::BindRepeating(
       &BarrierHandler::OnListsChanged, base::Unretained(this)));
+  local_state_registrar_.Init(g_browser_process->local_state());
+  for (const char* pref :
+       {barrier::kEnabledPref, barrier::kWebApisOffPref,
+        barrier::kReferrerCapPref, barrier::kCookieExpiryCapPref,
+        barrier::kPartitionConnectionsPref, barrier::kPartitionHstsPref}) {
+    local_state_registrar_.Add(
+        pref, base::BindRepeating(&BarrierHandler::OnStateChanged,
+                                  base::Unretained(this)));
+  }
 }
 
 void BarrierHandler::OnJavascriptDisallowed() {
   lists_subscription_ = {};
+  local_state_registrar_.RemoveAll();
+}
+
+void BarrierHandler::OnStateChanged() {
+  FireWebUIListener("oblada-barrier-state-changed", State());
 }
 
 void BarrierHandler::OnListsChanged() {
@@ -92,6 +106,7 @@ base::DictValue BarrierHandler::State() {
   return base::DictValue()
       .Set("on", barrier::IsOn())
       .Set("onAtStartup", barrier::WasOnAtStartup())
+      .Set("startupChanged", barrier::StartupProtectionsChanged())
       .Set("blockedTotal",
            static_cast<double>(g_browser_process->local_state()->GetInt64(
                barrier::kBlockedTotalPref)))

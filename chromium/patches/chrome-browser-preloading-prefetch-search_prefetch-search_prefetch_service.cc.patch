@@ -1,0 +1,25 @@
+diff --git a/chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service.cc b/chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service.cc
+index 0934529a85..974bd23e25 100644
+--- a/chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service.cc
++++ b/chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service.h"
+ 
++#include "oblada/browser/containers/containers.h"  // Oblada
++
+ #include <iterator>
+ #include <memory>
+ 
+@@ -281,6 +283,11 @@ bool SearchPrefetchService::MaybePrefetchURL(
+     bool should_ignore_saver_modes) {
+   if (!SearchPrefetchServicePrefetchingIsEnabled())
+     return false;
++  // Oblada: not from containers' tabs, as searches are prefetched in the
++  // profile's own storage, not the container's.
++  if (web_contents && !oblada::containers::GetContainerId(web_contents).empty()) {
++    return false;
++  }
+ 
+   SearchPrefetchEligibilityReasonRecorder recorder(navigation_prefetch);
+ 

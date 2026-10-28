@@ -34,8 +34,13 @@ namespace oblada::firefox_addons {
 
 void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
 
+// Whether add-ons may come from `url`: addons.mozilla.org (and its files' host),
+// over HTTPS.
+bool IsAddonSource(const GURL& url);
+
 // chrome_download_manager_delegate.cc: whether `item` is a Firefox add-on (.xpi) to
-// install; then InstallDownload() installs it, telling `done` whether it was.
+// install, one from addons.mozilla.org; then InstallDownload() installs it, telling
+// `done` whether it was.
 bool IsAddonDownload(Profile* profile, const download::DownloadItem& item);
 void InstallDownload(Profile* profile,
                      download::DownloadItem* item,
@@ -52,7 +57,8 @@ struct InstalledAddon {
 };
 std::vector<InstalledAddon> GetInstalledAddons(Profile* profile);
 
-// Installs a new version of an installed add-on, downloaded to `xpi`, without asking.
+// Installs a new version of an installed add-on, downloaded to `xpi`, without asking;
+// not if it's another add-on than `gecko_id`.
 void InstallUpdate(Profile* profile,
                    const base::FilePath& xpi,
                    const std::string& gecko_id);

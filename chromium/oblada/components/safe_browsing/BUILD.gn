@@ -1,0 +1,15 @@
+# Oblada's key for Google's Safe Browsing API (its v4 lists), given to Safe
+# Browsing alone (sb_protocol_config.cc): google_api_key would give it to every
+# Google service Chromium has, which would start calling Google with it. Only
+# releases have one: build.sh --release takes it from the login keychain
+# (make safe-browsing-key).
+import("//build/buildflag_header.gni")
+
+declare_args() {
+  oblada_safe_browsing_api_key = ""
+}
+
+buildflag_header("buildflags") {
+  header = "buildflags.h"
+  flags = [ "OBLADA_SAFE_BROWSING_API_KEY=\"$oblada_safe_browsing_api_key\"" ]
+}

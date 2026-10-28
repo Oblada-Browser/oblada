@@ -1,5 +1,7 @@
 #include "oblada/browser/barrier/barrier.h"
 
+#include <algorithm>
+#include <map>
 #include <memory>
 #include <set>
 #include <utility>
@@ -31,6 +33,7 @@
 #include "content/public/common/content_features.h"
 #include "net/base/features.h"
 #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
+#include "net/base/url_util.h"
 #include "oblada/browser/barrier/data_lists.h"
 #include "oblada/browser/barrier/domain_block.h"
 #include "oblada/browser/barrier/filter_lists.h"
@@ -51,6 +54,18 @@ constexpr char kSyncedOnPref[] = "oblada.barrier.synced_on";
 
 // Whether the Barrier was on as Oblada started; unset until it's known.
 std::optional<bool> g_on_at_startup;
+
+// The protections decided as Oblada starts, with a switch each.
+constexpr const char* kStartupPrefs[] = {
+    kWebApisOffPref, kReferrerCapPref, kCookieExpiryCapPref,
+    kPartitionConnectionsPref, kPartitionHstsPref,
+};
+
+// Their values as Oblada started.
+std::map<std::string, bool>& StartupValues() {
+  static base::NoDestructor<std::map<std::string, bool>> values;
+  return *values;
+}
 
 constexpr std::pair<AdBlocking, std::string_view> kAdBlockingNames[] = {
     {AdBlocking::kDisabled, "disabled"},
@@ -547,6 +562,11 @@ std::string SiteOf(const GURL& url) {
   return site.empty() ? std::string(url.host()) : site;
 }
 
+bool IsListUrlAllowed(const GURL& url) {
+  return url.SchemeIs(url::kHttpsScheme) ||
+         (url.SchemeIs(url::kHttpScheme) && net::IsLocalhost(url));
+}
+
 base::CallbackListSubscription ObserveSettings(Profile* profile,
                                                base::RepeatingClosure changed) {
   return ProfileBarrier::Get(profile).observers().Add(std::move(changed));
@@ -588,6 +608,9 @@ void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
   filter_lists::RegisterLocalStatePrefs(registry);
   data_lists::RegisterLocalStatePrefs(registry);
   registry->RegisterInt64Pref(kBlockedTotalPref, 0);
+  for (const char* pref : kStartupPrefs) {
+    registry->RegisterBooleanPref(pref, true);
+  }
 }
 
 void RegisterChromiumDefaults(user_prefs::PrefRegistrySyncable* registry) {
@@ -602,19 +625,50 @@ void RegisterChromiumDefaults(user_prefs::PrefRegistrySyncable* registry) {
           content_settings::CookieControlsMode::kBlockThirdParty)));
 }
 
+bool StartupProtectionsChanged() {
+  PrefService* local_state = g_browser_process->local_state();
+  if (local_state->GetBoolean(kEnabledPref) != WasOnAtStartup()) {
+    return true;
+  }
+  return std::ranges::any_of(kStartupPrefs, [&](const char* pref) {
+    const auto it = StartupValues().find(pref);
+    return it != StartupValues().end() &&
+           local_state->GetBoolean(pref) != it->second;
+  });
+}
+
 void AddFeatureOverrides(
     PrefService* local_state,
     std::vector<base::FeatureList::FeatureOverrideInfo>& overrides) {
   g_on_at_startup = local_state->GetBoolean(kEnabledPref);
+  for (const char* pref : kStartupPrefs) {
+    StartupValues()[pref] = local_state->GetBoolean(pref);
+  }
   auto set = [&](const base::Feature& feature, bool enabled) {
     overrides.emplace_back(
         std::cref(feature),
         enabled ? base::FeatureList::OVERRIDE_ENABLE_FEATURE
                 : base::FeatureList::OVERRIDE_DISABLE_FEATURE);
   };
+  // Each of these protections with the Barrier on, unless turned off.
+  const auto on = [&](const char* pref) {
+    return *g_on_at_startup && local_state->GetBoolean(pref);
+  };
+  set(net::features::kObladaReferrerCap, on(kReferrerCapPref));
+  set(net::features::kObladaCookieExpiryCap, on(kCookieExpiryCapPref));
+  // HSTS apart for each site, as Brave: other sites' pages can't read a
+  // site's back as a cookie.
+  set(net::features::kObladaPartitionHsts, on(kPartitionHstsPref));
   if (!*g_on_at_startup) {
-    set(net::features::kObladaReferrerCap, false);
-    set(net::features::kObladaCookieExpiryCap, false);
+    return;
+  }
+  // Global Privacy Control, which Settings turns on or off (kGpcPref).
+  set(blink::features::kGlobalPrivacyControlTest, true);
+  // Connections apart for each site, as their caches already are.
+  if (on(kPartitionConnectionsPref)) {
+    set(net::features::kPartitionConnectionsByNetworkIsolationKey, true);
+  }
+  if (!on(kWebApisOffPref)) {
     return;
   }
   // Web APIs, as Brave has them off.
@@ -637,13 +691,6 @@ void AddFeatureOverrides(
        }) {
     set(*feature, false);
   }
-  // Connections apart for each site, as their caches already are.
-  set(net::features::kPartitionConnectionsByNetworkIsolationKey, true);
-  // HSTS upgrades only pages themselves, so that other sites' requests can't
-  // read it back as a cookie (Brave partitions it by site instead).
-  set(net::features::kHstsTopLevelNavigationsOnly, true);
-  // Global Privacy Control, which Settings turns on or off (kGpcPref).
-  set(blink::features::kGlobalPrivacyControlTest, true);
 }
 
 void Init() {

@@ -1,8 +1,8 @@
 diff --git a/net/base/features.h b/net/base/features.h
-index 96c005fd52..304727549b 100644
+index 96c005fd52..a151b43ab6 100644
 --- a/net/base/features.h
 +++ b/net/base/features.h
-@@ -1064,6 +1064,13 @@ NET_EXPORT BASE_DECLARE_FEATURE(kEnableWindowsTcpLoopbackFastFail);
+@@ -1064,6 +1064,17 @@ NET_EXPORT BASE_DECLARE_FEATURE(kEnableWindowsTcpLoopbackFastFail);
  NET_EXPORT BASE_DECLARE_FEATURE(kQuicSocketSendBufferSize);
  NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int, kQuicSocketSendBufferSizeParam);
  
@@ -12,6 +12,10 @@ index 96c005fd52..304727549b 100644
 +// and cookies kept no longer than 6 months, as Brave does.
 +NET_EXPORT BASE_DECLARE_FEATURE(kObladaReferrerCap);
 +NET_EXPORT BASE_DECLARE_FEATURE(kObladaCookieExpiryCap);
++// Oblada: the Barrier's too: what a site's responses say about its HSTS from
++// inside another site's pages holds there only, as Brave has it
++// (TransportSecurityState::PartitionFor()).
++NET_EXPORT BASE_DECLARE_FEATURE(kObladaPartitionHsts);
 +
  }  // namespace net::features
  

@@ -17,8 +17,11 @@
 #include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/types/expected.h"
+#include "content/public/browser/frame_tree_node_id.h"
+#include "content/public/common/referrer.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/window_open_disposition.h"
+#include "url/origin.h"
 
 class BrowserWindowInterface;
 class GURL;
@@ -124,6 +127,9 @@ const std::vector<std::string_view>& ColorNames();
 
 // The container `contents` (or `site_instance`) lives in; empty if none.
 std::string GetContainerId(content::WebContents* contents);
+// Whether the frame `frame_tree_node_id` is in a container's tab
+// (chrome_content_browser_client.cc: no search prefetches there).
+bool IsContainerFrame(content::FrameTreeNodeId frame_tree_node_id);
 std::string GetContainerId(content::SiteInstance* site_instance);
 
 content::StoragePartitionConfig PartitionFor(Profile* profile, std::string_view id);
@@ -144,13 +150,24 @@ base::expected<content::WebContents*, std::string> OpenTabInContainer(
     bool pinned,
     int index);
 
+// The page that started a navigation reopened in another container, when it
+// wasn't the user (a link, a script, a redirect): the site gets what it would
+// from that page, not what it gets when the user types its address (its
+// SameSite=Strict cookies, Sec-Fetch-Site: none).
+struct NavigationInitiator {
+  url::Origin origin;
+  bool user_gesture = false;
+  content::Referrer referrer;
+};
+
 // Replaces the tab of `contents` with one on `url` in container `id` (none if empty),
 // at the same place. A tab that was only showing the New Tab page is closed, else it
 // stays (it was showing something else when a site went to its container).
 void ReopenInContainer(content::WebContents* contents,
                        std::string_view id,
                        const GURL& url,
-                       bool keep_original);
+                       bool keep_original,
+                       std::optional<NavigationInitiator> initiator = std::nullopt);
 
 // --- Hooks called from Oblada's patches to Chromium ---
 

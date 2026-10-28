@@ -11,6 +11,7 @@
 #include "base/supports_user_data.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/rand_util.h"
+#include "base/time/time.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/values.h"
@@ -42,13 +43,16 @@
 #include "content/public/browser/reload_type.h"
 #include "content/public/browser/web_contents_user_data.h"
 #include "content/public/common/url_constants.h"
+#include "content/public/common/referrer.h"
 #include "oblada/browser/l10n.h"
 #include "oblada/browser/workspaces/workspaces.h"
 #include "services/network/public/mojom/clear_data_filter.mojom.h"
 #include "services/network/public/mojom/cookie_manager.mojom.h"
 #include "services/network/public/mojom/network_context.mojom.h"
+#include "third_party/blink/public/mojom/loader/referrer.mojom.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/gfx/canvas.h"
+#include "url/origin.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/rect_f.h"
@@ -497,6 +501,12 @@ std::string GetContainerId(content::WebContents* contents) {
   return contents ? GetContainerId(contents->GetSiteInstance()) : std::string();
 }
 
+bool IsContainerFrame(content::FrameTreeNodeId frame_tree_node_id) {
+  content::WebContents* contents =
+      content::WebContents::FromFrameTreeNodeId(frame_tree_node_id);
+  return contents && !GetContainerId(contents).empty();
+}
+
 std::string GetContainerId(content::SiteInstance* site_instance) {
   if (!site_instance) {
     return std::string();
@@ -523,12 +533,14 @@ namespace {
 // even if its site always opens in another container.
 constexpr int kChosenContainerKey = 0;
 
-content::WebContents* OpenInContainerAt(BrowserWindowInterface* browser,
-                                        std::string_view id,
-                                        const GURL& url,
-                                        WindowOpenDisposition disposition,
-                                        std::optional<int> index,
-                                        bool pinned = false) {
+content::WebContents* OpenInContainerAt(
+    BrowserWindowInterface* browser,
+    std::string_view id,
+    const GURL& url,
+    WindowOpenDisposition disposition,
+    std::optional<int> index,
+    bool pinned = false,
+    const std::optional<NavigationInitiator>& initiator = std::nullopt) {
   Profile* profile = browser->GetProfile();
   const GURL target = url.is_empty() ? GURL(chrome::kChromeUINewTabURL) : url;
   // Containers are for web pages (and the New Tab page); others, e.g. extension
@@ -563,6 +575,12 @@ content::WebContents* OpenInContainerAt(BrowserWindowInterface* browser,
     content::NavigationController::LoadURLParams load(target);
     load.transition_type = url.is_empty() ? ui::PAGE_TRANSITION_AUTO_TOPLEVEL
                                           : ui::PAGE_TRANSITION_LINK;
+    if (initiator) {
+      load.initiator_origin = initiator->origin;
+      load.is_renderer_initiated = true;
+      load.has_user_gesture = initiator->user_gesture;
+      load.referrer = content::Referrer::SanitizeForRequest(target, initiator->referrer);
+    }
     opened->GetController().LoadURLWithParams(load);
   }
   return opened;
@@ -609,7 +627,8 @@ base::expected<content::WebContents*, std::string> OpenTabInContainer(
 void ReopenInContainer(content::WebContents* contents,
                        std::string_view id,
                        const GURL& url,
-                       bool keep_original) {
+                       bool keep_original,
+                       std::optional<NavigationInitiator> initiator) {
   tabs::TabInterface* tab = tabs::TabInterface::MaybeGetFromContents(contents);
   if (!tab || !tab->GetBrowserWindowInterface()) {
     return;
@@ -624,7 +643,7 @@ void ReopenInContainer(content::WebContents* contents,
                     tabs->active_index() == index
                         ? WindowOpenDisposition::NEW_FOREGROUND_TAB
                         : WindowOpenDisposition::NEW_BACKGROUND_TAB,
-                    index + 1);
+                    index + 1, /*pinned=*/false, initiator);
   if (!keep_original) {
     const int original = tabs->GetIndexOfWebContents(contents);
     if (original != TabStripModel::kNoTab) {
@@ -732,6 +751,29 @@ class TemporaryContainerTab
 WEB_CONTENTS_USER_DATA_KEY_IMPL(TemporaryContainerTab);
 
 // Opens sites in the container they always open in (see AssignSite).
+// When the tab's page last sent it to another container on its own.
+struct LastReopenWithoutGesture : base::SupportsUserData::Data {
+  base::TimeTicks time;
+};
+constexpr int kLastReopenWithoutGestureKey = 0;
+constexpr base::TimeDelta kReopenWithoutGestureInterval = base::Seconds(10);
+
+bool MayReopenWithoutGesture(content::WebContents* contents) {
+  auto* last = static_cast<LastReopenWithoutGesture*>(
+      contents->GetUserData(&kLastReopenWithoutGestureKey));
+  const base::TimeTicks now = base::TimeTicks::Now();
+  if (last && now - last->time < kReopenWithoutGestureInterval) {
+    return false;
+  }
+  if (!last) {
+    auto data = std::make_unique<LastReopenWithoutGesture>();
+    last = data.get();
+    contents->SetUserData(&kLastReopenWithoutGestureKey, std::move(data));
+  }
+  last->time = now;
+  return true;
+}
+
 class SiteAssignmentThrottle : public content::NavigationThrottle {
  public:
   using content::NavigationThrottle::NavigationThrottle;
@@ -767,17 +809,40 @@ class SiteAssignmentThrottle : public content::NavigationThrottle {
     if (assigned.empty() || assigned == GetContainerId(contents)) {
       return PROCEED;
     }
+    // Reopened as the page that went there would have it (a site redirecting
+    // to it counts as its page), unless the user typed its address.
+    std::optional<NavigationInitiator> initiator;
+    const std::vector<GURL>& chain = navigation->GetRedirectChain();
+    const blink::mojom::Referrer& referrer = navigation->GetReferrer();
+    if (chain.size() > 1) {
+      initiator = NavigationInitiator{url::Origin::Create(chain[chain.size() - 2]),
+                                      navigation->HasUserGesture(),
+                                      content::Referrer(chain[chain.size() - 2],
+                                                        referrer.policy)};
+    } else if (navigation->IsRendererInitiated() &&
+               navigation->GetInitiatorOrigin()) {
+      initiator = NavigationInitiator{
+          *navigation->GetInitiatorOrigin(), navigation->HasUserGesture(),
+          content::Referrer(referrer.url, referrer.policy)};
+    }
+    // Each time opens a tab: pages that send it there on their own, without
+    // the user's click, may do so once in a while only.
+    if (navigation->IsRendererInitiated() && !navigation->HasUserGesture() &&
+        !MayReopenWithoutGesture(contents)) {
+      return CANCEL_AND_IGNORE;
+    }
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(
             [](base::WeakPtr<content::WebContents> contents, std::string id,
-               GURL url, bool keep) {
+               GURL url, bool keep, std::optional<NavigationInitiator> initiator) {
               if (contents) {
-                ReopenInContainer(contents.get(), id, url, keep);
+                ReopenInContainer(contents.get(), id, url, keep,
+                                  std::move(initiator));
               }
             },
             contents->GetWeakPtr(), assigned, navigation->GetURL(),
-            ShowsSomething(contents)));
+            ShowsSomething(contents), std::move(initiator)));
     return CANCEL_AND_IGNORE;
   }
 

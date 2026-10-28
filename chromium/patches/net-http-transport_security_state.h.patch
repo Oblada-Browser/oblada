@@ -1,0 +1,57 @@
+diff --git a/net/http/transport_security_state.h b/net/http/transport_security_state.h
+index 8bf88f24c9..4157782187 100644
+--- a/net/http/transport_security_state.h
++++ b/net/http/transport_security_state.h
+@@ -251,6 +251,12 @@ class NET_EXPORT TransportSecurityState {
+       std::string_view host,
+       bool is_top_level_nav,
+       const NetLogWithSource& net_log = NetLogWithSource());
++  // Oblada: as above, for a request in `key`'s partition (PartitionFor()).
++  SSLUpgradeDecision GetSSLUpgradeDecision(
++      std::string_view host,
++      bool is_top_level_nav,
++      const NetLogWithSource& net_log,
++      const NetworkAnonymizationKey& key);
+ 
+   // These functions search for static and dynamic STS and PKP states, and
+   // invoke the functions of the same name on them. These functions are the
+@@ -381,6 +387,10 @@ class NET_EXPORT TransportSecurityState {
+   // Processes an HSTS header value from the host, adding entries to
+   // dynamic state if necessary.
+   bool AddHSTSHeader(std::string_view host, std::string_view value);
++  // Oblada: as above, from a response in `key`'s partition (PartitionFor()).
++  bool AddHSTSHeader(std::string_view host,
++                     std::string_view value,
++                     const NetworkAnonymizationKey& key);
+ 
+   // Adds explicitly-specified data as if it was processed from an
+   // HSTS header (used for net-internals and unit tests).
+@@ -433,6 +443,19 @@ class NET_EXPORT TransportSecurityState {
+ 
+   base::DictValue NetLogUpgradeToSSLParam(std::string_view host);
+ 
++  // Oblada: the top-level site a request's HSTS state is kept under, with
++  // features::kObladaPartitionHsts: what a host's responses say about its HSTS
++  // from inside another site's pages holds there only, so that HSTS can't
++  // carry an identifier from site to site; under its own site, what it says
++  // holds everywhere, as without partitions (as Brave has it). None without
++  // the feature, or for requests outside pages.
++  static std::optional<std::string> PartitionFor(
++      const NetworkAnonymizationKey& key);
++  // Oblada: the key of a host's STS state in `partition_`'s partition: the
++  // host's hash in its own site's (and without partitions), a hash of the
++  // host and the partition in others'.
++  HashedHost STSKey(base::span<const uint8_t> canonicalized_host) const;
++
+   // IsBuildTimely returns true if the current build is new enough ensure that
+   // built in security information (i.e. HSTS preloading and pinning
+   // information) is timely.
+@@ -472,6 +495,8 @@ class NET_EXPORT TransportSecurityState {
+   // the map keys instead. In addition, |upgrade_mode| in the STSState is never
+   // MODE_DEFAULT and |HasPublicKeyPins| in the PKPState always returns true.
+   STSStateMap enabled_sts_hosts_;
++  // Oblada: the partition of the request being looked at, if any (STSKey()).
++  std::optional<std::string> partition_;
+   // This is the dynamic PKP data set by AddHPKP:
+   PKPStateMap enabled_pkp_hosts_;
+ 

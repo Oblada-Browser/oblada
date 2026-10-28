@@ -44,6 +44,7 @@ installed apps update themselves from:
 ```sh
 make update-key                    # once: the key releases are signed with, in your keychain
 make import-update-key FILE=<file> # that key from its backup (generate_keys -x), e.g. on another Mac
+make safe-browsing-key             # once: releases' key for Google's Safe Browsing API, in your keychain
 make dmg                           # dmg.sh: Oblada-silicon.dmg (and the .aar), in the build directory
 make bump TO=0.1.1                 # raise chromium/oblada/VERSION, then commit and push it
 make release NOTES=/tmp/notes.md   # release.sh: build (out/Release), pack and publish the commit
@@ -61,6 +62,12 @@ say what failed.
 `release.sh` keeps the dSYMs of the app's binaries on the maintainer's Mac, in
 `~/chromium/symbols/Oblada-<version>-arm64-dSYMs.aar` (they're never published), and
 `symbolicate.py` names Oblada's functions in macOS's crash reports of a release with them.
+
+Safe Browsing gets its lists from Google's Safe Browsing API, with a key of Oblada's own
+that only releases have (the API is free for non-commercial use): `build.sh --release` takes
+it from your login keychain, where `make safe-browsing-key` puts it, and gives it to Safe
+Browsing alone (`oblada/components/safe_browsing`), not to Chromium's other Google services
+as `google_api_key` would. `release.sh` refuses to run without it.
 
 Oblada updates itself with [Sparkle](https://sparkle-project.org)
 (`oblada/browser/updater`), which `sparkle.sh` puts in the checkout as

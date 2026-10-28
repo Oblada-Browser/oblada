@@ -168,6 +168,11 @@ std::vector<std::string> SitesWithOverrides(Profile* profile);
 // pages.
 std::string SiteOf(const GURL& url);
 
+// Whether lists may be downloaded from `url`: HTTPS, or HTTP from this computer
+// (tests' servers). Anyone on the network could change a list fetched over
+// plain HTTP, and lists change what pages run.
+bool IsListUrlAllowed(const GURL& url);
+
 // Notifies of changes to the profile's defaults or its sites' settings.
 base::CallbackListSubscription ObserveSettings(Profile* profile,
                                                base::RepeatingClosure changed);
@@ -201,6 +206,23 @@ inline constexpr char kShowCountPref[] = "oblada.barrier.show_count";
 
 // Whether a profile pref above is on, and the Barrier with it.
 bool IsPrivacyOn(Profile* profile, const char* pref);
+
+// Local State, decided as Oblada starts (AddFeatureOverrides()), so changes
+// apply after a relaunch; all on, and each only with the Barrier on then.
+// Web APIs that mostly serve to recognize you off, as in Brave.
+inline constexpr char kWebApisOffPref[] = "oblada.barrier.web_apis_off";
+// Referrers never say more than the origin across sites.
+inline constexpr char kReferrerCapPref[] = "oblada.barrier.referrer_cap";
+// Cookies last 6 months at most.
+inline constexpr char kCookieExpiryCapPref[] =
+    "oblada.barrier.cookie_expiry_cap";
+// Connections apart for each site.
+inline constexpr char kPartitionConnectionsPref[] =
+    "oblada.barrier.partition_connections";
+// HSTS apart for each site, as Brave (net's kObladaPartitionHsts).
+inline constexpr char kPartitionHstsPref[] = "oblada.barrier.partition_hsts";
+// Whether one of them, or the Barrier's switch, changed since Oblada started.
+bool StartupProtectionsChanged();
 
 // The defaults (profile prefs).
 inline constexpr char kAdsPref[] = "oblada.barrier.ads";

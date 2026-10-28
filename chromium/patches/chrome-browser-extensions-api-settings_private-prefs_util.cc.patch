@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/extensions/api/settings_private/prefs_util.cc b/chrome/browser/extensions/api/settings_private/prefs_util.cc
-index 618a67dabc..efecbf541a 100644
+index 618a67dabc..778fd353f9 100644
 --- a/chrome/browser/extensions/api/settings_private/prefs_util.cc
 +++ b/chrome/browser/extensions/api/settings_private/prefs_util.cc
-@@ -314,6 +314,25 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
+@@ -314,6 +314,29 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
  
    // Appearance settings.
    (*s_allowlist)[::prefs::kCtrlTabMru] = settings_api::PrefType::kBoolean;
@@ -17,7 +17,11 @@ index 618a67dabc..efecbf541a 100644
 +        "oblada.barrier.strip_params", "oblada.barrier.debounce",
 +        "oblada.barrier.de_amp", "oblada.barrier.reduce_language",
 +        "oblada.barrier.facebook_embeds", "oblada.barrier.x_embeds",
-+        "oblada.barrier.linkedin_embeds", "oblada.barrier.google_sign_in"}) {
++        "oblada.barrier.linkedin_embeds", "oblada.barrier.google_sign_in",
++        "oblada.barrier.web_apis_off", "oblada.barrier.referrer_cap",
++        "oblada.barrier.cookie_expiry_cap",
++        "oblada.barrier.partition_connections",
++        "oblada.barrier.partition_hsts"}) {
 +    (*s_allowlist)[pref] = settings_api::PrefType::kBoolean;
 +  }
 +  for (const char* pref :

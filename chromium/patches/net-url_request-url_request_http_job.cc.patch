@@ -1,0 +1,30 @@
+diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
+index c909310d20..1e5470e285 100644
+--- a/net/url_request/url_request_http_job.cc
++++ b/net/url_request/url_request_http_job.cc
+@@ -353,11 +353,13 @@ std::unique_ptr<URLRequestJob> URLRequestHttpJob::Create(URLRequest* request) {
+   SSLUpgradeDecision upgrade_decision = SSLUpgradeDecision::kNoUpgrade;
+   if (TransportSecurityState* hsts =
+           request->context()->transport_security_state()) {
++    // Oblada: in the request's partition (kObladaPartitionHsts).
+     upgrade_decision = hsts->GetSSLUpgradeDecision(
+         url.GetHost(),
+         /*is_top_level_nav=*/
+         request->isolation_info().IsOutermostMainFrameRequest(),
+-        request->net_log());
++        request->net_log(),
++        request->isolation_info().network_anonymization_key());
+   }
+ 
+   // Check for reasons not to return a URLRequestHttpJob. These don't apply to
+@@ -1185,7 +1187,9 @@ void URLRequestHttpJob::ProcessStrictTransportSecurityHeader() {
+   std::optional<std::string_view> value;
+   if ((value =
+            headers->EnumerateHeader(nullptr, "Strict-Transport-Security"))) {
+-    security_state->AddHSTSHeader(request_info_.url.GetHost(), *value);
++    // Oblada: in the request's partition (kObladaPartitionHsts).
++    security_state->AddHSTSHeader(request_info_.url.GetHost(), *value,
++                                  request_info_.network_anonymization_key);
+   }
+ }
+ 

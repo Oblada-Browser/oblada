@@ -24,18 +24,19 @@ struct ConvertedAddon {
   std::vector<std::string> warnings;
 };
 
-// Unzips the .xpi `xpi` into the empty directory `dir` and makes it a Chromium
-// extension in place:
+// Whether the file at `path` in an .xpi is unpacked: not Mozilla's signatures,
+// nor files Chromium reserves (starting with "_", but for translations).
+bool ShouldUnpack(const base::FilePath& path);
+
+// Makes the .xpi unpacked into `dir` a Chromium extension in place:
 //  - Firefox-only manifest keys go, and permissions are renamed (menus is
 //    contextMenus) or dropped when Chromium has no such API;
 //  - Firefox's Manifest V3 background scripts become a service worker;
 //  - SVG icons go (Chromium can't decode them, which would fail the install);
 //  - kCompatScript runs first in the background, in content scripts and in pages.
 // `fallback_id` names the add-on when the manifest has no id. Blocking.
-base::expected<ConvertedAddon, std::string> UnpackAndConvert(
-    const base::FilePath& xpi,
-    const base::FilePath& dir,
-    std::string_view fallback_id);
+base::expected<ConvertedAddon, std::string> Convert(const base::FilePath& dir,
+                                                    std::string_view fallback_id);
 
 }  // namespace oblada::firefox_addons
 

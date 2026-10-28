@@ -34,6 +34,7 @@
 #include "components/prefs/scoped_user_pref_update.h"
 #include "net/base/load_flags.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
+#include "net/url_request/redirect_info.h"
 #include "oblada/barrier_lists.h"
 #include "oblada/barrier_resources.h"
 #include "oblada/browser/barrier/barrier.h"
@@ -42,6 +43,7 @@
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/simple_url_loader.h"
+#include "services/network/public/mojom/url_response_head.mojom.h"
 #include "url/gurl.h"
 
 namespace oblada::barrier::filter_lists {
@@ -161,7 +163,7 @@ std::vector<CatalogEntry> ParseCatalog(std::string_view json) {
     for (const base::Value& source : *sources) {
       const std::string* url =
           source.is_dict() ? source.GetDict().FindString("url") : nullptr;
-      if (url && GURL(*url).SchemeIsHTTPOrHTTPS()) {
+      if (url && IsListUrlAllowed(GURL(*url))) {
         entry.sources.emplace_back(*url);
       }
     }
@@ -330,6 +332,38 @@ class Lists {
 
   base::RepeatingClosureList& observers() { return observers_; }
 
+  // What a catalog list's source may inject: trusted scriptlets only for
+  // uBlock Origin's and Brave's own lists, the ones they trust with them, and
+  // only if the catalog built into Oblada says so. Anyone running another
+  // list's host, or Brave's catalog downloaded, could otherwise have every
+  // page run what they like. The test catalog's lists get what it says.
+  uint8_t Permissions(const CatalogEntry& entry, const GURL& source) const {
+    if (test_catalog_.is_valid()) {
+      return entry.permissions;
+    }
+    static constexpr std::string_view kTrustedSources[] = {
+        "https://raw.githubusercontent.com/uBlockOrigin/uAssets/",
+        "https://raw.githubusercontent.com/brave/adblock-lists/",
+    };
+    if (std::ranges::none_of(kTrustedSources, [&](std::string_view prefix) {
+          return source.spec().starts_with(prefix);
+        })) {
+      return 0;
+    }
+    static const base::NoDestructor<std::map<std::string, uint8_t>> built_in(
+        [] {
+          std::map<std::string, uint8_t> permissions;
+          for (const CatalogEntry& built_in_entry : ParseCatalog(kListCatalog)) {
+            permissions[built_in_entry.uuid] = built_in_entry.permissions;
+          }
+          return permissions;
+        }());
+    const auto it = built_in->find(entry.uuid);
+    return it == built_in->end()
+               ? 0
+               : it->second & adblock::Engine::kTrusted;
+  }
+
   void Rebuild() {
     if (building_) {
       rebuild_again_ = true;
@@ -345,7 +379,7 @@ class Lists {
         for (const GURL& source : entry.sources) {
           (entry.first_party_protections ? inputs.default_sources
                                          : inputs.additional_sources)
-              .push_back({SourceFile(dir_, source), entry.permissions});
+              .push_back({SourceFile(dir_, source), Permissions(entry, source)});
         }
       }
       for (const Subscription& subscription : filter_lists::GetSubscriptions()) {
@@ -493,6 +527,15 @@ class Lists {
                                                kTrafficAnnotation);
     loader_->SetRetryOptions(
         1, network::SimpleURLLoader::RETRY_ON_NETWORK_CHANGE);
+    // A list redirected to plain HTTP fails, as one listed there would.
+    loader_->SetOnRedirectCallback(base::BindRepeating(
+        [](Lists* lists, const GURL&, const net::RedirectInfo& redirect,
+           const network::mojom::URLResponseHead&, std::vector<std::string>*) {
+          if (!IsListUrlAllowed(redirect.new_url)) {
+            lists->OnDownloaded(std::nullopt);
+          }
+        },
+        base::Unretained(this)));
     loader_->DownloadToString(
         g_browser_process->shared_url_loader_factory().get(),
         base::BindOnce(&Lists::OnDownloaded, base::Unretained(this)),
@@ -669,7 +712,7 @@ std::vector<Subscription> GetSubscriptions() {
 
 bool Subscribe(const std::string& url) {
   const GURL gurl(url);
-  if (!gurl.SchemeIsHTTPOrHTTPS()) {
+  if (!IsListUrlAllowed(gurl)) {
     return false;
   }
   for (const Subscription& subscription : GetSubscriptions()) {

@@ -17,7 +17,6 @@
 #include "base/values.h"
 #include "extensions/common/command.h"
 #include "oblada/browser/firefox_addons/compat_script.h"
-#include "third_party/zlib/google/zip.h"
 #include "ui/base/accelerators/accelerator.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 
@@ -323,26 +322,19 @@ bool AddCompatScriptToPages(const base::FilePath& dir) {
 
 }  // namespace
 
-base::expected<ConvertedAddon, std::string> UnpackAndConvert(
-    const base::FilePath& xpi,
-    const base::FilePath& dir,
-    std::string_view fallback_id) {
+bool ShouldUnpack(const base::FilePath& path) {
   // Signatures (META-INF) are Mozilla's; files starting with "_" are reserved by
   // Chromium, except for translations.
-  zip::UnzipOptions options;
-  options.filter = base::BindRepeating([](const base::FilePath& path) {
-    const std::vector<base::FilePath::StringType> parts = path.GetComponents();
-    if (parts.empty()) {
-      return false;
-    }
-    const std::string first = base::FilePath(parts[0]).AsUTF8Unsafe();
-    return first != "META-INF" &&
-           (!first.starts_with('_') || first == "_locales");
-  });
-  if (!zip::Unzip(xpi, dir, std::move(options))) {
-    return base::unexpected("The add-on file is damaged");
+  const std::vector<base::FilePath::StringType> parts = path.GetComponents();
+  if (parts.empty()) {
+    return false;
   }
+  const std::string first = base::FilePath(parts[0]).AsUTF8Unsafe();
+  return first != "META-INF" && (!first.starts_with('_') || first == "_locales");
+}
 
+base::expected<ConvertedAddon, std::string> Convert(const base::FilePath& dir,
+                                                    std::string_view fallback_id) {
   std::string text;
   if (!base::ReadFileToString(dir.AppendASCII("manifest.json"), &text)) {
     return base::unexpected("This isn't a Firefox add-on (no manifest.json)");

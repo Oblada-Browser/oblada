@@ -30,6 +30,9 @@ PUBLIC_KEY="$(cat "$HERE/oblada/browser/updater/PUBLIC_KEY" 2>/dev/null | tr -d 
   exit 1
 }
 
+# Safe Browsing needs its key, which only releases have.
+[ -n "$(safe_browsing_key)" ] || { echo "no Safe Browsing key: make safe-browsing-key first" >&2; exit 1; }
+
 # The DMG is built from the commit the tag names, as it is on GitHub: nothing uncommitted,
 # here or in the checkout's Chromium files.
 [ -z "$(git status --porcelain)" ] || { echo "commit your changes first" >&2; exit 1; }

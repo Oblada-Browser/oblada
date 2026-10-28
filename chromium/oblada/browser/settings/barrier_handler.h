@@ -3,6 +3,7 @@
 
 #include "base/callback_list.h"
 #include "base/values.h"
+#include "components/prefs/pref_change_registrar.h"
 #include "content/public/browser/web_ui_message_handler.h"
 
 class Profile;
@@ -44,9 +45,12 @@ class BarrierHandler : public content::WebUIMessageHandler {
   base::DictValue State();
   base::DictValue Lists();
   void OnListsChanged();
+  // A switch decided at startup changed (Local State).
+  void OnStateChanged();
 
   raw_ptr<Profile> profile_;
   base::CallbackListSubscription lists_subscription_;
+  PrefChangeRegistrar local_state_registrar_;
 };
 
 }  // namespace oblada::settings

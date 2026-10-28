@@ -27,6 +27,7 @@
 #include "oblada/browser/barrier/barrier.h"
 #include "ui/base/page_transition_types.h"
 #include "url/gurl.h"
+#include "url/origin.h"
 
 namespace oblada::barrier {
 
@@ -226,6 +227,12 @@ class DeAmpThrottle : public content::NavigationThrottle {
     content::NavigationController::LoadURLParams params(*original);
     params.transition_type =
         ui::PageTransitionFromInt(navigation->GetPageTransition());
+    // Started by the AMP page, which named the original: a navigation from
+    // another site, not one the user typed, so sites get what they'd get from
+    // a link (no SameSite=Strict cookies, Sec-Fetch-Site: cross-site).
+    params.initiator_origin = url::Origin::Create(url);
+    params.is_renderer_initiated = true;
+    params.has_user_gesture = navigation->HasUserGesture();
     const blink::mojom::Referrer& referrer = navigation->GetReferrer();
     params.referrer = content::Referrer::SanitizeForRequest(
         *original, content::Referrer(referrer.url, referrer.policy));

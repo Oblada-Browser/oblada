@@ -587,6 +587,37 @@ constexpr auto kStrings = std::to_array<Entry>({
      "Su alcuni siti l'accesso con Google ha bisogno dei cookie di Google nelle "
      "loro pagine, che la Barriera blocca. Se è disattivato, viene bloccato "
      "senza chiedere."},
+    {"settings.privacy.startup", "When Oblada starts", "All'avvio di Oblada"},
+    {"settings.privacy.startup_description",
+     "These apply from the next start of Oblada.",
+     "Valgono dal prossimo avvio di Oblada."},
+    {"settings.privacy.partition_hsts",
+     "Keep each site's HTTPS memory apart",
+     "Tieni separata per ogni sito la memoria di HTTPS"},
+    {"settings.privacy.partition_hsts_description",
+     "What a site says from inside another site's pages about always using "
+     "HTTPS (HSTS) holds there only, so it can't be used to recognize you "
+     "elsewhere.",
+     "Quello che un sito dice dentro le pagine di un altro sito sull'usare "
+     "sempre HTTPS (HSTS) vale solo lì, così non può servire a riconoscerti "
+     "altrove."},
+    {"settings.privacy.partition_connections",
+     "Keep each site's connections apart",
+     "Tieni separate le connessioni di ogni sito"},
+    {"settings.privacy.web_apis_off",
+     "Turn off web features that mostly serve to recognize you",
+     "Disattiva le funzioni web che servono soprattutto a riconoscerti"},
+    {"settings.privacy.web_apis_off_description",
+     "Web Bluetooth, Web Serial, opening local files and folders from pages, "
+     "FedCM, the Reporting API and others, as in Brave.",
+     "Web Bluetooth, Web Serial, l'apertura di file e cartelle locali dalle "
+     "pagine, FedCM, la Reporting API e altre, come in Brave."},
+    {"settings.privacy.referrer_cap",
+     "Tell other sites only which site you came from",
+     "Di' agli altri siti solo da quale sito arrivi"},
+    {"settings.privacy.cookie_expiry_cap",
+     "Keep cookies 6 months at most",
+     "Tieni i cookie al massimo 6 mesi"},
     {"settings.danger", "DANGEROUS", "PERICOLOSO"},
     {"settings.danger.description",
      "Turns off everything the Barrier does: blocking trackers and ads, "

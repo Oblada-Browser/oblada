@@ -14,4 +14,11 @@ if [ ! -d "$OUT" ]; then
   done
 fi
 CHROMIUM_VERSION="$(tr -d '[:space:]' < "$HERE/CHROMIUM_VERSION")"
+# Releases' key for Google's Safe Browsing API, in the login keychain (make
+# safe-browsing-key): build.sh --release gives it to Safe Browsing alone
+# (oblada/components/safe_browsing).
+SAFE_BROWSING_KEY_ITEM="Oblada Safe Browsing API key"
+safe_browsing_key() {
+  security find-generic-password -a oblada -s "$SAFE_BROWSING_KEY_ITEM" -w 2>/dev/null || true
+}
 export PATH="$OBLADA_CHROMIUM/depot_tools:$PATH"

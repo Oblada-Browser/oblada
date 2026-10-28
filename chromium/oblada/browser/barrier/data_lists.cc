@@ -22,11 +22,13 @@
 #include "components/prefs/pref_service.h"
 #include "net/base/load_flags.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
+#include "net/url_request/redirect_info.h"
 #include "oblada/barrier_lists.h"
 #include "oblada/browser/barrier/barrier.h"
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/simple_url_loader.h"
+#include "services/network/public/mojom/url_response_head.mojom.h"
 #include "url/gurl.h"
 
 namespace oblada::barrier::data_lists {
@@ -227,6 +229,15 @@ class Updater {
                                                kTrafficAnnotation);
     loader_->SetRetryOptions(
         1, network::SimpleURLLoader::RETRY_ON_NETWORK_CHANGE);
+    // A list redirected to plain HTTP fails.
+    loader_->SetOnRedirectCallback(base::BindRepeating(
+        [](Updater* updater, const GURL&, const net::RedirectInfo& redirect,
+           const network::mojom::URLResponseHead&, std::vector<std::string>*) {
+          if (!IsListUrlAllowed(redirect.new_url)) {
+            updater->OnDownloaded(std::nullopt);
+          }
+        },
+        base::Unretained(this)));
     loader_->DownloadToString(
         g_browser_process->shared_url_loader_factory().get(),
         base::BindOnce(&Updater::OnDownloaded, base::Unretained(this)),

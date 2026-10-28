@@ -55,6 +55,7 @@
 #include "net/proxy_resolution/proxy_config_service.h"
 #include "net/proxy_resolution/proxy_config_with_annotation.h"
 #include "net/url_request/redirect_info.h"
+#include "net/url_request/redirect_util.h"
 #include "oblada/browser/barrier/barrier.h"
 #include "oblada/browser/barrier/domain_block.h"
 #include "oblada/browser/barrier/engine_host.h"
@@ -321,6 +322,35 @@ void ServePage(const std::string& html,
 }
 
 // Writes `data` to the client, then completes the request.
+// `request` as it goes on after `redirect`, with the client's changes to its
+// headers (`params`), as the network service makes it: a redirected page's
+// network partition is its new site's.
+void ApplyRedirect(network::ResourceRequest& request,
+                   const net::RedirectInfo& redirect,
+                   network::HttpRequestHeadersUpdateParams params) {
+  bool clear_body = false;
+  net::RedirectUtil::UpdateHttpRequest(
+      request.url, request.method, redirect, params.removed_headers,
+      params.modified_headers, &request.headers, &clear_body);
+  for (const std::string& name : params.removed_headers) {
+    request.cors_exempt_headers.RemoveHeader(name);
+  }
+  request.cors_exempt_headers.MergeFrom(params.modified_cors_exempt_headers);
+  if (clear_body) {
+    request.request_body = nullptr;
+  }
+  request.url = redirect.new_url;
+  request.method = redirect.new_method;
+  request.site_for_cookies = redirect.new_site_for_cookies;
+  request.referrer = GURL(redirect.new_referrer);
+  request.referrer_policy = redirect.new_referrer_policy;
+  if (request.trusted_params) {
+    request.trusted_params->isolation_info =
+        request.trusted_params->isolation_info.CreateForRedirect(
+            url::Origin::Create(redirect.new_url));
+  }
+}
+
 // Answers the request with a redirect to `new_url`, the same request without
 // the parameters $removeparam rules strip; once followed, the request goes on
 // to the network for it.
@@ -373,12 +403,7 @@ class RewriteLoader : public network::mojom::URLLoader {
       target_loader_->FollowRedirect(std::move(params), new_url);
       return;
     }
-    params.Apply(request_.headers, request_.cors_exempt_headers);
-    request_.url = redirect_info_.new_url;
-    request_.method = redirect_info_.new_method;
-    request_.site_for_cookies = redirect_info_.new_site_for_cookies;
-    request_.referrer = GURL(redirect_info_.new_referrer);
-    request_.referrer_policy = redirect_info_.new_referrer_policy;
+    ApplyRedirect(request_, redirect_info_, std::move(params));
     target_->CreateLoaderAndStart(
         target_loader_.BindNewPipeAndPassReceiver(), request_id_, options_,
         request_, client_.Unbind(), traffic_annotation_);
@@ -491,6 +516,165 @@ class CspClient : public network::mojom::URLLoaderClient {
   mojo::Remote<network::mojom::URLLoaderClient> client_;
 };
 
+// Between a request's client and what the filter made of it, for the
+// redirects the client gets: a redirect can't take a request where the lists
+// block it, nor a page past the Barrier's questions (Brave checks redirects
+// too). A navigation's redirect is a new request for the filter (navigations
+// aren't subject to CORS); another request's is checked against the lists,
+// then followed by the network as usual, so that CORS's rules on redirects
+// hold.
+class RedirectChecker : public network::mojom::URLLoader,
+                        public network::mojom::URLLoaderClient {
+ public:
+  // net::URLRequest's.
+  static constexpr int kMaxRedirects = 20;
+
+  // Starts `request` in the filter (again, for a navigation redirected).
+  using Begin = base::RepeatingCallback<void(
+      mojo::PendingReceiver<network::mojom::URLLoader>,
+      const network::ResourceRequest&,
+      mojo::PendingRemote<network::mojom::URLLoaderClient>)>;
+  // Whether the lists block `request` going on to `url`.
+  using IsBlocked = base::RepeatingCallback<bool(const network::ResourceRequest&,
+                                                 const GURL&)>;
+
+  // `is_blocked` is null for navigations, whose redirects `begin` starts
+  // again.
+  static void Start(mojo::PendingReceiver<network::mojom::URLLoader> loader,
+                    const network::ResourceRequest& request,
+                    mojo::PendingRemote<network::mojom::URLLoaderClient> client,
+                    Begin begin,
+                    IsBlocked is_blocked) {
+    auto checker = std::make_unique<RedirectChecker>(
+        request, std::move(client), std::move(begin), std::move(is_blocked));
+    RedirectChecker* raw = checker.get();
+    raw->self_ = mojo::MakeSelfOwnedReceiver(std::move(checker), std::move(loader));
+    raw->BeginInner();
+  }
+
+  RedirectChecker(const network::ResourceRequest& request,
+                  mojo::PendingRemote<network::mojom::URLLoaderClient> client,
+                  Begin begin,
+                  IsBlocked is_blocked)
+      : request_(request),
+        client_(std::move(client)),
+        begin_(std::move(begin)),
+        is_blocked_(std::move(is_blocked)) {}
+
+  // network::mojom::URLLoader, the client's:
+  void FollowRedirect(network::HttpRequestHeadersUpdateParams params,
+                      const std::optional<GURL>& new_url) override {
+    if (!redirect_) {
+      return;
+    }
+    net::RedirectInfo redirect = *std::exchange(redirect_, std::nullopt);
+    if (!is_blocked_) {
+      if (new_url) {
+        redirect.new_url = *new_url;
+      }
+      ApplyRedirect(request_, redirect, std::move(params));
+      inner_.reset();
+      inner_client_.reset();
+      BeginInner();
+      return;
+    }
+    request_.url = new_url.value_or(redirect.new_url);
+    inner_->FollowRedirect(std::move(params), new_url);
+  }
+
+  void SetPriority(net::RequestPriority priority,
+                   int32_t intra_priority_value) override {
+    priority_ = priority;
+    intra_priority_ = intra_priority_value;
+    if (inner_) {
+      inner_->SetPriority(priority, intra_priority_value);
+    }
+  }
+
+  // network::mojom::URLLoaderClient, the filter's loader's:
+  void OnReceiveEarlyHints(network::mojom::EarlyHintsPtr early_hints) override {
+    client_->OnReceiveEarlyHints(std::move(early_hints));
+  }
+
+  void OnReceiveResponse(
+      network::mojom::URLResponseHeadPtr head,
+      mojo::ScopedDataPipeConsumerHandle body,
+      std::optional<mojo_base::BigBuffer> cached_metadata) override {
+    client_->OnReceiveResponse(std::move(head), std::move(body),
+                               std::move(cached_metadata));
+  }
+
+  void OnReceiveRedirect(const net::RedirectInfo& redirect_info,
+                         network::mojom::URLResponseHeadPtr head) override {
+    // As many as the network follows: a navigation's start again each time.
+    if (++redirects_ > kMaxRedirects) {
+      Fail(net::ERR_TOO_MANY_REDIRECTS);
+      return;
+    }
+    if (is_blocked_ && is_blocked_.Run(request_, redirect_info.new_url)) {
+      Fail(net::ERR_BLOCKED_BY_CLIENT);
+      return;
+    }
+    redirect_ = redirect_info;
+    client_->OnReceiveRedirect(redirect_info, std::move(head));
+  }
+
+  void OnUploadProgress(int64_t current_position,
+                        int64_t total_size,
+                        OnUploadProgressCallback callback) override {
+    client_->OnUploadProgress(current_position, total_size,
+                              std::move(callback));
+  }
+
+  void OnTransferSizeUpdated(int32_t transfer_size_diff) override {
+    client_->OnTransferSizeUpdated(transfer_size_diff);
+  }
+
+  void OnComplete(const network::URLLoaderCompletionStatus& status) override {
+    completed_ = true;
+    client_->OnComplete(status);
+  }
+
+ private:
+  void BeginInner() {
+    mojo::PendingRemote<network::mojom::URLLoaderClient> inner_client =
+        inner_client_.BindNewPipeAndPassRemote();
+    // The filter gone, or the request dropped without an answer.
+    inner_client_.set_disconnect_handler(base::BindOnce(
+        &RedirectChecker::Fail, base::Unretained(this), net::ERR_ABORTED));
+    begin_.Run(inner_.BindNewPipeAndPassReceiver(), request_,
+               std::move(inner_client));
+    if (priority_) {
+      inner_->SetPriority(*priority_, intra_priority_);
+    }
+  }
+
+  // Answers the client with `error`, unless it got its answer; then goes.
+  void Fail(int error) {
+    if (!completed_) {
+      completed_ = true;
+      client_->OnComplete(network::URLLoaderCompletionStatus(error));
+    }
+    inner_.reset();
+    inner_client_.reset();
+    self_->Close();
+  }
+
+  network::ResourceRequest request_;
+  mojo::Remote<network::mojom::URLLoaderClient> client_;
+  const Begin begin_;
+  const IsBlocked is_blocked_;
+  mojo::SelfOwnedReceiverRef<network::mojom::URLLoader> self_;
+  mojo::Remote<network::mojom::URLLoader> inner_;
+  mojo::Receiver<network::mojom::URLLoaderClient> inner_client_{this};
+  // The redirect the client was told about, until it follows it.
+  std::optional<net::RedirectInfo> redirect_;
+  int redirects_ = 0;
+  bool completed_ = false;
+  std::optional<net::RequestPriority> priority_;
+  int32_t intra_priority_ = 0;
+};
+
 // A request waiting for its host's canonical name.
 struct PendingRequest {
   mojo::PendingReceiver<network::mojom::URLLoader> loader;
@@ -583,6 +767,54 @@ class RequestFilter : public network::SelfDeletingURLLoaderFactory {
       mojo::PendingRemote<network::mojom::URLLoaderClient> client,
       const net::MutableNetworkTrafficAnnotationTag& traffic_annotation)
       override {
+    RedirectChecker::Begin begin = base::BindRepeating(
+        &RequestFilter::Begin, weak_factory_.GetWeakPtr(), request_id, options,
+        traffic_annotation);
+    if (context_.navigation) {
+      RedirectChecker::Start(std::move(loader), request, std::move(client),
+                             std::move(begin), RedirectChecker::IsBlocked());
+      return;
+    }
+    if (context_.ads) {
+      RedirectChecker::Start(
+          std::move(loader), request, std::move(client), std::move(begin),
+          base::BindRepeating(&IsRedirectBlocked, context_.page_host,
+                              context_.aggressive, context_.frame));
+      return;
+    }
+    begin.Run(std::move(loader), request, std::move(client));
+  }
+
+ private:
+  // Whether the lists block another request than a navigation, redirected to
+  // `url`.
+  static bool IsRedirectBlocked(const std::string& page_host,
+                                bool aggressive,
+                                content::GlobalRenderFrameHostId frame,
+                                const network::ResourceRequest& request,
+                                const GURL& url) {
+    EngineHost::Request engine_request;
+    engine_request.url = url;
+    engine_request.type = AdblockRequestType(request.resource_type);
+    engine_request.page_host = page_host;
+    engine_request.aggressive = aggressive;
+    engine_request.method = request.method;
+    if (!EngineHost::Get().Check(engine_request).block) {
+      return false;
+    }
+    if (frame) {
+      ReportBlocked(frame, url);
+    }
+    return true;
+  }
+
+  // A request as the filter has it, new or (a navigation's) redirected.
+  void Begin(int32_t request_id,
+             uint32_t options,
+             const net::MutableNetworkTrafficAnnotationTag& traffic_annotation,
+             mojo::PendingReceiver<network::mojom::URLLoader> loader,
+             const network::ResourceRequest& request,
+             mojo::PendingRemote<network::mojom::URLLoaderClient> client) {
     if (context_.page_host.empty()) {
       // A page's own navigation: as its site says, which the UI thread knows.
       content::GetUIThreadTaskRunner({})->PostTaskAndReplyWithResult(
@@ -607,7 +839,6 @@ class RequestFilter : public network::SelfDeletingURLLoaderFactory {
           traffic_annotation, std::move(decision));
   }
 
- private:
   void Start(mojo::PendingReceiver<network::mojom::URLLoader> loader,
              int32_t request_id,
              uint32_t options,

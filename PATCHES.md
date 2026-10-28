@@ -57,6 +57,7 @@ source adds. Each pair is listed in the entries.
 | `chrome/browser/ui/views/tabs/common/tab_view.cc` | `chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h` (and `.cc`) | `CloseTabOrSelection()` |
 | `chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h` | `chrome/browser/ui/views/tabs/dragging/tab_drag_target.h` | overrides `GetInitiallyActiveTab()` |
 | `chrome/browser/ui/views/frame/multi_contents_view_drop_target_controller.cc` | `tab_drag_target.h`, `tab_drag_controller.h` and `.cc` | `GetInitiallyActiveTab()` (its default definition is in `tab_drag_controller.cc`) |
+| `components/safe_browsing/core/browser/db/sb_protocol_config.cc` | `components/safe_browsing/core/browser/db/BUILD.gn` | `oblada/components/safe_browsing/buildflags.h` |
 | Blink's fingerprinting hooks (`canvas`, `webaudio`, `navigator_*`, `screen.cc`…) | `third_party/blink/renderer/core/execution_context/execution_context.h`, `third_party/blink/renderer/core/BUILD.gn` | `GetObladaFarbling()`, which `oblada/blink/farbling.h` reads, compiled into Blink's core |
 | `third_party/blink/renderer/core/frame/web_local_frame_impl.h` (and `.cc`) | `third_party/blink/public/web/web_local_frame.h` | overrides `SetObladaFarbling()` |
 | `third_party/blink/renderer/core/workers/dedicated_worker.cc`, `worker_global_scope.cc`, `worklet_global_scope.cc`, `threaded_worklet_messaging_proxy.cc`, `paint_worklet_global_scope_proxy.cc`, `layout_worklet_global_scope_proxy.cc` | `third_party/blink/renderer/core/workers/global_scope_creation_params.h` | `oblada_farbling` |
@@ -180,12 +181,13 @@ source adds. Each pair is listed in the entries.
 | Horizontal tabs | `horizontal_tab_strip_region_view.{h,cc}`, `tab.{h,cc}`, `new_tab_button.{h,cc}`, `horizontal_tab_style_views.cc`, `tab_container_impl.cc`, `tab_group_header.cc` |
 | Tabs | `tab_style.cc`, `tab_hover_card_controller.cc`, `tab_strip_collection_controller.{h,cc}` |
 | Workspaces | `ui_features.cc`, `browser_commands.cc`, `browser_widget.cc`, `tab_group_header_view.{h,cc}`, `tab_group_view_layout.cc`, `tab_collection_animating_layout_manager.{h,cc}`, `vertical_tab_strip_focus_swipe_controller.cc`, `saved_tab_group_model_listener.cc`, `tab_group_sync_delegate_desktop.cc`, `session_restore.cc`, `saved_tab_groups/public/pref_names.cc`, `bookmark_utils.cc` |
-| Containers | `chrome_content_browser_client_navigation_throttles.cc`, `tab_helpers.cc`, `browser_navigator.cc`, `web_contents_impl.cc`, `session_service_base.cc`, `browser_live_tab_context.cc`, `browser_tabrestore.cc`, `tab_lifecycle_unit.cc`, `render_view_context_menu.{h,cc}`, `new_tab_button.{h,cc}`, `new_tab_button_menu_model.{h,cc}`, `tab_view.cc` |
+| Containers | `browser_web_contents_delegate.cc` (no prerendering), `search_prefetch_service.cc`, `chrome_content_browser_client.cc`, `chrome_content_browser_client_navigation_throttles.cc`, `tab_helpers.cc`, `browser_navigator.cc`, `web_contents_impl.cc`, `session_service_base.cc`, `browser_live_tab_context.cc`, `browser_tabrestore.cc`, `tab_lifecycle_unit.cc`, `render_view_context_menu.{h,cc}`, `new_tab_button.{h,cc}`, `new_tab_button_menu_model.{h,cc}`, `tab_view.cc` |
 | Address bar | `location_bar_view.{h,cc}`, `top_container_view.cc`, `browser_view_layout_impl.cc`, `omnibox_view_views.cc`, `omnibox_popup_presenter_base.cc`, `omnibox_popup_webui_base_content.cc`, `rounded_omnibox_results_frame.cc`, `location_bar_model_delegate.cc`, `aim_eligibility_service_features.cc` |
 | Split view | `multi_contents_view.{h,cc}`, `multi_contents_drop_target_view.cc`, `multi_contents_view_drop_target_controller.{h,cc}`, `multi_contents_resize_area.h`, `contents_container_view.cc`, `contents_container_outline.{h,cc}`, `split_tab_view.{h,cc}`, `tab_view_vertical_layout.cc`, `tab_drag_controller.{h,cc}`, `tab_drag_target.h` |
 | Peek | `web_contents_delegate.{h,cc}` (content), `render_widget_host_view_mac.mm`, `browser_web_contents_delegate.{h,cc}`, `tab_helpers.h` |
 | Clean links | `omnibox_context_menu_mixin.cc`, `link_to_text_menu_observer.cc`, `render_view_context_menu.cc`, `browser_commands.cc` |
-| Barrier | `chrome_content_browser_client.cc`, `location_bar_view.cc`, `render_view_context_menu.cc`, `browser_prefs.cc`, `settings_ui.cc`, `route.ts`, `router.ts`, `settings_main.html`, `prefs_util.cc`, `chrome_content_browser_client_navigation_throttles.cc`, `chrome_browser_interface_binders.cc`, `tab_helpers.cc`, `chrome_content_renderer_client.cc`, `chrome/renderer/BUILD.gn`, `chrome_isolated_world_ids.h`, `chrome_feature_list_creator.cc`, `renderer_preferences_util.cc`, `pref_watcher.cc`, `render_view_host_impl.cc`, `https_upgrades_interceptor.cc`, `https_upgrades_util.cc`, `net/base/features.{h,cc}`, `url_request_job.cc`, `canonical_cookie.cc`, `security_policy.cc`, `content_browser_client.h`, `chrome_content_browser_client.h`, the worker settings' proxies in content (4), Blink's fingerprinting protection (46), the Rust crates' (`Cargo.toml`, `Cargo.lock`, `gnrt_config.toml`, 10 `BUILD.gn`/`README.chromium`) |
+| Safe Browsing | `safe_browsing/core/browser/db/BUILD.gn`, `sb_protocol_config.cc` |
+| Barrier | `chrome_content_browser_client.cc`, `location_bar_view.cc`, `render_view_context_menu.cc`, `browser_prefs.cc`, `settings_ui.cc`, `route.ts`, `router.ts`, `settings_main.html`, `prefs_util.cc`, `chrome_content_browser_client_navigation_throttles.cc`, `chrome_browser_interface_binders.cc`, `tab_helpers.cc`, `chrome_content_renderer_client.cc`, `chrome/renderer/BUILD.gn`, `chrome_isolated_world_ids.h`, `chrome_feature_list_creator.cc`, `renderer_preferences_util.cc`, `pref_watcher.cc`, `render_view_host_impl.cc`, `https_upgrades_interceptor.cc`, `https_upgrades_util.cc`, `net/base/features.{h,cc}`, `transport_security_state.{h,cc}`, `url_request_http_job.cc`, `url_request_job.cc`, `canonical_cookie.cc`, `security_policy.cc`, `content_browser_client.h`, `chrome_content_browser_client.h`, the worker settings' proxies in content (4), Blink's fingerprinting protection (46), the Rust crates' (`Cargo.toml`, `Cargo.lock`, `gnrt_config.toml`, 10 `BUILD.gn`/`README.chromium`) |
 | Performance | `background_tab_loading_policy.cc`, `user_tuning/prefs.cc`, `download_features.cc`, `history_clusters/core/features.cc`, `chrome_browser_main_extra_parts_performance_manager.cc`, `soda_installer.cc`, `wasm_tts_engine_component_installer.{h,cc}`, `read_anything_service.cc`, `soda_component_installer.h`, `soda_language_pack_component_installer.h`, `screen_ai_component_installer.h` |
 | New Tab & welcome | `search.cc`, `contents_web_view.{h,cc}`, `startup_browser_creator_impl.cc` |
 | Extensions & Firefox add-ons | `chrome_download_manager_delegate.cc`, `cookies_api.cc`, `tabs_api.{h,cc}`, `tabs.json`, `extension_tab_util.cc`, `chrome_extensions_browser_api_provider.cc`, `chrome_extensions_api_provider.cc`, `manifest_v2_handler.cc`, `extensions_toolbar_desktop.cc` |
@@ -882,8 +884,17 @@ lookup if it handled it.
 - `CanDragEnter()` refuses drops on a page under a peek.
 - `ShouldFocusLocationBarByDefault()` waits for the transparent New Tab page to load, which
   then focuses the address bar itself.
+- `IsPrerender2Supported()` is false for containers' tabs: Chromium prerenders pages in the
+  profile's own storage, not the container's.
 - Needs: `content/public/browser/web_contents_delegate.h`.
-- Oblada code: `oblada/browser/peek/peek.h`, `oblada/browser/new_tab/new_tab_ui.h`.
+- Oblada code: `oblada/browser/peek/peek.h`, `oblada/browser/new_tab/new_tab_ui.h`,
+  `oblada/browser/containers/containers.h`.
+
+#### `chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service.cc`
+`chrome-browser-preloading-prefetch-search_prefetch-search_prefetch_service.cc.patch`. No
+search prefetched from containers' tabs, which Chromium does in the profile's own storage;
+`chrome_content_browser_client.cc` doesn't serve them one either.
+- Oblada code: `oblada/browser/containers/containers.h`.
 
 #### `chrome/browser/ui/tab_helpers.h`
 `chrome-browser-ui-tab_helpers.h.patch`. Makes `oblada::peek::PeekTabHelpers` a friend, as
@@ -912,6 +923,24 @@ same link, made as Chromium makes it, without the page's tracking parameters (it
 selector, in the fragment, kept). Enabled once the link is made, if the page's address has
 tracking parameters, as in Firefox.
 - Oblada code: `oblada/browser/clean_links/clean_links.h`, `oblada/browser/l10n.h`.
+
+### Safe Browsing
+
+Safe Browsing's lists come from Google's Safe Browsing API (v4) with a key of Oblada's own,
+which only releases have: `build.sh --release` takes it from the login keychain (`make
+safe-browsing-key`) into the build's `oblada_safe_browsing_api_key`
+(`oblada/components/safe_browsing/BUILD.gn`). Chromium's `google_api_key` would give the key
+to every Google service it has (Translate, Optimization Guide, password affiliations…),
+which would start calling Google with it; Oblada gives it to Safe Browsing alone.
+
+#### `components/safe_browsing/core/browser/db/sb_protocol_config.cc`, `BUILD.gn`
+`components-safe_browsing-core-browser-db-sb_protocol_config.cc.patch`,
+`components-safe_browsing-core-browser-db-BUILD.gn.patch`. `GetSBProtocolConfig()` gives
+Safe Browsing's requests for its lists and full hashes Oblada's key when the build has one,
+`google_apis::GetAPIKey()` otherwise. Reports to Google (`GetReportUrl()`, download pings,
+password protection) keep `google_apis`' key, which builds don't have: they stay off. The
+`BUILD.gn` patch gives `sb_protocol_config` the build flag's header
+(`//oblada/components/safe_browsing:buildflags`).
 
 ### Barrier
 
@@ -954,6 +983,9 @@ Its requests are also checked under their hosts' canonical names (CNAME uncloaki
 through the resolver of the process's storage partition (the container), which is why it
 gets `render_process_id`. Pages' own navigations may get the Barrier's question about Google
 sign-in on another site (`oblada/browser/barrier/google_sign_in.h`).
+Searches prefetched in the profile's own storage aren't served to containers' tabs
+(`oblada::containers::IsContainerFrame()`, in `WillCreateURLLoaderRequestInterceptors()`
+and `CreateURLLoaderHandlerForServiceWorkerInitiatedNavigationRequest()`).
 `WillInterceptWebSocket()` and `CreateWebSocket()` check frames' WebSocket connections
 (`oblada::barrier::WillFilterWebSocket()`, `FilterWebSocket()`), which then go on to
 extensions' WebRequest, as Chromium has them, or to the network.
@@ -995,14 +1027,17 @@ before extensions' document_start scripts, as Brave's).
 before extensions' worlds.
 
 #### `chrome/browser/metrics/chrome_feature_list_creator.cc`
-`chrome-browser-metrics-chrome_feature_list_creator.cc.patch`. The Barrier's changes to
-Chromium's features, when it's on at startup (`oblada::barrier::AddFeatureOverrides()`):
-web APIs Brave turns off (Web Bluetooth, local File System Access, Web Serial, FedCM,
-WebOTP, Digital Credentials, getInstalledRelatedApps, Fenced Frames, FLEDGE, Topics,
-Attribution Reporting, the Reporting API and NEL), connections partitioned by site, HSTS
-for pages themselves only (`kHstsTopLevelNavigationsOnly`), and
-Global Privacy Control; when it's off, Oblada's own network features off. The command line
-still overrides them.
+`chrome-browser-metrics-chrome_feature_list_creator.cc.patch`.
+- Certificate Transparency, as Chrome has it (`kCertificateTransparencyAskBeforeEnabling`,
+  which Chromium leaves to Chrome-branded builds), in any case.
+- The Barrier's changes to Chromium's features, when it's on at startup, each unless its
+  own switch in Settings is off (`oblada::barrier::AddFeatureOverrides()`): web APIs Brave
+  turns off (Web Bluetooth, local File System Access, Web Serial, FedCM, WebOTP, Digital
+  Credentials, getInstalledRelatedApps, Fenced Frames, FLEDGE, Topics, Attribution
+  Reporting, the Reporting API and NEL), connections partitioned by site, Oblada's own
+  network features (referrers, cookies' lifetime, HSTS partitioned by site), and Global
+  Privacy Control; when it's off, Oblada's network features off. The command line still
+  overrides them.
 - Oblada code: `oblada/browser/barrier/barrier.h`.
 
 #### `chrome/browser/renderer_preferences_util.cc`, `chrome/browser/ui/prefs/pref_watcher.cc`, `content/browser/renderer_host/render_view_host_impl.cc`
@@ -1024,13 +1059,27 @@ Barrier down, or Brave lists the site), with HTTPS-First's warning before HTTP w
 #### `net/base/features.{h,cc}`, `net/url_request/url_request_job.cc`, `net/cookies/canonical_cookie.cc`, `third_party/blink/renderer/platform/weborigin/security_policy.cc`
 `net-base-features.{h,cc}.patch`, `net-url_request-url_request_job.cc.patch`,
 `net-cookies-canonical_cookie.cc.patch`,
-`third_party-blink-renderer-platform-weborigin-security_policy.cc.patch`. Two of Brave's
+`third_party-blink-renderer-platform-weborigin-security_policy.cc.patch`. Brave's
 changes to the network, as features of Oblada's on by default (and off when the Barrier
-was off at startup): referrers never more than the origin across origins
+was off at startup, or their switch is): HSTS partitioned by site (`kObladaPartitionHsts`,
+see `transport_security_state.{h,cc}`), referrers never more than the origin across origins
 (`kObladaReferrerCap`: Blink computes them so, and the network service on redirects, or
 they would differ and be dropped), and cookies kept 6 months at most
 (`kObladaCookieExpiryCap`).
 - Needs: `chrome_feature_list_creator.cc`.
+
+#### `net/http/transport_security_state.{h,cc}`, `net/url_request/url_request_http_job.cc`
+`net-http-transport_security_state.{h,cc}.patch`,
+`net-url_request-url_request_http_job.cc.patch`. HSTS partitioned by site, as Brave has it
+(`kObladaPartitionHsts`, with the features above): what a host's responses say about its
+HSTS from inside another site's pages is kept under that top-level site, so that HSTS
+can't carry an identifier from site to site; what it says under its own site holds
+everywhere. `GetSSLUpgradeDecision()` and `AddHSTSHeader()` take the request's
+`NetworkAnonymizationKey` (`PartitionFor()`); the dynamic state's keys (`STSKey()`) are
+the host's hash under its own site, as without partitions, so the saved state stays and
+checks without a partition (sockets' `ShouldSSLErrorsBeFatal()`) see it, and a hash of the
+host and the top-level site under others. The preload list applies everywhere.
+- Needs: `net/base/features.{h,cc}`.
 
 #### `content/public/browser/content_browser_client.h`, content's `shared_worker_content_settings_proxy_impl.{h,cc}` and `service_worker_content_settings_proxy_impl.{h,cc}`
 `content-public-browser-content_browser_client.h.patch`,

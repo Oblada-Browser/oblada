@@ -1,14 +1,15 @@
 diff --git a/net/base/features.cc b/net/base/features.cc
-index 2876df4285..cb98684688 100644
+index 2876df4285..b8e4834fb7 100644
 --- a/net/base/features.cc
 +++ b/net/base/features.cc
-@@ -1076,5 +1076,9 @@ BASE_FEATURE_PARAM(int,
+@@ -1076,5 +1076,10 @@ BASE_FEATURE_PARAM(int,
                     &kQuicSocketSendBufferSize,
                     -1);
  
 +// Oblada: see features.h.
 +BASE_FEATURE(kObladaReferrerCap, base::FEATURE_ENABLED_BY_DEFAULT);
 +BASE_FEATURE(kObladaCookieExpiryCap, base::FEATURE_ENABLED_BY_DEFAULT);
++BASE_FEATURE(kObladaPartitionHsts, base::FEATURE_ENABLED_BY_DEFAULT);
 +
  }  // namespace net::features
  

@@ -101,12 +101,15 @@ class SettingsObladaPageElement extends LitElement {
     super.connectedCallback();
     this.listener_ = addWebUiListener('oblada-barrier-lists-changed',
                                       (lists) => this.lists_ = lists);
+    this.stateListener_ = addWebUiListener('oblada-barrier-state-changed',
+                                           (state) => this.state_ = state);
     this.refresh_();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     removeWebUiListener(this.listener_);
+    removeWebUiListener(this.stateListener_);
   }
 
   updated(changed) {
@@ -337,6 +340,30 @@ class SettingsObladaPageElement extends LitElement {
         ${toggle('oblada.barrier.google_sign_in',
                  t('settings.privacy.google_sign_in'),
                  t('settings.privacy.google_sign_in_description'))}
+        <div class="cr-row">
+          <div class="oblada-grow cr-padded-text">
+            <div class="oblada-group">${t('settings.privacy.startup')}</div>
+            <div class="oblada-secondary">
+              ${t('settings.privacy.startup_description')}
+            </div>
+          </div>
+          ${this.state_?.startupChanged ? html`
+            <cr-button @click="${() => sendWithPromise('obladaBarrierRelaunch')}">
+              ${t('settings.danger.relaunch')}
+            </cr-button>` : ''}
+        </div>
+        ${toggle('oblada.barrier.partition_hsts',
+                 t('settings.privacy.partition_hsts'),
+                 t('settings.privacy.partition_hsts_description'))}
+        ${toggle('oblada.barrier.partition_connections',
+                 t('settings.privacy.partition_connections'))}
+        ${toggle('oblada.barrier.web_apis_off',
+                 t('settings.privacy.web_apis_off'),
+                 t('settings.privacy.web_apis_off_description'))}
+        ${toggle('oblada.barrier.referrer_cap',
+                 t('settings.privacy.referrer_cap'))}
+        ${toggle('oblada.barrier.cookie_expiry_cap',
+                 t('settings.privacy.cookie_expiry_cap'))}
       </settings-section>`;
   }
 
@@ -550,7 +577,9 @@ const SEARCHABLE = [
   'settings.privacy.de_amp', 'settings.privacy.reduce_language',
   'settings.privacy.sensitive_sites', 'settings.privacy.webrtc',
   'settings.privacy.social', 'settings.privacy.google_sign_in',
-  'settings.danger',
+  'settings.privacy.partition_hsts', 'settings.privacy.partition_connections',
+  'settings.privacy.web_apis_off', 'settings.privacy.referrer_cap',
+  'settings.privacy.cookie_expiry_cap', 'settings.danger',
 ];
 
 customElements.define('settings-oblada-page', SettingsObladaPageElement);
@@ -611,6 +640,15 @@ constexpr const char* kStrings[] = {
     "settings.privacy.x",
     "settings.privacy.linkedin",
     "settings.privacy.google_sign_in",
+    "settings.privacy.startup",
+    "settings.privacy.startup_description",
+    "settings.privacy.partition_hsts",
+    "settings.privacy.partition_hsts_description",
+    "settings.privacy.partition_connections",
+    "settings.privacy.web_apis_off",
+    "settings.privacy.web_apis_off_description",
+    "settings.privacy.referrer_cap",
+    "settings.privacy.cookie_expiry_cap",
     "settings.privacy.google_sign_in_description",
     "settings.danger",
     "settings.danger.description",

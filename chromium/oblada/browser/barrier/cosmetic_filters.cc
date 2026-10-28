@@ -11,6 +11,7 @@
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/profiles/profile.h"
 #include "content/public/browser/document_service.h"
+#include "content/public/browser/document_user_data.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/navigation_handle_user_data.h"
 #include "content/public/browser/navigation_throttle.h"
@@ -96,6 +97,22 @@ class CosmeticFiltersThrottle : public content::NavigationThrottle {
   base::WeakPtrFactory<CosmeticFiltersThrottle> weak_factory_{this};
 };
 
+// The page the browser started the element picker on, which may then add the
+// one filter the picker makes, once.
+class ElementPickerSession
+    : public content::DocumentUserData<ElementPickerSession> {
+ public:
+  ~ElementPickerSession() override = default;
+
+ private:
+  explicit ElementPickerSession(content::RenderFrameHost* frame)
+      : content::DocumentUserData<ElementPickerSession>(frame) {}
+  friend content::DocumentUserData<ElementPickerSession>;
+  DOCUMENT_USER_DATA_KEY_DECL();
+};
+
+DOCUMENT_USER_DATA_KEY_IMPL(ElementPickerSession);
+
 // A document's questions to the browser.
 class BarrierHostImpl : public content::DocumentService<oblada::mojom::BarrierHost> {
  public:
@@ -130,10 +147,21 @@ class BarrierHostImpl : public content::DocumentService<oblada::mojom::BarrierHo
   }
 
   void AddCustomFilter(const std::string& filter) override {
+    // Only from the page the browser started the picker on (a web page's main
+    // frame), once: any other document could otherwise add rules, for every
+    // site when it has no host (about:blank, data:, blob:).
+    content::RenderFrameHost& frame = render_frame_host();
+    const GURL& url = frame.GetLastCommittedURL();
+    if (!frame.IsInPrimaryMainFrame() || !url.SchemeIsHTTPOrHTTPS() ||
+        url.host().empty() ||
+        !ElementPickerSession::GetForCurrentDocument(&frame)) {
+      return;
+    }
+    ElementPickerSession::DeleteForCurrentDocument(&frame);
     // One cosmetic rule for the page's own host, as the element picker makes
     // them.
-    const std::string host(render_frame_host().GetLastCommittedURL().host());
-    if (filter.find('\n') != std::string::npos ||
+    const std::string host(url.host());
+    if (filter.find_first_of("\r\n") != std::string::npos ||
         !filter.starts_with(host + "##") || filter.size() > 2000) {
       return;
     }
@@ -195,6 +223,11 @@ bool CanPickElement(content::WebContents* contents) {
 }
 
 void StartElementPicker(content::WebContents* contents) {
+  // Again: the page may have changed since the menu was shown.
+  if (!CanPickElement(contents)) {
+    return;
+  }
+  ElementPickerSession::CreateForCurrentDocument(contents->GetPrimaryMainFrame());
   base::flat_map<std::string, std::string> strings;
   for (const char* key :
        {"hint", "block", "cancel", "wider", "narrower", "count"}) {

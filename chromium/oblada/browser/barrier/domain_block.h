@@ -1,6 +1,7 @@
 #ifndef OBLADA_BROWSER_BARRIER_DOMAIN_BLOCK_H_
 #define OBLADA_BROWSER_BARRIER_DOMAIN_BLOCK_H_
 
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -28,9 +29,18 @@ bool IsProceeding(const GURL& url, GURL* original);
 // Whether the user went on to `url`'s site already, this session.
 bool HasProceeded(const GURL& url);
 
-// A token of the session's, which the Barrier's pages put in their answers
-// (pages can't guess it).
-const std::string& SessionToken();
+// The Barrier's pages (blocked domains, sensitive sites, Google sign-ins) are
+// answered by going to their address with a token in the query parameter
+// `param`. AnswerUrl() is the address answering the page on `url` with
+// `answer`: its token stands for that answer to that page only, and works
+// once, so a page that reads one (it's served in the site's own origin) can't
+// answer anything else with it. Any sequence.
+GURL AnswerUrl(const GURL& url, std::string_view param, std::string_view answer);
+// The answer `url` carries, if AnswerUrl() made it: `original` gets the page's
+// address. Spends its token.
+std::optional<std::string> TakeAnswer(const GURL& url,
+                                      std::string_view param,
+                                      GURL* original);
 
 // `url` as a JavaScript string literal, for the Barrier's pages' scripts:
 // nothing in it breaks out.

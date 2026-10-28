@@ -31,7 +31,7 @@ FILE ?=
 IPS ?=
 
 .PHONY: help sync build patches apply reset test test-updates screenshot dmg release version \
-        bump update-key import-update-key symbolicate icons dmg-background run run-fresh
+        bump update-key safe-browsing-key import-update-key symbolicate icons dmg-background run run-fresh
 
 help: ## this list
 	@echo "Oblada $(VERSION), based on Chromium $(CHROMIUM_VERSION)"
@@ -83,6 +83,11 @@ update-key: ## make the key releases are signed with, once: in your keychain, it
 	@echo "the private key is in your login keychain: back it up, e.g. with"
 	@echo "  \"$(SPARKLE)/generate_keys\" -x <file>   (without it, installed apps can't be updated)"
 	@echo "and bring it back, or onto another Mac, with make import-update-key FILE=<file>"
+
+safe-browsing-key: ## put releases' key for Google's Safe Browsing API in your keychain, once (asks for it)
+	@source $(SCRIPTS)/env.sh && security add-generic-password -U -a oblada -s "$$SAFE_BROWSING_KEY_ITEM" \
+	  -l "$$SAFE_BROWSING_KEY_ITEM" -w
+	@echo "in your login keychain: release builds (build.sh --release) give it to Safe Browsing"
 
 import-update-key: ## put the key releases are signed with in your keychain, from its backup (FILE=)
 	@[ -n "$(FILE)" ] || { echo "usage: make import-update-key FILE=<private key file>" >&2; exit 1; }

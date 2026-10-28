@@ -1,12 +1,16 @@
 #include "oblada/browser/barrier/engine_host.h"
 
 #include <set>
+#include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
 #include "base/no_destructor.h"
 #include "base/strings/strcat.h"
+#include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/thread_pool.h"
@@ -37,6 +41,30 @@ void AddAll(const base::ListValue* list, std::set<std::string>& out) {
       out.insert(value.GetString());
     }
   }
+}
+
+// A $csp rule's policies without the directives that send reports: a list
+// could otherwise have every page report its address to wherever it says
+// (uBlock Origin refuses such rules too).
+std::string WithoutReports(std::string_view policies) {
+  std::vector<std::string> kept;
+  for (std::string_view policy : base::SplitStringPiece(
+           policies, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
+    std::vector<std::string_view> directives;
+    for (std::string_view directive : base::SplitStringPiece(
+             policy, ";", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
+      const std::string_view name =
+          directive.substr(0, directive.find_first_of(" \t"));
+      if (!base::EqualsCaseInsensitiveASCII(name, "report-uri") &&
+          !base::EqualsCaseInsensitiveASCII(name, "report-to")) {
+        directives.push_back(directive);
+      }
+    }
+    if (!directives.empty()) {
+      kept.push_back(base::JoinString(directives, "; "));
+    }
+  }
+  return base::JoinString(kept, ", ");
 }
 
 }  // namespace
@@ -185,7 +213,7 @@ std::string EngineHost::CspDirectives(const Request& request) {
   for (const adblock::Engine* engine :
        {default_engine_.get(), additional_engine_.get()}) {
     if (engine) {
-      std::string csp = engine->CspDirectives(engine_request);
+      std::string csp = WithoutReports(engine->CspDirectives(engine_request));
       if (!csp.empty()) {
         directives.push_back(std::move(csp));
       }

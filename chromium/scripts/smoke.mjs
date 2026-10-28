@@ -13,6 +13,17 @@ import path from 'node:path';
 import { defaultApp, launch as launchOblada, silentWav, sleep, snapshot, until, watchFocus } from './lib/oblada.mjs';
 
 const app = process.argv[2] ?? defaultApp;
+// The build's arguments (its args.gn, next to the app).
+const buildArgs = (() => {
+  try {
+    return fs.readFileSync(path.join(path.dirname(app), 'args.gn'), 'utf8');
+  } catch {
+    return '';
+  }
+})();
+// Official builds (releases) ignore the switches that have tests install add-ons
+// without asking.
+const official = /^is_official_build = true/m.test(buildArgs);
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'oblada-smoke-'));
 const profile = path.join(tmp, 'profile');
 // Where Oblada writes snapshots of its window (see lib/oblada.mjs snapshot()).
@@ -57,8 +68,23 @@ fs.writeFileSync(path.join(profile, 'Default', 'Preferences'), JSON.stringify({
 // A Firefox add-on, written the way Firefox accepts and Chromium doesn't.
 // A web page to put in containers, and the Firefox add-on's files and updates.
 let offerUpdate = false;
+// An "update" that is another add-on, which Oblada should refuse.
+let offerOther = false;
+// Each address's Sec-Fetch-Site, and the pages prerendered (containerChecks).
+const fetchSites = {};
+const prerendered = [];
 const server = http.createServer((req, res) => {
-  const xpiFile = /^\/(oblada-check-[\d.]+\.xpi)$/.exec(req.url)?.[1];
+  fetchSites[req.url] = req.headers['sec-fetch-site'];
+  if (req.headers['sec-purpose']?.includes('prerender')) prerendered.push(req.url);
+  // A page asking for another to be prerendered.
+  if (req.url.startsWith('/?speculate=')) {
+    const rules = { prerender: [{ source: 'list', eagerness: 'immediate',
+      urls: [decodeURIComponent(req.url.slice('/?speculate='.length))] }] };
+    res.setHeader('Content-Type', 'text/html');
+    res.end(`<!doctype html><script type="speculationrules">${JSON.stringify(rules)}</script>`);
+    return;
+  }
+  const xpiFile = /^\/(oblada-(?:check|other|evil)-[\d.]+\.xpi)$/.exec(req.url)?.[1];
   if (xpiFile) {
     res.setHeader('Content-Type', 'application/x-xpinstall');
     res.end(fs.readFileSync(path.join(tmp, xpiFile)));
@@ -68,7 +94,8 @@ const server = http.createServer((req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ addons: { 'oblada-check@example.com': { updates: offerUpdate
       ? [{ version: '1.0', update_link: `${site}oblada-check-1.0.xpi` },
-         { version: '1.1', update_link: `${site}oblada-check-1.1.xpi` }]
+         { version: '1.1', update_link: `${site}oblada-check-1.1.xpi` },
+         ...offerOther ? [{ version: '1.2', update_link: `${site}oblada-other-1.2.xpi` }] : []]
       : [] } } }));
     return;
   }
@@ -222,6 +249,15 @@ execFileSync('zip', ['-qr', path.join(tmp, 'oblada-check-1.0.xpi'), '.'], { cwd:
 const manifest = path.join(addon, 'manifest.json');
 fs.writeFileSync(manifest, fs.readFileSync(manifest, 'utf8').replace('"version": "1.0"', '"version": "1.1"'));
 execFileSync('zip', ['-qr', path.join(tmp, 'oblada-check-1.1.xpi'), '.'], { cwd: addon });
+// A "1.2" that is another add-on, and one from another site claiming to be this one.
+const original = fs.readFileSync(manifest, 'utf8');
+fs.writeFileSync(manifest, original.replace('"version": "1.1"', '"version": "1.2"')
+  .replace('oblada-check@example.com', 'oblada-other@example.com'));
+execFileSync('zip', ['-qr', path.join(tmp, 'oblada-other-1.2.xpi'), '.'], { cwd: addon });
+fs.writeFileSync(manifest, original.replace('"version": "1.1"', '"version": "9.0"')
+  .replace('"Oblada Firefox check"', '"Oblada Firefox impostor"'));
+execFileSync('zip', ['-qr', path.join(tmp, 'oblada-evil-9.0.xpi'), '.'], { cwd: addon });
+fs.writeFileSync(manifest, original);
 
 
 const results = [];
@@ -240,6 +276,8 @@ const launch = (args = []) => launchOblada({
          `--oblada-barrier-catalog=${site}barrier/catalog.json`,
          `--oblada-barrier-data=${site}barrier/data/`,
          '--oblada-barrier-forget-delay=1000',
+         // Add-ons from the test's server as from addons.mozilla.org.
+         `--oblada-addon-test-source=${site}`,
          '--host-resolver-rules=MAP oblada-*.com 127.0.0.1, MAP go.skimresources.com 127.0.0.1, ' +
            'MAP accounts.google.com 127.0.0.1',
          '--ignore-certificate-errors',
@@ -559,7 +597,37 @@ async function containerChecks(o) {
   await call('openContainer', 'personal', `${site}?chosen`);
   check('opening it in another container on purpose keeps it there',
     !!await pageIn(`${site}?chosen`, '|'));
+  // A page sending a tab there on its own: the site gets what it gets from
+  // another site's link, and only once in a while.
+  const from = await o.open(`${site.replace('127.0.0.1', 'localhost')}?from`);
+  await until('the page going there', () => o.evaluate('document.readyState === "complete"', from));
+  await o.evaluate(`location = '${site}?by-script'`, from);
+  const byScript = await pageIn(`${site}?by-script`, 'who=work|work');
+  check('a page sending a tab to a container is another site to it',
+    !!byScript && fetchSites['/?by-script'] === 'cross-site', fetchSites['/?by-script']);
+  await o.evaluate(`location = '${site}?by-script-again'`, from);
+  await sleep(3000);
+  check('…and can\'t do it again right away', !('/?by-script-again' in fetchSites));
   await call('assignSite', '127.0.0.1', '');
+
+  // No prerendering in containers' tabs, which Chromium would do in the
+  // profile's storage.
+  await o.open(`${site}?speculate=${encodeURIComponent(`${site}prerendered-normal`)}`);
+  const prerendering = await until('a page prerendered', () =>
+    prerendered.includes('/prerendered-normal') || null, 10000).catch(() => false);
+  await call('openContainer', 'personal', `${site}?speculate=${encodeURIComponent(`${site}prerendered-container`)}`);
+  await sleep(4000);
+  if (prerendering) {
+    check('containers\' tabs don\'t prerender pages', !prerendered.includes('/prerendered-container'));
+  } else {
+    console.log('skip the prerendering check (nothing is prerendered here)');
+  }
+  // Their tabs closed, for the workspace checks' sidebar.
+  for (const p of await o.pages()) {
+    if (/[?](from|by-script|speculate=)/.test(p.url)) {
+      await o.send('Target.closeTarget', { targetId: p.targetId });
+    }
+  }
 
   // Temporary containers: empty, and gone with their last tab.
   await call('openTemporary', `${site}?temporary`);
@@ -895,6 +963,17 @@ const installedExtensions = async (o) => {
 };
 
 async function firefoxChecks(o) {
+  // Add-ons come only from addons.mozilla.org (here, the test's server, 127.0.0.1):
+  // not from another site, nor from a page of another site linking to it.
+  const elsewhere = site.replace('127.0.0.1', 'localhost');
+  await o.open(`${elsewhere}oblada-evil-9.0.xpi`);
+  const linking = await o.open(`${elsewhere}?link`);
+  await o.evaluate(`(() => { const a = document.createElement('a');
+    a.href = '${site}oblada-evil-9.0.xpi'; document.body.append(a); a.click(); })()`, linking, true);
+  await sleep(5000);
+  const impostor = (await installedExtensions(o)).find((e) => e.name === 'Oblada Firefox impostor');
+  check('Firefox add-ons install only from addons.mozilla.org', !impostor, impostor ? 'installed' : '');
+
   // Downloading the .xpi installs it (the confirmation is auto-accepted in tests).
   await o.open(`${site}oblada-check-1.0.xpi`);
   const installed = await until('Firefox add-on installed', async () =>
@@ -928,6 +1007,13 @@ async function firefoxChecks(o) {
     (await installedExtensions(o)).find((e) => e.name === 'Oblada Firefox check' && e.version === '1.1'),
     30000).catch(() => null);
   check('Firefox add-ons update themselves', !!updated, updated ? updated.version : 'still 1.0');
+
+  // An update that is another add-on is refused.
+  offerOther = true;
+  await sleep(8000);
+  const after = (await installedExtensions(o)).filter((e) => e.name === 'Oblada Firefox check');
+  check('an update that is another add-on is refused',
+    after.length === 1 && after[0].version === '1.1', after.map((e) => e.version).join(', '));
 }
 
 // The real thing: uBlock Origin from addons.mozilla.org, if the network is there.
@@ -1118,6 +1204,8 @@ function barrierRoute(req, res) {
         'oblada-page.com##div.oblada-procedural:has-text(Sponsored)',
         'oblada-page.com##+js(set-constant, obladaScriptlet, true)',
         '/barrier/socket-ad$websocket',
+        // A policy whose reports the Barrier doesn't send.
+        "||oblada-csp.com^$csp=img-src 'none'; report-uri /barrier/csp-report",
         // Where www.microsoft.com leads (CNAME uncloaking).
         '||edgekey.net^$image',
         '||akamaiedge.net^$image',
@@ -1201,6 +1289,15 @@ function barrierRoute(req, res) {
     case '/barrier/cname.html':
       send('text/html', `<!doctype html><title>CNAME</title>
         <img id=cname src="https://www.microsoft.com/favicon.ico?oblada">`);
+      return true;
+    case '/barrier/bounce':
+      res.writeHead(302, { Location: url.searchParams.get('to'), 'Access-Control-Allow-Origin': '*' });
+      res.end();
+      return true;
+    case '/barrier/csp.html':
+      send('text/html', `<!doctype html><script>
+        document.addEventListener('securitypolicyviolation', () => window.violated = true);
+        </script><img src="/barrier/csp-image.png">`);
       return true;
     case '/barrier/page.html':
       send('text/html', `<!doctype html><title>Barrier</title>
@@ -1313,7 +1410,21 @@ async function barrierChecks(o) {
     .then(() => barrierRequests.filter((r) => r.startsWith('upgrade')), () => []);
   check('the Barrier blocks WebSocket connections too', sockets.length === 1 &&
     sockets[0].endsWith('/barrier/socket-ok'), sockets.join(' '));
+  // Redirects lead nowhere the lists block.
+  const bounced = await o.evaluate(`fetch('http://localhost:${port}/barrier/bounce?to=' +
+    encodeURIComponent('http://localhost:${port}/barrier/tracker.png?bounced'))
+    .then(() => 'loaded', () => 'failed')`, page);
+  check('the Barrier blocks what redirects lead to',
+    !barrierRequests.some((r) => r.includes('tracker.png?bounced')), bounced);
   await o.send('Target.closeTarget', { targetId: pageId });
+  {
+    const { s, targetId } = await load(`http://oblada-csp.com:${port}/barrier/csp.html`);
+    await sleep(1500);
+    const violated = await o.evaluate('window.violated === true', s);
+    check('$csp rules apply, without sending reports anywhere',
+      violated && !barrierRequests.some((r) => r.includes('csp-report')), `violated: ${violated}`);
+    await o.send('Target.closeTarget', { targetId });
+  }
 
   // Addresses.
   {
@@ -1621,6 +1732,30 @@ async function firstRunChecks() {
     `${tabs.map((t) => t.url).join(', ')}; first run finished: ${state.browser?.first_run_finished}`);
 }
 
+// Safe Browsing works with the key releases have (build.sh --release, in their args.gn):
+// Google's test page for phishing gets its warning once the lists are in, which the
+// switch brings forward to 10-20 s after the start.
+async function safeBrowsingChecks() {
+  if (!/^oblada_safe_browsing_api_key = "[^"]+"/m.test(buildArgs)) {
+    console.log('skip Safe Browsing checks (this build has no key: only releases have one)');
+    return;
+  }
+  const o = await launchOblada({ app, profile: path.join(tmp, 'safe-browsing'),
+                                 args: ['--safebrowsing-fast-initial-lists-update'] });
+  let warned = false;
+  try {
+    for (const end = Date.now() + 150000; !warned && Date.now() < end; await sleep(10000)) {
+      const page = await o.open('https://testsafebrowsing.appspot.com/s/phishing.html');
+      warned = await until('the page or its warning', () => o.evaluate(
+        `document.readyState === 'complete' && (document.body.classList.contains('safe-browsing') ? 'warned' : 'loaded')`,
+        page), 15000).catch(() => '') === 'warned';
+    }
+  } finally {
+    await o.kill();
+  }
+  check('Safe Browsing warns before Google\'s test page for phishing', warned);
+}
+
 // The user keeps working meanwhile, so the check is that Oblada is never the frontmost app.
 const focus = watchFocus();
 let oblada;
@@ -1639,9 +1774,13 @@ try {
   await cleanLinkChecks(oblada);
   await mediaChecks(oblada);
   await containerChecks(oblada);
-  await firefoxChecks(oblada);
+  if (official) {
+    console.log('skip Firefox add-on checks (official builds always ask before installing)');
+  } else {
+    await firefoxChecks(oblada);
+  }
   await barrierChecks(oblada);
-  if (process.env.OBLADA_SMOKE_NETWORK !== '0') await amoChecks(oblada);
+  if (process.env.OBLADA_SMOKE_NETWORK !== '0' && !official) await amoChecks(oblada);
   const width = await widthBeforeRestart(oblada);
   await oblada.quit();
   // No flag asking for it: Oblada restores the last session by default.
@@ -1649,6 +1788,7 @@ try {
   await restoreChecks(oblada);
   await widthAfterRestart(oblada, width);
   await closeChecks(oblada);
+  if (process.env.OBLADA_SMOKE_NETWORK !== '0') await safeBrowsingChecks();
 } catch (e) {
   check('smoke test ran', false, e.message);
   const stderr = oblada?.stderr() ?? '';

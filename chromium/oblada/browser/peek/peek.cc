@@ -454,6 +454,12 @@ class PeekController : public TabStripModelObserver,
     load.referrer = content::Referrer(
         source->GetLastCommittedURL(),
         network::mojom::ReferrerPolicy::kStrictOriginWhenCrossOrigin);
+    // A click on the page's link: the site gets what it would from the page
+    // (not its SameSite=Strict cookies when it's another site's).
+    load.initiator_origin =
+        source->GetPrimaryMainFrame()->GetLastCommittedOrigin();
+    load.is_renderer_initiated = true;
+    load.has_user_gesture = true;
     contents_->GetController().LoadURLWithParams(load);
     source_ = source;
 

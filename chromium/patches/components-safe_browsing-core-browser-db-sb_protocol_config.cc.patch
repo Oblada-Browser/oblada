@@ -1,0 +1,24 @@
+diff --git a/components/safe_browsing/core/browser/db/sb_protocol_config.cc b/components/safe_browsing/core/browser/db/sb_protocol_config.cc
+index 441203549c..4620e5441c 100644
+--- a/components/safe_browsing/core/browser/db/sb_protocol_config.cc
++++ b/components/safe_browsing/core/browser/db/sb_protocol_config.cc
+@@ -8,6 +8,7 @@
+ 
+ #include "components/version_info/version_info.h"
+ #include "google_apis/google_api_keys.h"
++#include "oblada/components/safe_browsing/buildflags.h"  // Oblada
+ 
+ namespace safe_browsing {
+ 
+@@ -26,8 +27,10 @@ SBProtocolConfig::~SBProtocolConfig() = default;
+ 
+ SBProtocolConfig GetSBProtocolConfig(const std::string& client_name,
+                                      bool disable_auto_update) {
++  // Oblada: its own key, for Safe Browsing alone, when the build has one.
++  const std::string oblada_key = BUILDFLAG(OBLADA_SAFE_BROWSING_API_KEY);
+   return SBProtocolConfig(client_name, disable_auto_update,
+-                          google_apis::GetAPIKey(),
++                          oblada_key.empty() ? google_apis::GetAPIKey() : oblada_key,
+                           std::string(version_info::GetVersionNumber()));
+ }
+ 

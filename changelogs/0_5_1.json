@@ -1,0 +1,23 @@
+{
+  "added": [
+    "Settings > Oblada > Privacy can turn off each protection Oblada applies as it starts: HTTPS memory (HSTS) and connections kept apart for each site, web features that mostly serve to recognize you, shorter referrers, cookies kept 6 months at most."
+  ],
+  "changed": [
+    "Firefox add-ons install and update only from addons.mozilla.org.",
+    "Certificate Transparency is on, as in Chrome: sites' certificates must be in public logs.",
+    "Sites' wish to always be opened over HTTPS (HSTS) is kept apart for each site when it comes from inside another site's pages, as in Brave, rather than holding for pages only."
+  ],
+  "fixed": [
+    "Safe Browsing works: Oblada warns before opening sites Google lists as phishing or malware, and before downloading files from addresses on its lists. Settings showed it on, but without a key for Google's Safe Browsing API it never got its lists.",
+    "Security: another site could offer a Firefox add-on, or change where an installed one took its updates from, even if you said no.",
+    "Security: a page sending a tab to a container, AMP pages left for the original and peeks opened sites as if you had typed their address, so other sites could act on them as you.",
+    "Security: pages in containers could be prerendered, and searches prefetched, outside the container.",
+    "Security: only uBlock Origin's and Brave's own filter lists can run their most powerful scripts, lists come over HTTPS only, and their rules can't have pages report where you are.",
+    "Security: the Barrier checks where redirects lead, its questions (sensitive sites, Google sign-ins, blocked sites) can't be answered by the sites themselves, and only the page you picked an element on can add a filter."
+  ],
+  "obladaVersion": "0.5.1",
+  "releaseId": 12,
+  "chromiumVersion": "156.0.8078.48",
+  "releaseDate": "",
+  "released": false
+}

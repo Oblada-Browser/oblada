@@ -1,0 +1,118 @@
+diff --git a/net/http/transport_security_state.cc b/net/http/transport_security_state.cc
+index a154c32437..27c1fb533d 100644
+--- a/net/http/transport_security_state.cc
++++ b/net/http/transport_security_state.cc
+@@ -17,6 +17,7 @@
+ #include "base/build_time.h"
+ #include "base/compiler_specific.h"
+ #include "base/containers/span.h"
++#include "base/auto_reset.h"
+ #include "base/feature_list.h"
+ #include "base/functional/bind.h"
+ #include "base/json/json_writer.h"
+@@ -34,6 +35,8 @@
+ #include "crypto/hash.h"
+ #include "net/base/features.h"
+ #include "net/base/hash_value.h"
++#include "net/base/registry_controlled_domains/registry_controlled_domain.h"
++#include "net/base/schemeful_site.h"
+ #include "net/base/url_util.h"
+ #include "net/cert/ct_policy_status.h"
+ #include "net/cert/x509_certificate.h"
+@@ -42,6 +45,7 @@
+ #include "net/http/http_security_headers.h"
+ #include "net/net_buildflags.h"
+ #include "net/ssl/ssl_info.h"
++#include "url/gurl.h"
+ 
+ namespace net {
+ 
+@@ -311,6 +315,67 @@ SSLUpgradeDecision TransportSecurityState::GetSSLUpgradeDecision(
+   return SSLUpgradeDecision::kNoUpgrade;
+ }
+ 
++SSLUpgradeDecision TransportSecurityState::GetSSLUpgradeDecision(
++    std::string_view host,
++    bool is_top_level_nav,
++    const NetLogWithSource& net_log,
++    const NetworkAnonymizationKey& key) {
++  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
++  base::AutoReset<std::optional<std::string>> partition(&partition_,
++                                                        PartitionFor(key));
++  return GetSSLUpgradeDecision(host, is_top_level_nav, net_log);
++}
++
++bool TransportSecurityState::AddHSTSHeader(std::string_view host,
++                                           std::string_view value,
++                                           const NetworkAnonymizationKey& key) {
++  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
++  base::AutoReset<std::optional<std::string>> partition(&partition_,
++                                                        PartitionFor(key));
++  return AddHSTSHeader(host, value);
++}
++
++// static
++std::optional<std::string> TransportSecurityState::PartitionFor(
++    const NetworkAnonymizationKey& key) {
++  if (!base::FeatureList::IsEnabled(features::kObladaPartitionHsts)) {
++    return std::nullopt;
++  }
++  const std::optional<SchemefulSite>& top_frame_site = key.GetTopFrameSite();
++  if (!top_frame_site) {
++    return std::nullopt;
++  }
++  // Opaque sites (sandboxed pages…) share one partition, apart from the others.
++  return top_frame_site->opaque()
++             ? std::string()
++             : std::string(top_frame_site->GetURL().host());
++}
++
++TransportSecurityState::HashedHost TransportSecurityState::STSKey(
++    base::span<const uint8_t> canonicalized_host) const {
++  if (!partition_) {
++    return HashHost(canonicalized_host);
++  }
++  const std::optional<std::string> dotted =
++      dns_names_util::NetworkToDottedName(canonicalized_host);
++  if (!dotted) {
++    return HashHost(canonicalized_host);
++  }
++  std::string site = registry_controlled_domains::GetDomainAndRegistry(
++      *dotted, registry_controlled_domains::INCLUDE_PRIVATE_REGISTRIES);
++  if (site.empty()) {
++    site = *dotted;
++  }
++  if (site == *partition_) {
++    return HashHost(canonicalized_host);
++  }
++  std::vector<uint8_t> partitioned(canonicalized_host.begin(),
++                                   canonicalized_host.end());
++  partitioned.push_back('/');
++  partitioned.insert(partitioned.end(), partition_->begin(), partition_->end());
++  return HashHost(partitioned);
++}
++
+ bool TransportSecurityState::ShouldUpgradeToSSL(
+     std::string_view host,
+     bool is_top_level_nav,
+@@ -425,9 +490,9 @@ void TransportSecurityState::AddHSTSInternal(
+   // Only store new state when HSTS is explicitly enabled. If it is
+   // disabled, remove the state from the enabled hosts.
+   if (sts_state.ShouldUpgradeToSSL()) {
+-    enabled_sts_hosts_[HashHost(canonicalized_host)] = sts_state;
++    enabled_sts_hosts_[STSKey(canonicalized_host)] = sts_state;
+   } else {
+-    const HashedHost hashed_host = HashHost(canonicalized_host);
++    const HashedHost hashed_host = STSKey(canonicalized_host);
+     enabled_sts_hosts_.erase(hashed_host);
+   }
+ 
+@@ -747,7 +812,7 @@ bool TransportSecurityState::GetDynamicSTSState(std::string_view host,
+   for (size_t i = 0; canonicalized_host[i]; i += canonicalized_host[i] + 1) {
+     base::span<const uint8_t> host_sub_chunk =
+         base::span(canonicalized_host).subspan(i);
+-    auto j = enabled_sts_hosts_.find(HashHost(host_sub_chunk));
++    auto j = enabled_sts_hosts_.find(STSKey(host_sub_chunk));
+     if (j == enabled_sts_hosts_.end()) {
+       continue;
+     }

@@ -20,6 +20,8 @@ if (!out) {
 }
 
 const base64 = (data) => Buffer.from(data).toString('base64');
+// adblock_engine.h's kTrusted.
+const TRUSTED = 1;
 
 // As adblock-rust's MimeType::from_extension().
 const MIME_TYPES = {
@@ -76,10 +78,19 @@ for (const scriptlet of builtinScriptlets) {
     kind: { mime: 'application/javascript' },
     content: base64(scriptlet.fn.toString()),
     ...(scriptlet.dependencies?.length ? { dependencies: scriptlet.dependencies } : {}),
-    // Only lists trusted with them may inject uBlock Origin's trusted scriptlets
-    // (adblock_engine.h's kTrusted).
-    ...(scriptlet.requiresTrust ? { permission: 1 } : {}),
+    ...(scriptlet.requiresTrust ? { permission: TRUSTED } : {}),
   });
+}
+
+// Only lists trusted with them may inject trusted scriptlets (adblock_engine.h's
+// kTrusted): those uBlock Origin says require trust, and any named trusted-… or
+// trusted_…, which run what the rule says (trusted-prevent-xhr, which uBlock Origin
+// doesn't mark, answers requests with the rule's text; Brave's trusted_types.js turns
+// Trusted Types off).
+for (const resource of filtered) {
+  if (resource.name.startsWith('trusted')) {
+    resource.permission = (resource.permission ?? 0) | TRUSTED;
+  }
 }
 
 fs.writeFileSync(out, JSON.stringify(filtered));

@@ -1,5 +1,6 @@
 #include "oblada/browser/barrier/google_sign_in.h"
 
+#include <optional>
 #include <vector>
 
 #include "base/strings/escape.h"
@@ -28,8 +29,7 @@ namespace {
 constexpr char kGoogleSignInHost[] = "accounts.google.com";
 constexpr char kFirebaseDomain[] = ".firebaseapp.com";
 
-// The page's answer: the session's token, ".allow." or ".block.", then the
-// site.
+// The page's answer (AnswerUrl()): ".allow." or ".block.", then the site.
 constexpr char kAnswerParam[] = "oblada-barrier-google";
 
 bool IsSignInHost(std::string_view host) {
@@ -80,8 +80,8 @@ std::string Page(const GURL& url, const std::string& site, bool blocked,
     return escaped;
   };
   const auto answer = [&](const char* choice) {
-    return JavaScriptUrl(net::AppendOrReplaceQueryParameter(
-        url, kAnswerParam, base::StrCat({SessionToken(), choice, site})));
+    return JavaScriptUrl(
+        AnswerUrl(url, kAnswerParam, base::StrCat({choice, site})));
   };
   const char* title =
       blocked ? "barrier.google.blocked_title" : "barrier.google.title";
@@ -141,11 +141,10 @@ GoogleSignInDecision CheckGoogleSignIn(
   Profile* profile = Profile::FromBrowserContext(contents->GetBrowserContext());
 
   // The question's answer.
-  std::string answer;
-  if (net::GetValueForKeyInQuery(url, kAnswerParam, &answer) &&
-      !SessionToken().empty() && answer.starts_with(SessionToken())) {
-    const GURL original = WithoutQueryParameter(url, kAnswerParam);
-    answer.erase(0, SessionToken().size());
+  GURL original;
+  if (std::optional<std::string> taken =
+          TakeAnswer(url, kAnswerParam, &original)) {
+    const std::string& answer = *taken;
     const bool allow = answer.starts_with(".allow.");
     if (!allow && !answer.starts_with(".block.")) {
       return decision;
