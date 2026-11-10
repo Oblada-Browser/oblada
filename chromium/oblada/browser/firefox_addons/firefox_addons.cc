@@ -45,12 +45,15 @@
 #include "extensions/browser/crx_installer.h"
 #include "extensions/browser/extension_dialog_auto_confirm.h"
 #include "extensions/browser/extension_prefs.h"
+#include "extensions/browser/extension_registrar.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/install/crx_install_error.h"
 #include "extensions/browser/install_prompt_data.h"
 #include "extensions/common/extension.h"
 #include "oblada/browser/extensions/api/contextual_identities/contextual_identities_api.h"
 #include "oblada/browser/firefox_addons/addon_updates.h"
+#include "oblada/browser/firefox_addons/compat_script.h"
+#include "oblada/browser/firefox_addons/cookie_store_ids.h"
 #include "oblada/browser/firefox_addons/xpi_conversion.h"
 #include "oblada/browser/l10n.h"
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
@@ -429,6 +432,31 @@ std::vector<InstalledAddon> GetInstalledAddons(Profile* profile) {
                       update_url ? GURL(*update_url) : GURL()});
   }
   return addons;
+}
+
+void UpdateCompatScripts(Profile* profile) {
+  for (const scoped_refptr<const extensions::Extension>& extension :
+       extensions::ExtensionRegistry::Get(profile)->enabled_extensions()) {
+    if (!IsFirefoxAddon(extension.get())) {
+      continue;
+    }
+    base::ThreadPool::PostTaskAndReplyWithResult(
+        FROM_HERE, {base::MayBlock(), base::TaskPriority::BEST_EFFORT},
+        base::BindOnce(
+            [](base::FilePath script) {
+              std::string current;
+              return base::ReadFileToString(script, &current) &&
+                     current != kCompatScript && base::WriteFile(script, kCompatScript);
+            },
+            extension->path().AppendASCII(kCompatScriptName)),
+        base::BindOnce(
+            [](base::WeakPtr<Profile> profile, extensions::ExtensionId id, bool updated) {
+              if (updated && profile) {
+                extensions::ExtensionRegistrar::Get(profile.get())->ReloadExtension(id);
+              }
+            },
+            profile->GetWeakPtr(), extension->id()));
+  }
 }
 
 bool IsAddonSource(const GURL& url) {

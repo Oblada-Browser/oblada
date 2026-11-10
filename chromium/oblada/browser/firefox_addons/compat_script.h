@@ -156,6 +156,90 @@ inline constexpr std::string_view kCompatScript = R"js(// Oblada: Firefox compat
       getMessage(typeof name === 'string' ? name.replace(/[^A-Za-z0-9_]/g, '_') : name, ...rest));
   }
 
+  // Firefox's contentScripts.register(), which Chromium has only in Manifest V3 (and for
+  // files only): the scripts run in each matching frame as it commits, with
+  // webNavigation, which add-ons using it ask for (uBlock Origin). Main-world scripts are
+  // added to the page as a <script>, which the page's CSP can refuse.
+  const { tabs, webNavigation } = g.chrome;
+  if (tabs?.executeScript && webNavigation?.onCommitted) {
+    const escape = (text) => text.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+    const glob = (pattern) => new RegExp('^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
+    const matchPattern = (pattern) => {
+      if (pattern === '<all_urls>') return /^(?:https?|wss?|file|ftp):/;
+      const [, scheme, host, path] = /^(\*|[a-z][a-z0-9+.-]*):\/\/([^/]*)(\/.*)$/.exec(pattern) ?? [];
+      if (!path) return /$^/;
+      const hosts = host === '*' ? '[^/]*'
+        : host.startsWith('*.') ? `(?:[^/]*\\.)?${escape(host.slice(2))}(?::\\d+)?`
+        : `${escape(host)}(?::\\d+)?`;
+      return new RegExp(`^${scheme === '*' ? '(?:https?|wss?)' : escape(scheme)}://${hosts}` +
+        `${escape(path).replace(/\*/g, '.*')}$`);
+    };
+    const mainWorld = (code) => `(() => { const script = document.createElement('script');
+      script.textContent = ${JSON.stringify(code)};
+      (document.head || document.documentElement).append(script); script.remove(); })();`;
+    const registered = new Set();
+    const run = (script, { tabId, frameId }) => {
+      const where = { frameId, runAt: script.runAt, matchAboutBlank: script.matchAboutBlank };
+      const done = () => void g.chrome.runtime.lastError;
+      for (const { code, file } of script.css) {
+        tabs.insertCSS(tabId, { ...where, ...(file ? { file } : { code }) }, done);
+      }
+      for (const { code, file } of script.js) {
+        tabs.executeScript(tabId, { ...where, ...(file ? { file }
+          : { code: script.world === 'MAIN' ? mainWorld(code) : code }) }, done);
+      }
+    };
+    const onCommitted = (details) => {
+      const url = details.url.split('#')[0];
+      for (const script of registered) {
+        // As in Firefox, not in documents there before it was registered.
+        if (details.timeStamp < script.since ||
+            (details.frameId !== 0 && !script.allFrames) ||
+            !script.matches.some((re) => re.test(url)) ||
+            script.excludeMatches.some((re) => re.test(url)) ||
+            (script.includeGlobs.length && !script.includeGlobs.some((re) => re.test(url))) ||
+            script.excludeGlobs.some((re) => re.test(url))) {
+          continue;
+        }
+        if (script.cookieStoreId === undefined) {
+          run(script, details);
+        } else {
+          tabs.get(details.tabId, (tab) => {
+            const ids = [script.cookieStoreId].flat();
+            if (!g.chrome.runtime.lastError && ids.includes(tab?.cookieStoreId)) run(script, details);
+          });
+        }
+      }
+    };
+    const register = (options) => {
+      const script = {
+        js: options.js ?? [],
+        css: options.css ?? [],
+        matches: (options.matches ?? []).map(matchPattern),
+        excludeMatches: (options.excludeMatches ?? []).map(matchPattern),
+        includeGlobs: (options.includeGlobs ?? []).map(glob),
+        excludeGlobs: (options.excludeGlobs ?? []).map(glob),
+        allFrames: !!options.allFrames,
+        matchAboutBlank: !!(options.matchAboutBlank || options.matchOriginAsFallback),
+        runAt: options.runAt ?? 'document_idle',
+        world: options.world,
+        cookieStoreId: options.cookieStoreId,
+        since: Date.now(),
+      };
+      if (!registered.size) webNavigation.onCommitted.addListener(onCommitted);
+      registered.add(script);
+      return Promise.resolve({
+        unregister: () => {
+          registered.delete(script);
+          if (!registered.size) webNavigation.onCommitted.removeListener(onCommitted);
+          return Promise.resolve();
+        },
+      });
+    };
+    for (const ns of namespaces) define(ns, 'contentScripts', { register });
+  }
+
   // Firefox's runtime.getBrowserInfo().
   const version = /Chrome\/([\d.]+)/.exec(g.navigator?.userAgent ?? '')?.[1] ?? '';
   for (const ns of namespaces) {

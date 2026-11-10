@@ -180,6 +180,17 @@ void ConvertPermissions(base::DictValue& manifest,
   }
 }
 
+// Whether the add-on asks for webRequest, now or later.
+bool UsesWebRequest(const base::DictValue& manifest) {
+  for (const char* key : {"permissions", "optional_permissions"}) {
+    const base::ListValue* list = manifest.FindList(key);
+    if (list && list->contains("webRequest")) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Adds kCompatScriptName in front of a list of scripts.
 void PrependCompatScript(base::ListValue& scripts) {
   if (!scripts.contains(kCompatScriptName)) {
@@ -424,6 +435,13 @@ base::expected<ConvertedAddon, std::string> Convert(const base::FilePath& dir,
       addon.warnings.push_back("Its background page runs as a service worker");
     } else if (scripts) {
       PrependCompatScript(*scripts);
+    }
+    // Firefox wakes event pages for webRequest's events; Chromium allows the API only
+    // to background pages that stay loaded.
+    if (*version == 2 && !background->FindBool("persistent").value_or(true) &&
+        UsesWebRequest(*manifest)) {
+      background->Set("persistent", true);
+      addon.warnings.push_back("Its background page stays loaded");
     }
   }
 

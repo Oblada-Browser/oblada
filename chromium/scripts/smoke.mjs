@@ -178,9 +178,10 @@ fs.writeFileSync(path.join(addon, 'manifest.json'), `{
   "name": "Oblada Firefox check",
   "version": "1.0",
   "browser_specific_settings": { "gecko": { "id": "oblada-check@example.com", "update_url": "${site}updates.json" } },
-  "permissions": ["menus", "storage", "dns", "tabs", "cookies", "contextualIdentities", "<all_urls>"],
+  "permissions": ["menus", "storage", "dns", "tabs", "cookies", "contextualIdentities", "webRequest",
+    "webRequestBlocking", "webNavigation", "<all_urls>"],
   "icons": { "48": "icon.svg" },
-  "background": { "scripts": ["background.js"] },
+  "background": { "scripts": ["background.js"], "persistent": false },
   "content_scripts": [{ "matches": ["http://127.0.0.1/*"], "js": ["content.js"] }],
   "browser_action": { "default_popup": "popup.html", "default_icon": "icon.svg" },
   "sidebar_action": { "default_panel": "popup.html" }
@@ -189,6 +190,14 @@ fs.writeFileSync(path.join(addon, 'icon.svg'), '<svg xmlns="http://www.w3.org/20
 fs.writeFileSync(path.join(addon, 'popup.html'), '<!doctype html><html><head><title>Popup</title></head><body>Popup</body></html>');
 fs.writeFileSync(path.join(addon, 'background.js'), `
 browser.menus.create({ id: 'oblada-check', title: 'Oblada check', contexts: ['page', 'tools_menu'] });
+// Blocking webRequest from an event page, which Firefox allows (AdGuard's).
+browser.webRequest.onBeforeRequest.addListener(() => ({ cancel: true }),
+  { urls: ['*://127.0.0.1/*oblada-addon-blocked*'] }, ['blocking']);
+// Content scripts registered as it runs, as uBlock Origin's scriptlets.
+for (const world of ['ISOLATED', 'MAIN']) {
+  browser.contentScripts.register({ matches: ['http://127.0.0.1/*'], runAt: 'document_start', world,
+    js: [{ code: 'document.documentElement.dataset.oblada' + world.toLowerCase() + ' = typeof browser;' }] });
+}
 // Containers, as Multi-Account Containers uses them.
 async function containersTest(origin) {
   const events = [];
@@ -955,6 +964,24 @@ async function containerChecks(o) {
     `reload at ${wideReload} in ${sidebarBack?.[2]}, ${narrowReload ?? 'none'} in ${narrow?.[2]}`);
 }
 
+// The compat script among the files of the installed add-on named `name` (its newest
+// version's).
+const compatScriptOf = (name) => {
+  const root = path.join(profile, 'Default', 'Extensions');
+  const dirs = fs.existsSync(root) ? fs.readdirSync(root).flatMap((id) =>
+    fs.readdirSync(path.join(root, id)).map((version) => path.join(root, id, version))) : [];
+  const versions = dirs.map((dir) => {
+    try {
+      const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+      return manifest.name === name && { dir, version: manifest.version };
+    } catch {
+      return null;
+    }
+  }).filter(Boolean).sort((a, b) => a.version.localeCompare(b.version, 'en', { numeric: true }));
+  const script = versions.length && path.join(versions.at(-1).dir, 'oblada-compat.js');
+  return script && fs.existsSync(script) ? script : null;
+};
+
 // The installed extensions as chrome://extensions-internals lists them.
 const installedExtensions = async (o) => {
   const page = await o.open('chrome://extensions-internals');
@@ -989,6 +1016,14 @@ async function firefoxChecks(o) {
     o.evaluate('document.documentElement.dataset.obladaFirefox', tab), 15000).catch(() => null);
   check('Firefox add-on scripts run (browser.menus, promise replies)',
     reply === JSON.stringify({ reply: 'oblada-pong', menus: 'function', theme: 'function' }), reply);
+  const blocked = await o.evaluate(`Promise.all(['/?oblada-addon-blocked', '/?oblada-addon-allowed'].map(
+    (url) => fetch(url).then(() => 'loaded', () => 'blocked'))).then((r) => r.join())`, tab);
+  check('Firefox add-ons block requests from an event page (webRequestBlocking)',
+    blocked === 'blocked,loaded', blocked);
+  const registered = await o.evaluate(
+    'JSON.stringify([document.documentElement.dataset.obladaisolated, document.documentElement.dataset.obladamain])', tab);
+  check('Firefox add-ons register content scripts (contentScripts.register)',
+    registered === JSON.stringify(['object', 'undefined']), registered);
 
   // Firefox's containers API (contextualIdentities) and tabs' cookieStoreId.
   const containersTab = await o.open(`${site}?containers-test`);
@@ -1783,8 +1818,18 @@ try {
   if (process.env.OBLADA_SMOKE_NETWORK !== '0' && !official) await amoChecks(oblada);
   const width = await widthBeforeRestart(oblada);
   await oblada.quit();
+  // The test add-on as an older Oblada converted it: its compat script is brought up
+  // to date as Oblada starts.
+  const compat = official ? null : compatScriptOf('Oblada Firefox check');
+  const current = compat && fs.readFileSync(compat, 'utf8');
+  if (compat) fs.writeFileSync(compat, "// An older Oblada's.\n");
   // No flag asking for it: Oblada restores the last session by default.
   oblada = await launch();
+  if (compat) {
+    const updated = await until('compat script updated',
+      () => fs.readFileSync(compat, 'utf8') === current, 20000).catch(() => false);
+    check('Firefox add-ons get a newer Oblada\'s compat script as it starts', updated);
+  }
   await restoreChecks(oblada);
   await widthAfterRestart(oblada, width);
   await closeChecks(oblada);

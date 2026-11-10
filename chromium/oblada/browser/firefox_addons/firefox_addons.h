@@ -63,6 +63,11 @@ void InstallUpdate(Profile* profile,
                    const base::FilePath& xpi,
                    const std::string& gecko_id);
 
+// Brings the compatibility script of `profile`'s add-ons (compat_script.h, among their
+// files since they were converted) up to date with this Oblada's, and reloads those it
+// changed: they get what a newer Oblada adds without waiting for their next version.
+void UpdateCompatScripts(Profile* profile);
+
 // Browser startup.
 void Init();
 

@@ -216,6 +216,7 @@ void StartAddonUpdates(Profile* profile) {
   }
   profile->SetUserData(AddonUpdater::UserDataKey(),
                        std::make_unique<AddonUpdater>(profile));
+  UpdateCompatScripts(profile);
 }
 
 }  // namespace oblada::firefox_addons

@@ -1,0 +1,11 @@
+{
+  "fixed": [
+    "uBlock Origin blocks ads again: since its version 1.76 it used a Firefox feature Oblada didn't have, and stopped before filtering anything. Add-ons already installed get the fix as Oblada starts.",
+    "Firefox add-ons whose background page sleeps when idle and that filter requests, as AdGuard, install: Oblada refused them as invalid."
+  ],
+  "obladaVersion": "0.5.3",
+  "releaseId": 14,
+  "chromiumVersion": "156.0.8078.48",
+  "releaseDate": "",
+  "released": false
+}
